@@ -24,6 +24,7 @@ export interface BigTask extends DatabaseEntity {
   project_id: string
   user_id: string
   name: string
+  category: string
   week_number: number
   estimated_hours: number
   actual_hours?: number
@@ -78,10 +79,16 @@ export interface DailyCondition extends DatabaseEntity {
   notes?: string
 }
 
+export interface CategoryColor extends DatabaseEntity {
+  user_id: string
+  category_name: string
+  color_code: string // hex形式 (#5E621B など)
+}
+
 export interface SyncOperation extends DatabaseEntity {
   operation_id: string
   operation_type: 'CREATE' | 'UPDATE' | 'DELETE'
-  entity_type: 'project' | 'big_task' | 'small_task' | 'work_session' | 'mood_entry' | 'daily_condition'
+  entity_type: 'project' | 'big_task' | 'small_task' | 'work_session' | 'mood_entry' | 'daily_condition' | 'category_color'
   entity_id: string
   payload: Record<string, unknown>
   timestamp: string
@@ -118,6 +125,9 @@ export type UpdateWorkSessionData = Partial<Omit<WorkSession, 'id' | 'created_at
 
 export type CreateMoodEntryData = Omit<MoodEntry, 'id' | 'created_at' | 'updated_at'>
 export type UpdateMoodEntryData = Partial<Omit<MoodEntry, 'id' | 'created_at'>>
+
+export type CreateCategoryColorData = Omit<CategoryColor, 'id' | 'created_at' | 'updated_at'>
+export type UpdateCategoryColorData = Partial<Omit<CategoryColor, 'id' | 'created_at'>>
 
 export type CreateDailyConditionData = Omit<DailyCondition, 'id' | 'created_at' | 'updated_at'>
 export type UpdateDailyConditionData = Partial<Omit<DailyCondition, 'id' | 'created_at'>>

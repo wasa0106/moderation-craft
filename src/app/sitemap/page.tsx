@@ -32,12 +32,12 @@ export default function SitemapPage() {
             const response = await fetch(page.path, { method: 'HEAD' });
             return {
               ...page,
-              status: response.ok ? 'ok' : 'error'
+              status: response.ok ? 'ok' as const : 'error' as const
             };
           } catch {
             return {
               ...page,
-              status: 'error'
+              status: 'error' as const
             };
           }
         })
@@ -46,7 +46,7 @@ export default function SitemapPage() {
     };
 
     // 初期状態をセット
-    setPages(expectedPages.map(page => ({ ...page, status: 'checking' })));
+    setPages(expectedPages.map(page => ({ ...page, status: 'checking' as const })));
 
     // ページ確認を実行
     checkPages();

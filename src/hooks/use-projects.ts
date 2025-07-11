@@ -10,6 +10,7 @@ import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
 import { Project, CreateProjectData, UpdateProjectData } from '@/types'
 import { generateId } from '@/lib/utils'
+import { db } from '@/lib/db/database'
 
 const syncService = SyncService.getInstance()
 
@@ -21,12 +22,48 @@ export function useProjects(userId: string) {
   const projectsQuery = useQuery({
     queryKey: queryKeys.projectsByUser(userId),
     queryFn: async () => {
-      const projects = await projectRepository.getByUserId(userId)
-      projectStore.setProjects(projects)
-      return projects
+      try {
+        const projects = await projectRepository.getByUserId(userId)
+        projectStore.setProjects(projects)
+        return projects
+      } catch (error) {
+        console.error('Failed to get projects by user ID:', error)
+        
+        // データベースエラーの場合は復旧を試行
+        if (error instanceof Error && (
+          error.message.includes('UpgradeError') ||
+          error.message.includes('DatabaseClosedError') ||
+          error.message.includes('primary key')
+        )) {
+          console.warn('Database schema error detected, attempting recovery...')
+          try {
+            await db.handleSchemaError()
+            // 復旧後に再試行
+            const projects = await projectRepository.getByUserId(userId)
+            projectStore.setProjects(projects)
+            return projects
+          } catch (recoveryError) {
+            console.error('Database recovery failed:', recoveryError)
+            throw new Error('データベースの復旧に失敗しました。ページをリロードしてください。')
+          }
+        }
+        
+        throw error
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId
+    enabled: !!userId,
+    retry: (failureCount, error) => {
+      // データベースエラーの場合は自動リトライしない
+      if (error instanceof Error && (
+        error.message.includes('UpgradeError') ||
+        error.message.includes('DatabaseClosedError') ||
+        error.message.includes('primary key')
+      )) {
+        return false
+      }
+      return failureCount < 3
+    }
   })
 
   // Create project mutation
@@ -146,10 +183,10 @@ export function useProjects(userId: string) {
     completedProjects: projectStore.getCompletedProjects(),
     
     // Mutations
-    createProject: createProjectMutation.mutate,
-    updateProject: updateProjectMutation.mutate,
-    deleteProject: deleteProjectMutation.mutate,
-    duplicateProject: duplicateProjectMutation.mutate,
+    createProject: createProjectMutation.mutateAsync,
+    updateProject: updateProjectMutation.mutateAsync,
+    deleteProject: deleteProjectMutation.mutateAsync,
+    duplicateProject: duplicateProjectMutation.mutateAsync,
     
     // Mutation states
     isCreating: createProjectMutation.isPending,

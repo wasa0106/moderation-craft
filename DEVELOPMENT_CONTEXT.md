@@ -223,13 +223,15 @@
 | version | number | 楽観的ロック用 |
 | estimated_total_hours | number | 分析用 |
 
-#### BigTask
+
+#### BigTask（更新）
 | フィールド | 型 | 説明 |
 |---|---|---|
 | id | string | PK |
 | project_id | string | FK: Project |
 | user_id | string | FK: User |
 | name | string | タスク名 |
+| category | string | カテゴリ名（分析用） |
 | week_number | number | プロジェクト開始からの週数 |
 | estimated_hours | number | 見積時間 |
 | actual_hours | number | 実績時間集計 |
@@ -310,6 +312,20 @@
 | steps | number | 歩数 |
 | work_start_time | time | 作業開始時刻 |
 | work_end_time | time | 作業終了時刻 |
+
+
+##### CategoryMetrics
+| フィールド | 型 | 説明 |
+|---|---|---|
+| user_id | string | ユーザーID |
+| project_id | string | プロジェクトID |
+| category | string | カテゴリ名 |
+| total_estimated_hours | number | 見積時間合計 |
+| total_actual_hours | number | 実績時間合計 |
+| efficiency_ratio | number | 効率性（実績/見積） |
+| task_count | number | タスク数 |
+| completion_rate | number | 完了率 |
+
 
 #### BurnoutIndicators
 | フィールド | 型 | 説明 |
@@ -479,7 +495,36 @@
 - 週次計画立案
 - 進捗追跡
 
-### 5. レポート（/reports）
+### 5.プロジェクト作成画面（/projects/new）
+**目的**: プロジェクトの基本情報入力とWBS作成を1画面で完結
+
+**構成**:
+1. **プロジェクト基本情報**
+   - プロジェクト名（必須）
+   - 定量目標（必須）
+   - 開始日・期限（必須）
+   - 期間自動計算表示
+
+2. **投下可能時間の計算**
+   - 平日/休日の作業可能日数（選択式）
+   - 平日/休日の作業可能時間（時間単位）
+   - バッファ率（50-100%、デフォルト80%）
+   - 週間作業可能時間の自動計算・表示
+
+3. **タスク一覧**
+   - 週単位の大きなタスクを入力（日々の細かいタスクは各週の始めに詳細化）
+   - カテゴリ（選択式）、タスク名、見積時間の表形式入力
+   - ドラッグ&ドロップで順序変更
+   - カテゴリ別時間配分をプログレスバーで可視化
+
+4. **週別タスク配分**
+   - タスクを週ごとに自動配分（作業可能時間考慮）
+   - 週ごとの作業負荷を可視化
+   - 超過時は警告表示
+   - 将来的にガントチャートに置き換え予定
+
+
+### 6. レポート（/reports）
 **目的**: 実績分析・振り返り
 
 **MVP版表示要素**:
@@ -500,7 +545,7 @@
 - 分析チャート表示
 - **PDF レポート生成（Phase 6）**
 
-### 6. 分析ダッシュボード（/analytics - Phase 6以降）
+### 7. 分析ダッシュボード（/analytics - Phase 6以降）
 **目的**: 高度な分析・予測表示
 
 **表示要素**:
@@ -516,7 +561,48 @@
 - 予測シミュレーション
 - カスタムレポート作成
 
----
+### デザインシステム
+
+#### カラースキーム（Material Theme）
+css
+:root {
+  /* Primary Colors */
+  --primary: #5E621B;
+  --on-primary: #FFFFFF;
+  --primary-container: #E3E892;
+  --on-primary-container: #464A02;
+
+  /* Secondary Colors */
+  --secondary: #5F6044;
+  --on-secondary: #FFFFFF;
+  --secondary-container: #E4E5C0;
+  --on-secondary-container: #47492E;
+
+  /* Tertiary Colors */
+  --tertiary: #3C6659;
+  --on-tertiary: #FFFFFF;
+  --tertiary-container: #BEECDB;
+  --on-tertiary-container: #244E42;
+
+  /* Error Colors */
+  --error: #BA1A1A;
+  --on-error: #FFFFFF;
+  --error-container: #FFDAD6;
+  --on-error-container: #93000A;
+
+  /* Background & Surface */
+  --background: #FCFAEC;
+  --on-background: #1C1C14;
+  --surface: #FCFAEC;
+  --on-surface: #1C1C14;
+  --surface-variant: #E5E3D2;
+  --on-surface-variant: #47473B;
+
+  /* Other Colors */
+  --outline: #787869;
+  --outline-variant: #C9C7B6;
+  }
+
 
 ## 技術仕様
 

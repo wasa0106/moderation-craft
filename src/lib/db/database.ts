@@ -12,6 +12,7 @@ import {
   WorkSession,
   MoodEntry,
   DailyCondition,
+  CategoryColor,
   SyncOperation,
   DatabaseOperations
 } from '@/types'
@@ -24,11 +25,13 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
   work_sessions!: Table<WorkSession>
   mood_entries!: Table<MoodEntry>
   daily_conditions!: Table<DailyCondition>
+  category_colors!: Table<CategoryColor>
   sync_queue!: Table<SyncOperation>
 
   constructor() {
     super('ModerationCraftDB')
-    
+
+    // Version 1: Initial schema
     this.version(1).stores({
       users: 'id, email, created_at, updated_at',
       projects: 'id, user_id, status, updated_at, deadline',
@@ -37,6 +40,38 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at',
       mood_entries: 'id, user_id, timestamp, mood_level, created_at',
       daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      sync_queue: '++id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count'
+    })
+
+    // Version 2: Add category field to big_tasks
+    this.version(2).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline',
+      big_tasks: 'id, project_id, user_id, category, week_number, status, updated_at',
+      small_tasks: 'id, big_task_id, user_id, scheduled_start, scheduled_end, status, is_emergency, updated_at',
+      work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      sync_queue: '++id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count'
+    }).upgrade(tx => {
+      // Add default category to existing big_tasks
+      return tx.table('big_tasks').toCollection().modify(task => {
+        if (!task.category) {
+          task.category = 'その他'
+        }
+      })
+    })
+
+    // Version 3: Add category_colors table
+    this.version(3).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline',
+      big_tasks: 'id, project_id, user_id, category, week_number, status, updated_at',
+      small_tasks: 'id, big_task_id, user_id, scheduled_start, scheduled_end, status, is_emergency, updated_at',
+      work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
       sync_queue: '++id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count'
     })
 
@@ -82,6 +117,9 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       if (!obj.actual_hours) {
         obj.actual_hours = 0
       }
+      if (!obj.category) {
+        obj.category = 'その他'
+      }
     })
 
     this.big_tasks.hook('updating', (modifications) => {
@@ -102,7 +140,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
 
     this.small_tasks.hook('updating', (modifications) => {
       ;(modifications as any).updated_at = this.getCurrentTimestamp()
-      
+
       if ((modifications as any).actual_minutes !== undefined && (modifications as any).estimated_minutes !== undefined) {
         ;(modifications as any).variance_ratio = (modifications as any).actual_minutes / (modifications as any).estimated_minutes
       }
@@ -122,7 +160,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
 
     this.work_sessions.hook('updating', (modifications) => {
       ;(modifications as any).updated_at = this.getCurrentTimestamp()
-      
+
       if ((modifications as any).start_time && (modifications as any).end_time) {
         const startTime = new Date((modifications as any).start_time)
         const endTime = new Date((modifications as any).end_time)
@@ -146,11 +184,24 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       }
     })
 
+    this.category_colors.hook('creating', (primKey, obj) => {
+      const timestamps = this.createTimestamps()
+      obj.created_at = timestamps.created_at
+      obj.updated_at = timestamps.updated_at
+      if (!obj.id) {
+        obj.id = this.generateId()
+      }
+    })
+
+    this.category_colors.hook('updating', (modifications) => {
+      ;(modifications as any).updated_at = this.getCurrentTimestamp()
+    })
+
     this.sync_queue.hook('creating', (primKey, obj) => {
       const timestamps = this.createTimestamps()
       obj.created_at = timestamps.created_at
       obj.updated_at = timestamps.updated_at
-      
+
       if (!obj.operation_id) {
         obj.operation_id = this.generateId()
       }
@@ -278,7 +329,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
     daily_conditions: DailyCondition[]
   }> {
     const unsyncedSessions = await this.work_sessions.where('is_synced').equals(0).toArray()
-    
+
     const pendingSyncOperations = await this.sync_queue
       .where('status')
       .equals('pending')
@@ -332,7 +383,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
     )
 
     const totalRecords = tableStats.reduce((sum, table) => sum + table.count, 0)
-    
+
     const tableStatsObject = tableStats.reduce((acc, table) => {
       acc[table.name] = table.count
       return acc
@@ -369,6 +420,64 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         .below(cutoffISOString)
         .delete()
     })
+  }
+
+  /**
+   * 開発時用：データベースを完全にクリアして再作成
+   * 本番環境では使用しない
+   */
+  async resetDatabase(): Promise<void> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Database reset is not allowed in production')
+    }
+    
+    try {
+      await this.delete()
+      console.log('Database deleted successfully')
+      
+      // 新しいデータベースを作成
+      await this.open()
+      console.log('New database created')
+    } catch (error) {
+      console.error('Failed to reset database:', error)
+      throw error
+    }
+  }
+
+  /**
+   * スキーマエラー時の復旧処理
+   */
+  async handleSchemaError(): Promise<void> {
+    try {
+      console.warn('Schema error detected, attempting to recover...')
+      
+      // 既存データのバックアップを試行
+      let backupData = null
+      try {
+        backupData = await this.exportData()
+        console.log('Backup created successfully')
+      } catch (backupError) {
+        console.warn('Failed to create backup:', backupError)
+      }
+      
+      // データベースをリセット
+      await this.resetDatabase()
+      
+      // バックアップがある場合は復元を試行
+      if (backupData) {
+        try {
+          await this.importData(backupData)
+          console.log('Data restored from backup')
+        } catch (restoreError) {
+          console.error('Failed to restore from backup:', restoreError)
+        }
+      }
+      
+      console.log('Database recovery completed')
+    } catch (error) {
+      console.error('Database recovery failed:', error)
+      throw error
+    }
   }
 }
 

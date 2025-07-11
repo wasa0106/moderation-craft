@@ -1,0 +1,1248 @@
+        .week-allocation-item.over-capacity {
+            border-color: var(--error);
+            background: var(--error-container);
+        }
+        
+        .progress-fill.over {
+            background: var(--error) !important;
+        }                <div class="week-allocation-item over-capacity">
+                    <div class="week-header">
+                        <div class="week-info">
+                            <span class="week-number">第5週</span>
+                            <span class="week-dates">8/8 - 8/14</span>
+                        </div>
+                        <div class="week-capacity">
+                            <span class="capacity-label">作業可能:</span>
+                            <span class="capacity-value">14.4h</span>
+                        </div>
+                    </div>
+                    <div class="week-tasks">
+                        <div class="allocated-task">
+                            <span class="task-category">実装</span>
+                            <span class="task-name">フロントエンド開発</span>
+                            <span class="task-hours">20h</span>
+                        </div>
+                    </div>
+                    <div class="week-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill over" style="width: 100%; background: var(--error);"></div>
+                        </div>
+                        <span class="progress-text" style="color: var(--error);">20h / 14.4h ⚠️</span>
+                    </div>
+                </div>        /* アラート */
+        .allocation-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-warning {
+            background: var(--error-container);
+            border: 1px solid var(--error);
+        }
+        
+        .alert-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+        
+        .alert-content {
+            flex: 1;
+        }
+        
+        .alert-title {
+            font-weight: 600;
+            color: var(--on-error-container);
+            margin-bottom: 4px;
+        }
+        
+        .alert-message {
+            font-size: 14px;
+            color: var(--on-error-container);
+        }
+        
+        .alert-message span {
+            font-weight: 600;
+        }        .recalc-button {
+            margin-left: auto;
+            padding: 6px 12px;
+            background: var(--surface-container-high);
+            border: 1px solid var(--outline);
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .recalc-button:hover {
+            background: var(--surface-container-highest);
+        }
+        
+        .section-description {
+            font-size: 14px;
+            color: var(--on-surface-variant);
+            background: var(--surface-container);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .section-description strong {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WBS作成 - moderation-craft</title>
+    <style>
+        :root {
+            /* Material Theme Colors - Light Mode */
+            --primary: #5E621B;
+            --on-primary: #FFFFFF;
+            --primary-container: #E3E892;
+            --on-primary-container: #464A02;
+            
+            --secondary: #5F6044;
+            --on-secondary: #FFFFFF;
+            --secondary-container: #E4E5C0;
+            --on-secondary-container: #47492E;
+            
+            --tertiary: #3C6659;
+            --on-tertiary: #FFFFFF;
+            --tertiary-container: #BEECDB;
+            --on-tertiary-container: #244E42;
+            
+            --error: #BA1A1A;
+            --on-error: #FFFFFF;
+            --error-container: #FFDAD6;
+            --on-error-container: #93000A;
+            
+            --background: #FCFAEC;
+            --on-background: #1C1C14;
+            --surface: #FCFAEC;
+            --on-surface: #1C1C14;
+            --surface-variant: #E5E3D2;
+            --on-surface-variant: #47473B;
+            
+            --outline: #787869;
+            --outline-variant: #C9C7B6;
+            
+            --surface-container-lowest: #FFFFFF;
+            --surface-container-low: #F6F4E7;
+            --surface-container: #F1EEE1;
+            --surface-container-high: #EBE8DB;
+            --surface-container-highest: #E5E3D6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--on-background);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* 基本情報 */
+        .basic-info-grid {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .date-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: var(--on-surface);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .required {
+            color: var(--error);
+            margin-left: 4px;
+        }
+        
+        input[type="text"],
+        input[type="date"],
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--outline-variant);
+            border-radius: 8px;
+            font-size: 15px;
+            background: var(--surface-container-lowest);
+            color: var(--on-surface);
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--surface);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .project-duration {
+            padding: 12px 16px;
+            background: var(--primary-container);
+            color: var(--on-primary-container);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        
+        /* ヘッダー */
+        .header {
+            background: var(--surface-container-low);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border: 1px solid var(--outline-variant);
+        }
+        
+        .breadcrumb {
+            color: var(--on-surface-variant);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .breadcrumb a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        h1 {
+            color: var(--on-surface);
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        /* プロジェクト情報 */
+        .project-info {
+            background: var(--primary-container);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* セクション */
+        .section {
+            background: var(--surface-container-low);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--outline-variant);
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--on-surface);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-number {
+            background: var(--primary);
+            color: var(--on-primary);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        
+        /* 投下可能時間の計算 */
+        .time-calc-container {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .time-input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-group {
+            position: relative;
+        }
+        
+        .form-group.weekday {
+            --form-accent: var(--primary);
+            --form-accent-container: var(--primary-container);
+            --form-on-accent-container: var(--on-primary-container);
+        }
+        
+        .form-group.weekend {
+            --form-accent: var(--tertiary);
+            --form-accent-container: var(--tertiary-container);
+            --form-on-accent-container: var(--on-tertiary-container);
+        }
+        
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            color: var(--on-surface);
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        
+        .form-label-icon {
+            width: 20px;
+            height: 20px;
+            background: var(--form-accent-container, var(--surface-variant));
+            color: var(--form-on-accent-container, var(--on-surface-variant));
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        input[type="number"], select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--outline-variant);
+            border-radius: 8px;
+            font-size: 15px;
+            background: var(--surface-container-lowest);
+            color: var(--on-surface);
+            transition: all 0.2s;
+            appearance: none;
+        }
+        
+        .form-group.weekday input:focus,
+        .form-group.weekday select:focus {
+            border-color: var(--primary);
+        }
+        
+        .form-group.weekend input:focus,
+        .form-group.weekend select:focus {
+            border-color: var(--tertiary);
+        }
+        
+        input[type="number"]:hover, select:hover {
+            border-color: var(--outline);
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            background: var(--surface);
+        }
+        
+        .input-suffix {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--on-surface-variant);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        
+        .buffer-group {
+            grid-column: 1 / -1;
+        }
+        
+        .buffer-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .buffer-input-wrapper input {
+            width: 120px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+        
+        .result-card {
+            background: var(--secondary-container);
+            padding: 16px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        
+        .result-left {
+            text-align: left;
+        }
+        
+        .result-label {
+            font-size: 13px;
+            color: var(--on-secondary-container);
+            margin-bottom: 4px;
+        }
+        
+        .result-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--secondary);
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+        
+        .result-unit {
+            font-size: 16px;
+            font-weight: 400;
+        }
+        
+        .result-formula {
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            opacity: 0.8;
+            text-align: right;
+        }
+        
+        /* タスクテーブル */
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        
+        .task-table th,
+        .task-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--outline-variant);
+        }
+        
+        .task-table th {
+            background: var(--surface-container);
+            font-weight: 600;
+            color: var(--on-surface);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .task-table tr {
+            background: var(--surface-container-lowest);
+        }
+        
+        .task-table tr:hover {
+            background: var(--surface-container);
+        }
+        
+        .drag-handle {
+            cursor: grab;
+            color: var(--on-surface-variant);
+            font-size: 20px;
+            width: 30px;
+            text-align: center;
+        }
+        
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        
+        .category-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--outline);
+            border-radius: 4px;
+            background: var(--surface-container-lowest);
+        }
+        
+        .task-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--outline);
+            border-radius: 4px;
+            background: var(--surface-container-lowest);
+        }
+        
+        .hours-input {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid var(--outline);
+            border-radius: 4px;
+            text-align: center;
+            background: var(--surface-container-lowest);
+        }
+        
+        .add-row-btn {
+            padding: 8px 16px;
+            background: var(--primary);
+            color: var(--on-primary);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .add-row-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px 8px;
+        }
+        
+        .delete-btn:hover {
+            background: var(--error-container);
+            border-radius: 4px;
+        }
+        
+        /* カテゴリ別集計 */
+        .category-summary-container {
+            margin-top: 24px;
+            background: var(--surface-container);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--outline-variant);
+        }
+        
+        .category-summary-header {
+            margin-bottom: 16px;
+        }
+        
+        .category-summary-header h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+        
+        .category-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .category-bar-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .category-bar-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+        
+        .category-name {
+            color: var(--on-surface-variant);
+        }
+        
+        .category-hours {
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+        
+        .category-bar-track {
+            height: 8px;
+            background: var(--surface-variant);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .category-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .total-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid var(--outline-variant);
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .total-hours {
+            font-size: 18px;
+            color: var(--primary);
+        }
+        
+        /* 週別タスク配分 */
+        .week-allocation-container {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .week-allocation-item {
+            background: var(--surface-container);
+            border: 1px solid var(--outline-variant);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .week-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .week-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .week-number {
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+        
+        .week-dates {
+            font-size: 13px;
+            color: var(--on-surface-variant);
+        }
+        
+        .week-capacity {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .capacity-label {
+            color: var(--on-surface-variant);
+        }
+        
+        .capacity-value {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .week-tasks {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .allocated-task {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface-container-lowest);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .task-category {
+            padding: 2px 8px;
+            background: var(--primary-container);
+            color: var(--on-primary-container);
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .task-name {
+            flex: 1;
+            color: var(--on-surface);
+        }
+        
+        .task-hours {
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+        
+        .week-progress {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--surface-variant);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            min-width: 70px;
+            text-align: right;
+        }
+        
+        /* ボタングループ */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            margin-top: 32px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: var(--on-primary);
+        }
+        
+        .btn-primary:hover {
+            opacity: 0.9;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-secondary {
+            background: var(--surface-container-high);
+            color: var(--on-surface);
+            border: 1px solid var(--outline);
+        }
+        
+        @media (max-width: 768px) {
+            .time-calc-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .task-table {
+                font-size: 14px;
+            }
+            
+            .category-summary {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <div class="header">
+            <div class="breadcrumb">
+                <a href="/projects">プロジェクト一覧</a> / 新規作成
+            </div>
+            <h1>新しいプロジェクトを作成</h1>
+        </div>
+
+        <!-- 基本情報セクション -->
+        <div class="section">
+            <h3 class="section-title">
+                <span class="section-number">1</span>
+                プロジェクト基本情報
+            </h3>
+            
+            <div class="basic-info-grid">
+                <div class="form-group">
+                    <label class="form-label">プロジェクト名 <span class="required">*</span></label>
+                    <input type="text" id="project-name" placeholder="例: ポートフォリオサイト制作" value="ポートフォリオサイト制作" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">定量目標 <span class="required">*</span></label>
+                    <textarea id="project-goal" placeholder="例: 訪問者数月間1000人を達成する、5つの作品を掲載する" rows="2" required>訪問者数月間1000人を達成する、5つの作品を掲載する</textarea>
+                </div>
+                
+                <div class="date-inputs">
+                    <div class="form-group">
+                        <label class="form-label">開始日 <span class="required">*</span></label>
+                        <input type="date" id="start-date" value="2025-07-11" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">期限 <span class="required">*</span></label>
+                        <input type="date" id="deadline" value="2025-08-31" required>
+                    </div>
+                </div>
+                
+                <div class="project-duration">
+                    期間: <span id="duration">7週間</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. 投下可能時間の計算 -->
+        <div class="section">
+            <h3 class="section-title">
+                <span class="section-number">2</span>
+                投下可能時間の計算
+            </h3>
+            
+            <div class="time-calc-container">
+                <div class="time-input-grid">
+                    <div class="form-group weekday">
+                        <label class="form-label">
+                            <span class="form-label-icon">平</span>
+                            平日の作業可能日数
+                        </label>
+                        <div class="input-wrapper">
+                            <select id="weekday-days">
+                                <option value="0">0日</option>
+                                <option value="1">1日</option>
+                                <option value="2">2日</option>
+                                <option value="3">3日</option>
+                                <option value="4">4日</option>
+                                <option value="5" selected>5日</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group weekend">
+                        <label class="form-label">
+                            <span class="form-label-icon">休</span>
+                            休日の作業可能日数
+                        </label>
+                        <div class="input-wrapper">
+                            <select id="weekend-days">
+                                <option value="0">0日</option>
+                                <option value="1">1日</option>
+                                <option value="2" selected>2日</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group weekday">
+                        <label class="form-label">
+                            <span class="form-label-icon">⏰</span>
+                            平日の作業可能時間
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="number" id="weekday-hours" value="2" min="0" max="24" step="0.5">
+                            <span class="input-suffix">時間/日</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group weekend">
+                        <label class="form-label">
+                            <span class="form-label-icon">⏰</span>
+                            休日の作業可能時間
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="number" id="weekend-hours" value="4" min="0" max="24" step="0.5">
+                            <span class="input-suffix">時間/日</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group buffer-group">
+                        <label class="form-label">
+                            <span class="form-label-icon">%</span>
+                            バッファ率
+                        </label>
+                        <div class="buffer-input-wrapper">
+                            <input type="number" id="buffer-rate" value="80" min="50" max="100" step="5">
+                            <span>%</span>
+                        </div>
+                        <p class="help-text">
+                            予期せぬタスクや休憩時間を考慮し、実際の作業可能時間から何%を見積もりに使うかの割合です。
+                            80-90%程度がおすすめです。
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="result-card">
+                    <div class="result-left">
+                        <div class="result-label">1週間の作業可能時間</div>
+                        <div class="result-value">
+                            <span id="weekly-hours">14.4</span>
+                            <span class="result-unit">時間</span>
+                        </div>
+                    </div>
+                    <div class="result-formula">
+                        (5日 × 2h + 2日 × 4h) × 80% = 14.4h
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. タスク一覧 -->
+        <div class="section">
+            <h3 class="section-title">
+                <span class="section-number">3</span>
+                タスク一覧
+            </h3>
+            
+            <p class="section-description">
+                ここでは<strong>週単位の大きなタスク</strong>を入力します。日々の細かいタスクは、各週の始めに詳細化していきます。
+            </p>
+            
+            <table class="task-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th style="width: 150px;">カテゴリ</th>
+                        <th>タスク名</th>
+                        <th style="width: 100px;">見積時間</th>
+                        <th style="width: 40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="task-tbody">
+                    <tr>
+                        <td class="drag-handle">⋮⋮</td>
+                        <td>
+                            <select class="category-select">
+                                <option>企画・設計</option>
+                                <option>デザイン</option>
+                                <option>実装</option>
+                                <option>テスト</option>
+                                <option>デプロイ</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="task-input" value="要件定義" placeholder="タスク名を入力"></td>
+                        <td><input type="number" class="hours-input" value="8" min="0.5" step="0.5"></td>
+                        <td><button class="delete-btn" title="削除">×</button></td>
+                    </tr>
+                    <tr>
+                        <td class="drag-handle">⋮⋮</td>
+                        <td>
+                            <select class="category-select">
+                                <option>企画・設計</option>
+                                <option>デザイン</option>
+                                <option>実装</option>
+                                <option>テスト</option>
+                                <option>デプロイ</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="task-input" value="ワイヤーフレーム作成" placeholder="タスク名を入力"></td>
+                        <td><input type="number" class="hours-input" value="12" min="0.5" step="0.5"></td>
+                        <td><button class="delete-btn" title="削除">×</button></td>
+                    </tr>
+                    <tr>
+                        <td class="drag-handle">⋮⋮</td>
+                        <td>
+                            <select class="category-select">
+                                <option>企画・設計</option>
+                                <option selected>デザイン</option>
+                                <option>実装</option>
+                                <option>テスト</option>
+                                <option>デプロイ</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="task-input" value="UIデザイン作成" placeholder="タスク名を入力"></td>
+                        <td><input type="number" class="hours-input" value="20" min="0.5" step="0.5"></td>
+                        <td><button class="delete-btn" title="削除">×</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <button class="add-row-btn">
+                <span>+</span> タスクを追加
+            </button>
+            
+            <!-- カテゴリ別集計 -->
+            <div class="category-summary-container">
+                <div class="category-summary-header">
+                    <h4>カテゴリ別時間配分</h4>
+                </div>
+                <div class="category-bars">
+                    <div class="category-bar-item">
+                        <div class="category-bar-label">
+                            <span class="category-name">企画・設計</span>
+                            <span class="category-hours">20h</span>
+                        </div>
+                        <div class="category-bar-track">
+                            <div class="category-bar-fill" style="width: 50%; background: var(--primary);"></div>
+                        </div>
+                    </div>
+                    <div class="category-bar-item">
+                        <div class="category-bar-label">
+                            <span class="category-name">デザイン</span>
+                            <span class="category-hours">20h</span>
+                        </div>
+                        <div class="category-bar-track">
+                            <div class="category-bar-fill" style="width: 50%; background: var(--tertiary);"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="total-summary">
+                    <span>合計時間</span>
+                    <span class="total-hours">40時間</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 週別タスク配分 -->
+        <div class="section">
+            <h3 class="section-title">
+                <span class="section-number">4</span>
+                週別タスク配分
+            </h3>
+            
+            <p class="section-description">
+                タスクを週ごとに自動配分しました。タスクを変更すると自動的に再計算されます。
+                <button class="recalc-button" onclick="alert('配分を再計算しました')">
+                    🔄 手動で再計算
+                </button>
+            </p>
+            
+            <!-- オーバーアラート -->
+            <div class="allocation-alert alert-warning" style="display: none;">
+                <div class="alert-icon">⚠️</div>
+                <div class="alert-content">
+                    <div class="alert-title">タスクの総時間が作業可能時間を超えています</div>
+                    <div class="alert-message">
+                        タスク合計: <span class="total-task-hours">40</span>時間 / 
+                        作業可能時間合計: <span class="total-available-hours">100.8</span>時間
+                    </div>
+                </div>
+            </div>
+            
+            <div class="week-allocation-container">
+                <div class="week-allocation-item">
+                    <div class="week-header">
+                        <div class="week-info">
+                            <span class="week-number">第1週</span>
+                            <span class="week-dates">7/11 - 7/17</span>
+                        </div>
+                        <div class="week-capacity">
+                            <span class="capacity-label">作業可能:</span>
+                            <span class="capacity-value">14.4h</span>
+                        </div>
+                    </div>
+                    <div class="week-tasks">
+                        <div class="allocated-task">
+                            <span class="task-category">企画・設計</span>
+                            <span class="task-name">要件定義</span>
+                            <span class="task-hours">8h</span>
+                        </div>
+                    </div>
+                    <div class="week-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 55.6%;"></div>
+                        </div>
+                        <span class="progress-text">8h / 14.4h</span>
+                    </div>
+                </div>
+
+                <div class="week-allocation-item">
+                    <div class="week-header">
+                        <div class="week-info">
+                            <span class="week-number">第2週</span>
+                            <span class="week-dates">7/18 - 7/24</span>
+                        </div>
+                        <div class="week-capacity">
+                            <span class="capacity-label">作業可能:</span>
+                            <span class="capacity-value">14.4h</span>
+                        </div>
+                    </div>
+                    <div class="week-tasks">
+                        <div class="allocated-task">
+                            <span class="task-category">企画・設計</span>
+                            <span class="task-name">ワイヤーフレーム作成</span>
+                            <span class="task-hours">12h</span>
+                        </div>
+                    </div>
+                    <div class="week-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 83.3%;"></div>
+                        </div>
+                        <span class="progress-text">12h / 14.4h</span>
+                    </div>
+                </div>
+
+                <div class="week-allocation-item">
+                    <div class="week-header">
+                        <div class="week-info">
+                            <span class="week-number">第3週</span>
+                            <span class="week-dates">7/25 - 7/31</span>
+                        </div>
+                        <div class="week-capacity">
+                            <span class="capacity-label">作業可能:</span>
+                            <span class="capacity-value">14.4h</span>
+                        </div>
+                    </div>
+                    <div class="week-tasks">
+                        <div class="allocated-task">
+                            <span class="task-category">デザイン</span>
+                            <span class="task-name">UIデザイン作成</span>
+                            <span class="task-hours">14.4h</span>
+                        </div>
+                    </div>
+                    <div class="week-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%; background: var(--tertiary);"></div>
+                        </div>
+                        <span class="progress-text">14.4h / 14.4h</span>
+                    </div>
+                </div>
+
+                <div class="week-allocation-item">
+                    <div class="week-header">
+                        <div class="week-info">
+                            <span class="week-number">第4週</span>
+                            <span class="week-dates">8/1 - 8/7</span>
+                        </div>
+                        <div class="week-capacity">
+                            <span class="capacity-label">作業可能:</span>
+                            <span class="capacity-value">14.4h</span>
+                        </div>
+                    </div>
+                    <div class="week-tasks">
+                        <div class="allocated-task">
+                            <span class="task-category">デザイン</span>
+                            <span class="task-name">UIデザイン作成（続き）</span>
+                            <span class="task-hours">5.6h</span>
+                        </div>
+                    </div>
+                    <div class="week-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 38.9%;"></div>
+                        </div>
+                        <span class="progress-text">5.6h / 14.4h</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ボタン -->
+        <div class="button-group">
+            <a href="/projects" class="btn btn-secondary">
+                キャンセル
+            </a>
+            <button type="submit" class="btn btn-primary">
+                プロジェクトを作成
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 期間計算
+        function calculateDuration() {
+            const startDate = document.getElementById('start-date').value;
+            const deadline = document.getElementById('deadline').value;
+            
+            if (startDate && deadline) {
+                const start = new Date(startDate);
+                const end = new Date(deadline);
+                const diffTime = Math.abs(end - start);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const diffWeeks = Math.ceil(diffDays / 7);
+                
+                document.getElementById('duration').textContent = `${diffWeeks}週間`;
+            }
+        }
+        
+        document.getElementById('start-date').addEventListener('change', calculateDuration);
+        document.getElementById('deadline').addEventListener('change', calculateDuration);
+        
+        // 作業可能時間の計算
+        function calculateWeeklyHours() {
+            const weekdayDays = parseInt(document.getElementById('weekday-days').value);
+            const weekendDays = parseInt(document.getElementById('weekend-days').value);
+            const weekdayHours = parseFloat(document.getElementById('weekday-hours').value);
+            const weekendHours = parseFloat(document.getElementById('weekend-hours').value);
+            const bufferRate = parseInt(document.getElementById('buffer-rate').value) / 100;
+            
+            const totalHours = (weekdayDays * weekdayHours + weekendDays * weekendHours) * bufferRate;
+            document.getElementById('weekly-hours').textContent = totalHours.toFixed(1);
+            
+            // 計算式も更新
+            const formula = `(${weekdayDays}日 × ${weekdayHours}h + ${weekendDays}日 × ${weekendHours}h) × ${Math.round(bufferRate * 100)}% = ${totalHours.toFixed(1)}h`;
+            document.querySelector('.result-formula').textContent = formula;
+        }
+
+        // イベントリスナー
+        document.getElementById('weekday-days').addEventListener('change', calculateWeeklyHours);
+        document.getElementById('weekend-days').addEventListener('change', calculateWeeklyHours);
+        document.getElementById('weekday-hours').addEventListener('input', calculateWeeklyHours);
+        document.getElementById('weekend-hours').addEventListener('input', calculateWeeklyHours);
+        document.getElementById('buffer-rate').addEventListener('input', calculateWeeklyHours);
+
+        // タスク追加ボタン
+        document.querySelector('.add-row-btn').addEventListener('click', function() {
+            const tbody = document.getElementById('task-tbody');
+            const newRow = tbody.rows[0].cloneNode(true);
+            newRow.querySelectorAll('input').forEach(input => input.value = '');
+            tbody.appendChild(newRow);
+        });
+
+        // 削除ボタン（イベント委譲）
+        document.getElementById('task-tbody').addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-btn')) {
+                if (this.rows.length > 1) {
+                    e.target.closest('tr').remove();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

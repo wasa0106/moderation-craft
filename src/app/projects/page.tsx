@@ -9,6 +9,7 @@ import { ProjectList } from '@/components/project/project-list'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useProjects } from '@/hooks/use-projects'
+import { DatabaseError } from '@/components/error/database-error'
 import { Plus, FolderOpen, Target, Clock, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
@@ -17,7 +18,8 @@ export default function ProjectsPage() {
     projects, 
     isLoading, 
     error, 
-    deleteProject 
+    deleteProject,
+    refetch
   } = useProjects('current-user')
 
   const handleCreateProject = () => {
@@ -46,12 +48,14 @@ export default function ProjectsPage() {
     ).length
   }
 
+  // データベースエラーの場合は専用コンポーネントを表示
   if (error) {
     return (
       <div className="container mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">エラーが発生しました: {error.message}</p>
-        </div>
+        <DatabaseError 
+          error={error} 
+          onRetry={() => refetch()}
+        />
       </div>
     )
   }
