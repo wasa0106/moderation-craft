@@ -126,9 +126,6 @@ export default function SyncTestPage() {
                       <span className="ml-2 text-xs text-green-600">✓ 同期済み</span>
                     )}
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    {session.task_description || 'タスク説明なし'}
-                  </p>
                 </div>
                 <Button
                   onClick={() => testSyncWorkSession(session)}

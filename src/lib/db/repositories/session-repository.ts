@@ -137,7 +137,7 @@ export class WorkSessionRepository
     }
   }
 
-  async startSession(userId: string, taskId?: string, startTime?: string, taskDescription?: string): Promise<WorkSession> {
+  async startSession(userId: string, taskId?: string, startTime?: string): Promise<WorkSession> {
     try {
       const activeSession = await this.getActiveSession(userId)
       if (activeSession) {
@@ -149,7 +149,6 @@ export class WorkSessionRepository
         small_task_id: taskId,
         start_time: startTime || new Date().toISOString(),
         duration_minutes: 0,
-        task_description: taskDescription,
         is_synced: false,
       }
 

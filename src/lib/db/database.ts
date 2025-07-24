@@ -439,7 +439,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
     mood_entries?: MoodEntry[]
     dopamine_entries?: DopamineEntry[]
     daily_conditions?: DailyCondition[]
-    sync_queue?: SyncOperation[]
+    sync_queue?: SyncQueueItem[]
   }): Promise<void> {
     await this.transaction('rw', this.tables, async () => {
       if (data.users) await this.users.bulkAdd(data.users)
@@ -551,7 +551,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       await this.sync_queue
         .where('status')
         .equals('completed')
-        .and(item => item.timestamp < cutoffISOString)
+        .and(item => item.created_at < cutoffISOString)
         .delete()
 
       await this.mood_entries.where('created_at').below(cutoffISOString).delete()

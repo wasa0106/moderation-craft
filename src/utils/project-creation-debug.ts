@@ -18,7 +18,7 @@ export const projectCreationDebug = {
 
       // テーブル一覧
       console.log('\nテーブル一覧:')
-      db.tables.forEach(table => {
+      db.tables.forEach((table: any) => {
         console.log(`  - ${table.name}`)
       })
 
@@ -57,7 +57,7 @@ export const projectCreationDebug = {
         name: 'テストプロジェクト',
         goal: 'テスト目標',
         deadline: '2025-12-31',
-        status: 'planning' as const,
+        status: 'active' as const,
         version: 1,
         estimated_total_hours: 100,
       }
@@ -155,7 +155,7 @@ export const projectCreationDebug = {
     console.log('=== 週配分データ検証 ===')
     console.log('配分数:', allocations.length)
 
-    allocations.forEach((allocation, index) => {
+    allocations.forEach((allocation: any, index: number) => {
       console.log(`\n週${allocation.weekNumber}:`)
       console.log('  開始日:', allocation.startDate)
       console.log('  終了日:', allocation.endDate)

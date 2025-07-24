@@ -5,7 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { workSessionRepository, taskRepository, projectRepository } from '@/lib/db/repositories'
+import { workSessionRepository, smallTaskRepository, projectRepository } from '@/lib/db/repositories'
 import { useTimerStore } from '@/stores/timer-store'
 import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
@@ -36,7 +36,7 @@ export function useTimer(userId: string) {
         let project = null
         if (session.small_task_id) {
           try {
-            const taskData = await taskRepository.getById(session.small_task_id)
+            const taskData = await smallTaskRepository.getById(session.small_task_id)
             task = taskData
             if (taskData?.project_id) {
               const projectData = await projectRepository.getById(taskData.project_id)
@@ -48,7 +48,7 @@ export function useTimer(userId: string) {
         }
         
         // タイマーを復元
-        timerStore.startTimer(session, task, project)
+        timerStore.startTimer(session, task || undefined, project || undefined)
         // 経過時間を更新
         timerStore.updateElapsedTime(elapsedSeconds)
       }
@@ -64,7 +64,6 @@ export function useTimer(userId: string) {
       const sessionData: CreateWorkSessionData = {
         user_id: userId,
         small_task_id: data?.taskId,
-        task_description: data?.taskDescription,
         start_time: new Date().toISOString(),
         duration_minutes: 0,
         is_synced: false,
@@ -73,8 +72,7 @@ export function useTimer(userId: string) {
       const session = await workSessionRepository.startSession(
         userId, 
         data?.taskId,
-        undefined,
-        data?.taskDescription
+        undefined
       )
       // 開発中は自動同期を無効化（手動で同期キューに追加）
       // await syncService.addToSyncQueue('work_session', session.id, 'create', session)

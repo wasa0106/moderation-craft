@@ -125,12 +125,6 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
         return 'bg-green-100 text-green-800'
       case 'completed':
         return 'bg-blue-100 text-blue-800'
-      case 'planning':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'paused':
-        return 'bg-gray-100 text-gray-800'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -142,12 +136,6 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
         return 'アクティブ'
       case 'completed':
         return '完了'
-      case 'planning':
-        return '計画中'
-      case 'paused':
-        return '一時停止'
-      case 'cancelled':
-        return 'キャンセル'
       default:
         return status
     }

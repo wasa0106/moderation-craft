@@ -15,12 +15,12 @@ export const debugUtils = {
       // 全プロジェクトを取得
       const projects = await db.projects.toArray()
       console.log('\n📋 Projects in database:')
-      projects.forEach(p => {
+      projects.forEach((p: any) => {
         console.log(`  - ${p.name} (ID: ${p.id})`)
       })
 
       // 全BigTaskを取得
-      const bigTasks = await db.bigTasks.toArray()
+      const bigTasks = await db.big_tasks.toArray()
       console.log(`\n📝 Total BigTasks: ${bigTasks.length}`)
 
       // 孤立したBigTaskをチェック
@@ -77,8 +77,8 @@ export const debugUtils = {
 
     try {
       const projects = await db.projects.toArray()
-      const bigTasks = await db.bigTasks.toArray()
-      const smallTasks = await db.smallTasks.toArray()
+      const bigTasks = await db.big_tasks.toArray()
+      const smallTasks = await db.small_tasks.toArray()
 
       console.log('\n📁 Database Contents:')
       console.log(`  - Projects: ${projects.length}`)
@@ -106,7 +106,7 @@ export const debugUtils = {
 
       if (orphanedBigTasks.length > 0) {
         console.log('\n⚠️  Orphaned BigTasks Details:')
-        orphanedBigTasks.forEach(task => {
+        orphanedBigTasks.forEach((task: any) => {
           console.log(`\n  - ${task.name}`)
           console.log(`    ID: ${task.id}`)
           console.log(`    project_id: ${task.project_id} (NOT FOUND)`)
@@ -140,7 +140,7 @@ export const debugUtils = {
       const projectIds = new Set(projects.map(p => p.id))
 
       // 孤立したBigTaskを検索
-      const bigTasks = await db.bigTasks.toArray()
+      const bigTasks = await db.big_tasks.toArray()
       const orphanedTasks = bigTasks.filter(bt => !projectIds.has(bt.project_id))
 
       if (orphanedTasks.length === 0) {
@@ -157,7 +157,7 @@ export const debugUtils = {
         console.log(`    Old project_id: ${task.project_id}`)
         console.log(`    New project_id: ${targetProjectId}`)
 
-        await db.bigTasks.update(task.id, {
+        await db.big_tasks.update(task.id, {
           project_id: targetProjectId,
           updated_at: new Date().toISOString(),
         })
@@ -177,7 +177,7 @@ export const debugUtils = {
 
     try {
       const projects = await db.projects.toArray()
-      const bigTasks = await db.bigTasks.toArray()
+      const bigTasks = await db.big_tasks.toArray()
 
       // 最新のプロジェクトを確認
       const latestProject = projects.sort(
@@ -193,7 +193,7 @@ export const debugUtils = {
         // このプロジェクトのBigTaskを確認
         const projectBigTasks = bigTasks.filter(bt => bt.project_id === latestProject.id)
         console.log(`\n  Related BigTasks: ${projectBigTasks.length}`)
-        projectBigTasks.forEach(task => {
+        projectBigTasks.forEach((task: any) => {
           console.log(`    - ${task.name} (Week ${task.week_number})`)
         })
       }
@@ -202,7 +202,7 @@ export const debugUtils = {
       console.log('\n📝 BigTask project_id Field Check:')
       const tasksByProjectId = new Map<string, number>()
 
-      bigTasks.forEach(task => {
+      bigTasks.forEach((task: any) => {
         const count = tasksByProjectId.get(task.project_id) || 0
         tasksByProjectId.set(task.project_id, count + 1)
       })

@@ -34,11 +34,11 @@ import { parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 
 
 export default function ReportsPage() {
   const { projects } = useProjects('current-user')
-  const { bigTasks } = useBigTasks()
-  const { smallTasks } = useSmallTasks()
-
   const [selectedPeriod, setSelectedPeriod] = useState<string>('current-month')
   const [selectedProject, setSelectedProject] = useState<string>('all')
+  
+  const { bigTasks } = useBigTasks(selectedProject === 'all' ? '' : selectedProject)
+  const { smallTasks } = useSmallTasks(selectedProject === 'all' ? '' : selectedProject)
 
   // Get period date range
   const getPeriodRange = (period: string) => {
@@ -84,7 +84,6 @@ export default function ReportsPage() {
     total: filteredProjects.length,
     active: filteredProjects.filter(p => p.status === 'active').length,
     completed: filteredProjects.filter(p => p.status === 'completed').length,
-    planning: filteredProjects.filter(p => p.status === 'planning').length,
     overdue: filteredProjects.filter(
       p => p.deadline && new Date(p.deadline) < new Date() && p.status !== 'completed'
     ).length,
@@ -451,9 +450,7 @@ export default function ReportsPage() {
                             ? '完了'
                             : item.project.status === 'active'
                               ? 'アクティブ'
-                              : item.project.status === 'planning'
-                                ? '計画中'
-                                : item.project.status}
+                              : item.project.status}
                         </Badge>
                       </div>
                       <div

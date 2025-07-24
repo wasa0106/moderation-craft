@@ -389,16 +389,16 @@ export function CombinedScheduleView({
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-[10px] leading-tight truncate">
-                              {session.task_description ? (
+                              {session.mood_notes ? (
                                 <span className="flex items-center gap-0.5">
                                   <Zap className="h-2.5 w-2.5" />
-                                  {session.task_description}
+                                  {session.mood_notes}
                                 </span>
                               ) : (
                                 'タスクなし'
                               )}
                             </h4>
-                            {session.task_description && duration >= 30 && (
+                            {session.mood_notes && duration >= 30 && (
                               <p className="text-[10px] opacity-80">計画外タスク</p>
                             )}
                           </div>
@@ -430,7 +430,7 @@ export function CombinedScheduleView({
               <TooltipContent side="left" className="max-w-xs">
                 <div className="space-y-1">
                   <p className="font-semibold">
-                    {taskInfo?.task.name || session.task_description || 'タスクなし'}
+                    {taskInfo?.task.name || session.mood_notes || 'タスクなし'}
                   </p>
                   <div className="text-sm text-muted-foreground">
                     <p>開始: {format(parseISO(session.start_time), 'HH:mm', { locale: ja })}</p>

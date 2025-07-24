@@ -209,7 +209,7 @@ export default function TimerPage() {
       } else {
         // タスクなしの場合
         console.log('Starting timer without task')
-        await startTimer()
+        await startTimer({})
       }
       console.log('Timer started successfully')
       
@@ -242,7 +242,7 @@ export default function TimerPage() {
   }
 
   const handleFocusSubmit = async (focusLevel: number) => {
-    await endTimer(focusLevel)
+    await endTimer({ focusLevel })
     setShowFocusDialog(false)
     
     // セッション一覧を更新

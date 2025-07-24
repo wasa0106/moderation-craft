@@ -106,11 +106,8 @@ export function ProjectList({
   const getStatusCounts = () => {
     const counts = {
       all: projects.length,
-      planning: projects.filter(p => p.status === 'planning').length,
       active: projects.filter(p => p.status === 'active').length,
       completed: projects.filter(p => p.status === 'completed').length,
-      paused: projects.filter(p => p.status === 'paused').length,
-      cancelled: projects.filter(p => p.status === 'cancelled').length,
     }
     return counts
   }
@@ -161,13 +158,6 @@ export function ProjectList({
           すべて ({statusCounts.all})
         </Badge>
         <Badge
-          variant={statusFilter === 'planning' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setStatusFilter('planning')}
-        >
-          計画中 ({statusCounts.planning})
-        </Badge>
-        <Badge
           variant={statusFilter === 'active' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setStatusFilter('active')}
@@ -180,20 +170,6 @@ export function ProjectList({
           onClick={() => setStatusFilter('completed')}
         >
           完了 ({statusCounts.completed})
-        </Badge>
-        <Badge
-          variant={statusFilter === 'paused' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setStatusFilter('paused')}
-        >
-          一時停止 ({statusCounts.paused})
-        </Badge>
-        <Badge
-          variant={statusFilter === 'cancelled' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setStatusFilter('cancelled')}
-        >
-          キャンセル ({statusCounts.cancelled})
         </Badge>
       </div>
 

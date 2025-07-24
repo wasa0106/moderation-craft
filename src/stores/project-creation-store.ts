@@ -571,7 +571,7 @@ function allocateTasksToWeeks(
   const endDateMillis = new Date(endDate).getTime()
 
   let weekIndex = 0
-  let currentWeek = currentWeekStart
+  let currentWeek = new Date(currentWeekStart)
   while (currentWeek.getTime() <= endDateMillis && weekIndex < totalWeeks) {
     const weekEnd = new Date(currentWeek)
     weekEnd.setDate(currentWeek.getDate() + 6)
@@ -580,8 +580,8 @@ function allocateTasksToWeeks(
     // この週の実際の作業期間を決定
     const actualStart =
       weekIndex === 0
-        ? new Date(Math.max(startDate.getTime(), currentWeekStart.getTime()))
-        : currentWeekStart
+        ? new Date(Math.max(startDate.getTime(), currentWeek.getTime()))
+        : new Date(currentWeek)
     const actualEnd = new Date(Math.min(endDate.getTime(), weekEnd.getTime()))
 
     // 実際の作業日数に基づいて利用可能時間を計算
@@ -589,7 +589,7 @@ function allocateTasksToWeeks(
 
     allocations.push({
       weekNumber: weekIndex + 1,
-      startDate: new Date(currentWeekStart),
+      startDate: new Date(currentWeek),
       endDate: new Date(weekEnd),
       availableHours: availableHours,
       allocatedTasks: [],
@@ -598,7 +598,7 @@ function allocateTasksToWeeks(
     })
 
     // 次の週へ
-    currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+    currentWeek.setDate(currentWeek.getDate() + 7)
     weekIndex++
   }
 

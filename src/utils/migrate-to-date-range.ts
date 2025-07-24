@@ -16,7 +16,7 @@ export const migrationUtils = {
 
     try {
       const projects = await db.projects.toArray()
-      const bigTasks = await db.bigTasks.toArray()
+      const bigTasks = await db.big_tasks.toArray()
 
       let updatedCount = 0
       let skippedCount = 0
@@ -45,7 +45,7 @@ export const migrationUtils = {
         )
 
         // データベースを更新
-        await db.bigTasks.update(task.id, {
+        await db.big_tasks.update(task.id, {
           week_start_date: dateRange.start.toISOString(),
           week_end_date: dateRange.end.toISOString(),
           updated_at: new Date().toISOString(),
@@ -77,10 +77,10 @@ export const migrationUtils = {
     console.log('=== 日付範囲マイグレーション状況 ===')
 
     try {
-      const bigTasks = await db.bigTasks.toArray()
+      const bigTasks = await db.big_tasks.toArray()
 
-      const tasksWithDateRange = bigTasks.filter(t => t.week_start_date && t.week_end_date)
-      const tasksWithoutDateRange = bigTasks.filter(t => !t.week_start_date || !t.week_end_date)
+      const tasksWithDateRange = bigTasks.filter((t: any) => t.week_start_date && t.week_end_date)
+      const tasksWithoutDateRange = bigTasks.filter((t: any) => !t.week_start_date || !t.week_end_date)
 
       console.log(`\n📊 統計:`)
       console.log(`  日付範囲あり: ${tasksWithDateRange.length}`)
@@ -89,7 +89,7 @@ export const migrationUtils = {
 
       if (tasksWithoutDateRange.length > 0) {
         console.log('\n⚠️  日付範囲がないタスク:')
-        tasksWithoutDateRange.forEach(task => {
+        tasksWithoutDateRange.forEach((task: any) => {
           console.log(`  - ${task.name} (週番号: ${task.week_number})`)
         })
 

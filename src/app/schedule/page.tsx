@@ -183,9 +183,15 @@ export default function WeeklySchedulePage() {
                 weeklySchedule={calendarData.weeklySchedule}
                 onScheduleTask={calendarData.scheduleTask}
                 onUnscheduleTask={calendarData.unscheduleTask}
-                onCreateTask={calendarData.createSmallTask}
-                onUpdateTask={calendarData.updateSmallTask}
-                onDeleteTask={calendarData.deleteSmallTask}
+                onCreateTask={async (data) => {
+                  await calendarData.createSmallTask(data)
+                }}
+                onUpdateTask={async (data) => {
+                  await calendarData.updateSmallTask(data)
+                }}
+                onDeleteTask={async (id) => {
+                  await calendarData.deleteSmallTask(id)
+                }}
                 projects={calendarData.projects}
                 bigTasks={currentWeekBigTasks}
                 userId={userId}

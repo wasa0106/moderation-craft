@@ -351,7 +351,7 @@ export function WeeklyCalendar({
         created_at: '',
         updated_at: '',
         completed_at: null,
-        actual_minutes: null,
+        actual_minutes: undefined,
         completed_notes: null,
       }
       setSelectedTask(smallTask)
@@ -595,8 +595,8 @@ export function WeeklyCalendar({
                     <div key={hour} className="border-b border-[#C9C7B6]">
                       {[0, 15, 30, 45].map((minute) => {
                         const scheduledTasks = getScheduledTasksForSlot(date, hour, minute)
-                        const isSelected = selectedStartTime && selectedEndTime && 
-                          isSlotInSelection(date, hour, minute)
+                        const isSelected = !!(selectedStartTime && selectedEndTime && 
+                          isSlotInSelection(date, hour, minute))
 
                         return (
                           <DroppableTimeSlot

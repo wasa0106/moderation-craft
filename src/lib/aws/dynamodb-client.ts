@@ -7,6 +7,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { env } from '@/config/env'
 
 const isLocal = process.env.NEXT_PUBLIC_DYNAMODB_ENDPOINT ? true : false
+const isServer = typeof window === 'undefined'
 
 // クライアント設定
 const clientConfig: any = {
@@ -20,11 +21,11 @@ if (isLocal) {
     accessKeyId: 'dummy',
     secretAccessKey: 'dummy'
   }
-} else {
-  // 本番/開発環境の認証情報
+} else if (isServer) {
+  // サーバーサイドでのみ認証情報を設定
   clientConfig.credentials = {
-    accessKeyId: env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: env.AWS_SECRET_ACCESS_KEY
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
   }
 }
 

@@ -56,14 +56,14 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
     updateBigTask,
     deleteBigTask,
     isLoading: bigTasksLoading,
-  } = useBigTasks(resolvedParams?.id)
+  } = useBigTasks(resolvedParams?.id || '')
   const {
     smallTasks,
     createSmallTask,
     updateSmallTask,
     deleteSmallTask,
     isLoading: smallTasksLoading,
-  } = useSmallTasks(resolvedParams?.id)
+  } = useSmallTasks(resolvedParams?.id || '')
 
   const [showBigTaskForm, setShowBigTaskForm] = useState(false)
   const [showSmallTaskForm, setShowSmallTaskForm] = useState(false)
@@ -74,8 +74,8 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const project = projects.find(p => p.id === resolvedParams?.id)
-  const projectBigTasks = bigTasks.filter(task => task.project_id === resolvedParams?.id)
+  const project = resolvedParams?.id ? projects.find(p => p.id === resolvedParams.id) : undefined
+  const projectBigTasks = resolvedParams?.id ? bigTasks.filter(task => task.project_id === resolvedParams.id) : []
   const projectSmallTasks = smallTasks.filter(task =>
     projectBigTasks.some(bigTask => bigTask.id === task.big_task_id)
   )
@@ -130,7 +130,7 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
     setIsSubmitting(true)
 
     try {
-      await updateBigTask(selectedBigTask.id, data)
+      await updateBigTask({ id: selectedBigTask.id, data })
       toast.success('大タスクが正常に更新されました')
       setShowBigTaskForm(false)
       setSelectedBigTask(null)
@@ -180,7 +180,7 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
     setIsSubmitting(true)
 
     try {
-      await updateSmallTask(selectedSmallTask.id, data)
+      await updateSmallTask({ id: selectedSmallTask.id, data })
       toast.success('小タスクが正常に更新されました')
       setShowSmallTaskForm(false)
       setSelectedSmallTask(null)

@@ -9,25 +9,25 @@ import { dynamoDb, TABLE_NAME } from './dynamodb-client'
 export const tableSchema = {
   TableName: TABLE_NAME,
   KeySchema: [
-    { AttributeName: 'PK', KeyType: 'HASH' },
-    { AttributeName: 'SK', KeyType: 'RANGE' }
+    { AttributeName: 'PK', KeyType: 'HASH' as const },
+    { AttributeName: 'SK', KeyType: 'RANGE' as const }
   ],
   AttributeDefinitions: [
-    { AttributeName: 'PK', AttributeType: 'S' },
-    { AttributeName: 'SK', AttributeType: 'S' },
-    { AttributeName: 'user_time_pk', AttributeType: 'S' },
-    { AttributeName: 'user_time_sk', AttributeType: 'S' },
-    { AttributeName: 'entity_type', AttributeType: 'S' },
-    { AttributeName: 'updated_at', AttributeType: 'S' }
+    { AttributeName: 'PK', AttributeType: 'S' as const },
+    { AttributeName: 'SK', AttributeType: 'S' as const },
+    { AttributeName: 'user_time_pk', AttributeType: 'S' as const },
+    { AttributeName: 'user_time_sk', AttributeType: 'S' as const },
+    { AttributeName: 'entity_type', AttributeType: 'S' as const },
+    { AttributeName: 'updated_at', AttributeType: 'S' as const }
   ],
   GlobalSecondaryIndexes: [
     {
       IndexName: 'user-time-index',
       KeySchema: [
-        { AttributeName: 'user_time_pk', KeyType: 'HASH' },
-        { AttributeName: 'user_time_sk', KeyType: 'RANGE' }
+        { AttributeName: 'user_time_pk', KeyType: 'HASH' as const },
+        { AttributeName: 'user_time_sk', KeyType: 'RANGE' as const }
       ],
-      Projection: { ProjectionType: 'ALL' },
+      Projection: { ProjectionType: 'ALL' as const },
       ProvisionedThroughput: {
         ReadCapacityUnits: 5,
         WriteCapacityUnits: 5
@@ -36,17 +36,17 @@ export const tableSchema = {
     {
       IndexName: 'entity-type-index',
       KeySchema: [
-        { AttributeName: 'entity_type', KeyType: 'HASH' },
-        { AttributeName: 'updated_at', KeyType: 'RANGE' }
+        { AttributeName: 'entity_type', KeyType: 'HASH' as const },
+        { AttributeName: 'updated_at', KeyType: 'RANGE' as const }
       ],
-      Projection: { ProjectionType: 'ALL' },
+      Projection: { ProjectionType: 'ALL' as const },
       ProvisionedThroughput: {
         ReadCapacityUnits: 5,
         WriteCapacityUnits: 5
       }
     }
   ],
-  BillingMode: 'PAY_PER_REQUEST' // オンデマンド課金
+  BillingMode: 'PAY_PER_REQUEST' as const // オンデマンド課金
 }
 
 // エンティティごとのキーパターン

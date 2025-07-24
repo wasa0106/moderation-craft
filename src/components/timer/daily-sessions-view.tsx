@@ -120,7 +120,6 @@ export function DailySessionsView({
       <div 
         className="ml-12 relative overflow-y-auto h-full"
         onScroll={(e) => onScroll?.(e.currentTarget.scrollTop)}
-        style={{ scrollTop }}
       >
         <div className="relative" style={{ height: '2880px' }}> {/* 24時間 × 120px */}
           {/* 時間帯ごとの背景 */}

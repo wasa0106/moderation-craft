@@ -42,7 +42,7 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     useSmallTasks(userId)
 
   // Also get all small tasks for progress calculation
-  const { smallTasks: allSmallTasks } = useSmallTasks()
+  const { smallTasks: allSmallTasks } = useSmallTasks(userId)
 
   // Filter projects and big tasks
   const activeProjects = useMemo(() => {

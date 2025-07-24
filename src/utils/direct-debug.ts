@@ -7,14 +7,14 @@
 export async function checkDatabaseSchema() {
   console.log('=== データベーススキーマ確認 ===')
   try {
-    // @ts-expect-error
+    // @ts-expect-error - Accessing window.db for debugging purposes
     const db = window.db || (await import('@/lib/db/database')).db
     console.log('データベース接続: OK')
     console.log('DBバージョン:', db.verno)
 
     // テーブル一覧
     console.log('\nテーブル一覧:')
-    db.tables.forEach(table => {
+    db.tables.forEach((table: any) => {
       console.log(`- ${table.name}`)
     })
 
@@ -42,7 +42,7 @@ export async function testProjectCreation() {
   console.log('=== プロジェクト作成テスト ===')
 
   try {
-    // @ts-expect-error
+    // @ts-expect-error - Accessing window.db for debugging purposes
     const db = window.db || (await import('@/lib/db/database')).db
 
     // テストデータ
@@ -85,7 +85,7 @@ export async function testBigTaskCreation() {
   console.log('=== BigTask作成テスト ===')
 
   try {
-    // @ts-expect-error
+    // @ts-expect-error - Accessing window.db for debugging purposes
     const db = window.db || (await import('@/lib/db/database')).db
 
     // テストBigTask
@@ -134,13 +134,13 @@ export async function checkActualData() {
   console.log('=== 実際のデータ確認 ===')
 
   try {
-    // @ts-expect-error
+    // @ts-expect-error - Accessing window.db for debugging purposes
     const db = window.db || (await import('@/lib/db/database')).db
 
     // プロジェクト一覧
     const projects = await db.projects.toArray()
     console.log(`\nプロジェクト数: ${projects.length}`)
-    projects.forEach(p => {
+    projects.forEach((p: any) => {
       console.log(`- ${p.name} (ID: ${p.id})`)
     })
 
@@ -151,13 +151,13 @@ export async function checkActualData() {
     // 最新のBigTaskを確認
     if (bigTasks.length > 0) {
       const latest = bigTasks.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0]
       console.log('\n最新のBigTask:')
       console.log(latest)
 
       // 日付範囲の有無を確認
-      const withDateRange = bigTasks.filter(t => t.week_start_date && t.week_end_date)
+      const withDateRange = bigTasks.filter((t: any) => t.week_start_date && t.week_end_date)
       console.log(`\n日付範囲あり: ${withDateRange.length}`)
       console.log(`日付範囲なし: ${bigTasks.length - withDateRange.length}`)
     }
@@ -168,7 +168,7 @@ export async function checkActualData() {
 
 // コンソールで直接実行可能にする
 if (typeof window !== 'undefined') {
-  // @ts-expect-error
+  // @ts-expect-error - Adding debug utilities to window object
   window.directDebug = {
     checkDatabaseSchema,
     testProjectCreation,

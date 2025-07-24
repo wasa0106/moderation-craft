@@ -134,7 +134,6 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
     total: number
     active: number
     completed: number
-    planning: number
     overdue: number
   }> {
     try {
@@ -152,15 +151,6 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
             case 'completed':
               acc.completed++
               break
-            case 'planning':
-              acc.planning++
-              break
-            case 'paused':
-              acc.paused++
-              break
-            case 'cancelled':
-              acc.cancelled++
-              break
           }
 
           if (project.deadline < today && project.status !== 'completed') {
@@ -173,9 +163,6 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
           total: 0,
           active: 0,
           completed: 0,
-          planning: 0,
-          paused: 0,
-          cancelled: 0,
           overdue: 0,
         }
       )
@@ -273,7 +260,7 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
       return await this.create({
         ...projectData,
         name: newName,
-        status: 'planning',
+        status: 'active',
         version: 1,
       })
     } catch (error) {

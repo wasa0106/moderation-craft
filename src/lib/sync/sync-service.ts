@@ -170,15 +170,15 @@ export class SyncService {
         if (isRateLimitError) maxRetries = 20 // レート制限は長期戦
 
         if (newAttemptCount >= maxRetries) {
-          // 上限に達したら「休眠」状態にする
+          // 上限に達したら失敗状態にする
           syncStore.updateSyncQueueItem(item.id, {
-            status: 'dormant', // 新しいステータス：休眠中
+            status: 'failed',
             attempt_count: newAttemptCount,
             error_message: errorMessage,
             last_attempted: new Date().toISOString(),
           })
           await syncQueueRepository.update(item.id, {
-            status: 'dormant',
+            status: 'failed',
             attempt_count: newAttemptCount,
             error_message: errorMessage,
             last_attempted: new Date().toISOString(),
@@ -575,10 +575,11 @@ export class SyncService {
       version: 1,
     }
     
+    const dataStr = queueItem.data as string | undefined
     syncLogger.debug('Creating sync queue item:', {
       ...queueItem,
-      dataLength: queueItem.data?.length,
-      hasData: !!queueItem.data
+      dataLength: dataStr ? dataStr.length : 0,
+      hasData: !!dataStr
     })
 
     try {
@@ -586,7 +587,7 @@ export class SyncService {
       syncLogger.debug('Created sync queue item:', {
         id: createdItem.id,
         hasData: !!createdItem.data,
-        dataLength: createdItem.data?.length
+        dataLength: createdItem.data ? createdItem.data.length : 0
       })
       
       // 作成直後に再度読み込んで確認

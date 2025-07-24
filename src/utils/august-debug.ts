@@ -15,7 +15,7 @@ export const augustDebug = {
 
     try {
       const projects = await db.projects.toArray()
-      const bigTasks = await db.bigTasks.toArray()
+      const bigTasks = await db.big_tasks.toArray()
 
       // 8月のプロジェクトを探す
       const augustProjects = projects.filter(p => {
@@ -28,7 +28,7 @@ export const augustDebug = {
 
         // 全プロジェクトの作成日を表示
         console.log('\n📋 全プロジェクト一覧:')
-        projects.forEach(p => {
+        projects.forEach((p: any) => {
           console.log(
             `  - ${p.name}: ${format(new Date(p.created_at), 'yyyy-MM-dd', { locale: ja })}`
           )
@@ -36,7 +36,7 @@ export const augustDebug = {
         return
       }
 
-      augustProjects.forEach(project => {
+      augustProjects.forEach((project: any) => {
         console.log(`\n📅 プロジェクト: ${project.name}`)
         console.log(
           `  作成日: ${format(new Date(project.created_at), 'yyyy-MM-dd (E)', { locale: ja })}`
@@ -46,7 +46,7 @@ export const augustDebug = {
         // このプロジェクトのタスク
         const projectTasks = bigTasks.filter(t => t.project_id === project.id)
         console.log(`\n  📝 タスク一覧 (${projectTasks.length}件):`)
-        projectTasks.forEach(task => {
+        projectTasks.forEach((task: any) => {
           console.log(`    - ${task.name} (week_number: ${task.week_number})`)
         })
 
@@ -68,7 +68,7 @@ export const augustDebug = {
           // この週のタスク
           const weekTasks = projectTasks.filter(t => t.week_number === i + 1)
           if (weekTasks.length > 0) {
-            weekTasks.forEach(t => {
+            weekTasks.forEach((t: any) => {
               console.log(`      → ${t.name}`)
             })
           }
@@ -92,7 +92,7 @@ export const augustDebug = {
         const aug4WeekTasks = projectTasks.filter(t => t.week_number === calculatedWeekNumber)
         console.log(`\n    この週のタスク (week_number = ${calculatedWeekNumber}):`)
         if (aug4WeekTasks.length > 0) {
-          aug4WeekTasks.forEach(t => {
+          aug4WeekTasks.forEach((t: any) => {
             console.log(`      ✅ ${t.name}`)
           })
         } else {

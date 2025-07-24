@@ -89,11 +89,11 @@ export default function SyncServiceTestPage() {
     const syncStore = useSyncStore.getState()
     if (syncStore.autoSyncEnabled) {
       syncService.stopAutoSync()
-      syncStore.setAutoSyncEnabled(false)
+      syncStore.setAutoSync(false)
       toast.info('自動同期を停止しました')
     } else {
       syncService.startAutoSync(10000) // 10秒ごと
-      syncStore.setAutoSyncEnabled(true)
+      syncStore.setAutoSync(true)
       toast.success('自動同期を開始しました（10秒ごと）')
     }
   }
@@ -214,9 +214,6 @@ export default function SyncServiceTestPage() {
                     {session.is_synced && (
                       <span className="ml-2 text-xs text-green-600">✓ 同期済み</span>
                     )}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {session.task_description || 'タスク説明なし'}
                   </p>
                 </div>
                 <Button

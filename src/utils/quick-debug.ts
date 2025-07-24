@@ -16,12 +16,12 @@ export async function quickDebug() {
   })
 
   // Get all BigTasks
-  const bigTasks = await db.bigTasks.toArray()
+  const bigTasks = await db.big_tasks.toArray()
   console.log('\n📝 BigTasks:', bigTasks.length)
 
   // Check each BigTask
   let orphanCount = 0
-  bigTasks.forEach(task => {
+  bigTasks.forEach((task: any) => {
     const project = projects.find(p => p.id === task.project_id)
     if (!project) {
       console.log(`\n❌ Orphaned BigTask:`)
@@ -38,7 +38,7 @@ export async function quickDebug() {
   // Show the most recent BigTask
   if (bigTasks.length > 0) {
     const latest = bigTasks.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )[0]
     console.log('\n🆕 Latest BigTask:')
     console.log(latest)

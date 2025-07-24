@@ -97,7 +97,7 @@ export default function UpdateDeleteTestPage() {
   const [selectedSmallTaskId, setSelectedSmallTaskId] = useState<string | null>(null)
   
   const [projectName, setProjectName] = useState('')
-  const [projectDescription, setProjectDescription] = useState('')
+  const [projectGoal, setProjectGoal] = useState('')
   const [bigTaskTitle, setBigTaskTitle] = useState('')
   const [smallTaskTitle, setSmallTaskTitle] = useState('')
   
@@ -111,8 +111,7 @@ export default function UpdateDeleteTestPage() {
         const testProject = await projectRepository.create({
           user_id: userId,
           name: 'UPDATE/DELETEテスト用プロジェクト',
-          description: '同期機能のテスト用',
-          goal: 'テスト完了',
+          goal: '同期機能のテスト用',
           deadline: '2025-12-31',
           status: 'active',
           version: 1
@@ -138,7 +137,7 @@ export default function UpdateDeleteTestPage() {
           const testBigTask = await bigTaskRepository.create({
             user_id: userId,
             project_id: project.id,
-            title: 'UPDATE/DELETEテスト用BigTask',
+            name: 'UPDATE/DELETEテスト用BigTask',
             estimated_hours: 10,
             week_number: 1,
             status: 'pending',
@@ -206,7 +205,7 @@ export default function UpdateDeleteTestPage() {
     try {
       await projectRepository.update(selectedProjectId, {
         name: projectName || `更新されたプロジェクト ${new Date().toLocaleTimeString()}`,
-        description: projectDescription || `更新時刻: ${new Date().toLocaleTimeString()}`
+        goal: projectGoal || `更新時刻: ${new Date().toLocaleTimeString()}`
       })
       
       toast.success('プロジェクトを更新しました')
@@ -246,11 +245,11 @@ export default function UpdateDeleteTestPage() {
     
     try {
       console.log('Updating BigTask:', selectedBigTaskId, {
-        title: bigTaskTitle || `更新されたBigTask ${new Date().toLocaleTimeString()}`
+        name: bigTaskTitle || `更新されたBigTask ${new Date().toLocaleTimeString()}`
       })
       
       const result = await bigTaskRepository.update(selectedBigTaskId, {
-        title: bigTaskTitle || `更新されたBigTask ${new Date().toLocaleTimeString()}`
+        name: bigTaskTitle || `更新されたBigTask ${new Date().toLocaleTimeString()}`
         // updated_atは自動的に設定されるので不要
       })
       
@@ -401,7 +400,6 @@ export default function UpdateDeleteTestPage() {
                 const newProject = await projectRepository.create({
                   user_id: userId,
                   name: `新規プロジェクト ${new Date().toLocaleTimeString()}`,
-                  description: '手動作成',
                   goal: 'テスト',
                   deadline: '2025-12-31',
                   status: 'active',
@@ -436,13 +434,13 @@ export default function UpdateDeleteTestPage() {
                     onClick={() => {
                       setSelectedProjectId(project.id)
                       setProjectName(project.name)
-                      setProjectDescription(project.description || '')
+                      setProjectGoal(project.goal || '')
                     }}
                   >
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="font-medium">{project.name}</p>
-                        <p className="text-sm text-muted-foreground">{project.description}</p>
+                        <p className="text-sm text-muted-foreground">{project.goal}</p>
                       </div>
                       <Badge variant="outline">{project.id.slice(0, 8)}</Badge>
                     </div>
@@ -463,10 +461,10 @@ export default function UpdateDeleteTestPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>説明</Label>
+                      <Label>目標</Label>
                       <Textarea 
-                        value={projectDescription}
-                        onChange={(e) => setProjectDescription(e.target.value)}
+                        value={projectGoal}
+                        onChange={(e) => setProjectGoal(e.target.value)}
                         placeholder="更新する説明"
                       />
                     </div>
@@ -505,11 +503,11 @@ export default function UpdateDeleteTestPage() {
                     }`}
                     onClick={() => {
                       setSelectedBigTaskId(task.id)
-                      setBigTaskTitle(task.title)
+                      setBigTaskTitle(task.name)
                     }}
                   >
                     <div className="flex justify-between items-center">
-                      <p className="font-medium">{task.title}</p>
+                      <p className="font-medium">{task.name}</p>
                       <Badge variant="outline">{task.id.slice(0, 8)}</Badge>
                     </div>
                   </div>

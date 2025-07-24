@@ -186,7 +186,7 @@ export function WorkSessionEditDialog({
                   {project && <span className="text-muted-foreground"> - {project.name}</span>}
                 </>
               ) : (
-                session.task_description || 'タスクなし'
+                session.mood_notes || 'タスクなし'
               )}
             </DialogDescription>
           </DialogHeader>

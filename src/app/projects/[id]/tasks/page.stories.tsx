@@ -8,7 +8,9 @@ import React from 'react'
 const mockProject: Project = {
   id: 'project-1',
   name: 'テストプロジェクト',
-  description: 'これはテスト用のプロジェクトです',
+  goal: '2024年度のプロジェクト目標',
+  deadline: new Date('2024-12-31').toISOString(),
+  status: 'active',
   user_id: 'user-1',
   created_at: new Date('2024-01-01').toISOString(),
   updated_at: new Date('2024-01-01').toISOString(),
@@ -21,9 +23,14 @@ const mockBigTasks: BigTask[] = [
   {
     id: 'big-task-1',
     project_id: 'project-1',
+    user_id: 'user-1',
     name: '要件定義',
-    wbs_number: '1.0',
-    planned_minutes: 480,
+    category: '企画・設計',
+    week_number: 1,
+    week_start_date: new Date('2024-01-01').toISOString(),
+    week_end_date: new Date('2024-01-07').toISOString(),
+    estimated_hours: 8,
+    actual_hours: 10,
     status: 'completed',
     created_at: new Date('2024-01-01').toISOString(),
     updated_at: new Date('2024-01-02').toISOString(),
@@ -34,9 +41,13 @@ const mockBigTasks: BigTask[] = [
   {
     id: 'big-task-2',
     project_id: 'project-1',
+    user_id: 'user-1',
     name: '設計',
-    wbs_number: '2.0',
-    planned_minutes: 960,
+    category: '企画・設計',
+    week_number: 2,
+    week_start_date: new Date('2024-01-08').toISOString(),
+    week_end_date: new Date('2024-01-14').toISOString(),
+    estimated_hours: 16,
     status: 'active',
     created_at: new Date('2024-01-02').toISOString(),
     updated_at: new Date('2024-01-03').toISOString(),
@@ -47,9 +58,13 @@ const mockBigTasks: BigTask[] = [
   {
     id: 'big-task-3',
     project_id: 'project-1',
+    user_id: 'user-1',
     name: '実装',
-    wbs_number: '3.0',
-    planned_minutes: 2400,
+    category: '実装',
+    week_number: 3,
+    week_start_date: new Date('2024-01-15').toISOString(),
+    week_end_date: new Date('2024-01-21').toISOString(),
+    estimated_hours: 40,
     status: 'pending',
     created_at: new Date('2024-01-03').toISOString(),
     updated_at: new Date('2024-01-03').toISOString(),
@@ -63,10 +78,14 @@ const mockSmallTasks: SmallTask[] = [
   {
     id: 'small-task-1',
     big_task_id: 'big-task-1',
+    user_id: 'user-1',
     name: 'ヒアリング実施',
     estimated_minutes: 120,
+    scheduled_start: new Date('2024-01-10T09:00:00').toISOString(),
+    scheduled_end: new Date('2024-01-10T11:00:00').toISOString(),
+    actual_start: new Date('2024-01-10T09:00:00').toISOString(),
+    actual_end: new Date('2024-01-10T11:30:00').toISOString(),
     actual_minutes: 150,
-    date: '2024-01-10',
     is_emergency: false,
     created_at: new Date('2024-01-01').toISOString(),
     updated_at: new Date('2024-01-10').toISOString(),
@@ -77,10 +96,14 @@ const mockSmallTasks: SmallTask[] = [
   {
     id: 'small-task-2',
     big_task_id: 'big-task-1',
+    user_id: 'user-1',
     name: '要件書作成',
     estimated_minutes: 240,
+    scheduled_start: new Date('2024-01-11T09:00:00').toISOString(),
+    scheduled_end: new Date('2024-01-11T13:00:00').toISOString(),
+    actual_start: new Date('2024-01-11T09:00:00').toISOString(),
+    actual_end: new Date('2024-01-11T14:00:00').toISOString(),
     actual_minutes: 300,
-    date: '2024-01-11',
     is_emergency: false,
     created_at: new Date('2024-01-02').toISOString(),
     updated_at: new Date('2024-01-11').toISOString(),
@@ -91,10 +114,11 @@ const mockSmallTasks: SmallTask[] = [
   {
     id: 'small-task-3',
     big_task_id: 'big-task-2',
+    user_id: 'user-1',
     name: 'DB設計',
     estimated_minutes: 180,
-    actual_minutes: 0,
-    date: '2024-01-15',
+    scheduled_start: new Date('2024-01-15T09:00:00').toISOString(),
+    scheduled_end: new Date('2024-01-15T12:00:00').toISOString(),
     is_emergency: false,
     created_at: new Date('2024-01-05').toISOString(),
     updated_at: new Date('2024-01-05').toISOString(),
@@ -105,10 +129,11 @@ const mockSmallTasks: SmallTask[] = [
   {
     id: 'small-task-4',
     big_task_id: 'big-task-2',
+    user_id: 'user-1',
     name: 'API設計（緊急）',
     estimated_minutes: 120,
-    actual_minutes: 0,
-    date: '2024-01-16',
+    scheduled_start: new Date('2024-01-16T09:00:00').toISOString(),
+    scheduled_end: new Date('2024-01-16T11:00:00').toISOString(),
     is_emergency: true,
     created_at: new Date('2024-01-06').toISOString(),
     updated_at: new Date('2024-01-06').toISOString(),
@@ -219,16 +244,20 @@ const mockHooks = createMockHooks({
 
 // Module mock replacements
 if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-  // @ts-expect-error
+  // @ts-expect-error - Mocking window.__mockHooks for Storybook
   window.__mockHooks = mockHooks
   
   // Override the actual imports
   const originalRequire = require
-  // @ts-expect-error
+  // @ts-expect-error - Overriding require for module mocking
   require = function(id: string, ...args: any[]) {
+    // @ts-expect-error - Using window.__mockHooks for testing
     if (id === '@/hooks/use-projects') return { useProjects: window.__mockHooks.useProjects }
+    // @ts-expect-error - Using window.__mockHooks for testing
     if (id === '@/hooks/use-big-tasks') return { useBigTasks: window.__mockHooks.useBigTasks }
+    // @ts-expect-error - Using window.__mockHooks for testing
     if (id === '@/hooks/use-small-tasks') return { useSmallTasks: window.__mockHooks.useSmallTasks }
+    // @ts-expect-error - Using this context for require
     return originalRequire.apply(this, [id, ...args])
   }
 }

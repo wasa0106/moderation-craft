@@ -69,12 +69,9 @@ export function SyncProvider({
   // デバッグ用：同期状態をログに出力
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      const unsubscribe = useSyncStore.subscribe(
-        state => state.isSyncing,
-        isSyncing => {
-          console.log(`同期状態: ${isSyncing ? '同期中' : 'アイドル'}`)
-        }
-      )
+      const unsubscribe = useSyncStore.subscribe((state) => {
+        console.log(`同期状態: ${state.isSyncing ? '同期中' : 'アイドル'}`)
+      })
       
       return unsubscribe
     }
