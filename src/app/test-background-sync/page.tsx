@@ -31,13 +31,17 @@ export default function TestBackgroundSyncPage() {
   
   // テストモードを有効化
   useEffect(() => {
-    const { OfflineDetector } = require('@/lib/sync/offline-detector')
-    const detector = OfflineDetector.getInstance()
-    detector.setTestMode(true)
+    import('@/lib/sync/offline-detector').then(({ OfflineDetector }) => {
+      const detector = OfflineDetector.getInstance()
+      detector.setTestMode(true)
+    })
     
     return () => {
       // クリーンアップ時にテストモードを無効化
-      detector.setTestMode(false)
+      import('@/lib/sync/offline-detector').then(({ OfflineDetector }) => {
+        const detector = OfflineDetector.getInstance()
+        detector.setTestMode(false)
+      })
     }
   }, [])
 
@@ -130,9 +134,9 @@ export default function TestBackgroundSyncPage() {
   }
 
   // オンライン/オフラインの切り替え（テスト用）
-  const toggleOnlineStatus = () => {
+  const toggleOnlineStatus = async () => {
     // OfflineDetectorを経由して状態を変更
-    const { OfflineDetector } = require('@/lib/sync/offline-detector')
+    const { OfflineDetector } = await import('@/lib/sync/offline-detector')
     const detector = OfflineDetector.getInstance()
     
     // 現在の状態を反転

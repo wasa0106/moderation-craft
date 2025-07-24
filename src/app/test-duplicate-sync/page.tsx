@@ -18,16 +18,23 @@ export default function TestDuplicateSyncPage() {
   
   // 自動同期を無効化（テスト中のみ）と初回ロード
   useEffect(() => {
-    const { useSyncStore } = require('@/stores/sync-store')
-    const originalAutoSync = useSyncStore.getState().autoSyncEnabled
-    useSyncStore.getState().setAutoSync(false)
+    let originalAutoSync: boolean
     
-    // 初回ロード時にキューを読み込む
-    loadQueueItems()
+    import('@/stores/sync-store').then(({ useSyncStore }) => {
+      originalAutoSync = useSyncStore.getState().autoSyncEnabled
+      useSyncStore.getState().setAutoSync(false)
+      
+      // 初回ロード時にキューを読み込む
+      loadQueueItems()
+    })
     
     // コンポーネントのアンマウント時に元に戻す
     return () => {
-      useSyncStore.getState().setAutoSync(originalAutoSync)
+      import('@/stores/sync-store').then(({ useSyncStore }) => {
+        if (originalAutoSync !== undefined) {
+          useSyncStore.getState().setAutoSync(originalAutoSync)
+        }
+      })
     }
   }, [])
 

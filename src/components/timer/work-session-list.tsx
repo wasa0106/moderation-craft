@@ -114,7 +114,7 @@ export function WorkSessionList({ sessions, tasks, projects }: WorkSessionListPr
 
             {session.mood_notes && (
               <p className="text-sm text-muted-foreground mt-2 italic">
-                "{session.mood_notes}"
+                &ldquo;{session.mood_notes}&rdquo;
               </p>
             )}
           </div>

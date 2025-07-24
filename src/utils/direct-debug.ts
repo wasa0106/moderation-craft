@@ -7,7 +7,7 @@
 export async function checkDatabaseSchema() {
   console.log('=== データベーススキーマ確認 ===')
   try {
-    // @ts-ignore
+    // @ts-expect-error
     const db = window.db || (await import('@/lib/db/database')).db
     console.log('データベース接続: OK')
     console.log('DBバージョン:', db.verno)
@@ -42,7 +42,7 @@ export async function testProjectCreation() {
   console.log('=== プロジェクト作成テスト ===')
 
   try {
-    // @ts-ignore
+    // @ts-expect-error
     const db = window.db || (await import('@/lib/db/database')).db
 
     // テストデータ
@@ -85,7 +85,7 @@ export async function testBigTaskCreation() {
   console.log('=== BigTask作成テスト ===')
 
   try {
-    // @ts-ignore
+    // @ts-expect-error
     const db = window.db || (await import('@/lib/db/database')).db
 
     // テストBigTask
@@ -134,7 +134,7 @@ export async function checkActualData() {
   console.log('=== 実際のデータ確認 ===')
 
   try {
-    // @ts-ignore
+    // @ts-expect-error
     const db = window.db || (await import('@/lib/db/database')).db
 
     // プロジェクト一覧
@@ -168,7 +168,7 @@ export async function checkActualData() {
 
 // コンソールで直接実行可能にする
 if (typeof window !== 'undefined') {
-  // @ts-ignore
+  // @ts-expect-error
   window.directDebug = {
     checkDatabaseSchema,
     testProjectCreation,

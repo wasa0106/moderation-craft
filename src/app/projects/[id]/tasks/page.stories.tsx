@@ -199,11 +199,15 @@ const createWrapper = (mockData?: Partial<MockDataContextValue>) => {
     },
   })
 
-  return ({ children }: { children: React.ReactNode }) => (
+  const ProviderComponent = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <MockProvider mockData={mockData}>{children}</MockProvider>
     </QueryClientProvider>
   )
+  
+  ProviderComponent.displayName = 'MockQueryProvider'
+  
+  return ProviderComponent
 }
 
 // Replace hooks with mocks in module scope
@@ -215,17 +219,17 @@ const mockHooks = createMockHooks({
 
 // Module mock replacements
 if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-  // @ts-ignore
+  // @ts-expect-error
   window.__mockHooks = mockHooks
   
   // Override the actual imports
   const originalRequire = require
-  // @ts-ignore
-  require = function(id: string) {
+  // @ts-expect-error
+  require = function(id: string, ...args: any[]) {
     if (id === '@/hooks/use-projects') return { useProjects: window.__mockHooks.useProjects }
     if (id === '@/hooks/use-big-tasks') return { useBigTasks: window.__mockHooks.useBigTasks }
     if (id === '@/hooks/use-small-tasks') return { useSmallTasks: window.__mockHooks.useSmallTasks }
-    return originalRequire.apply(this, arguments)
+    return originalRequire.apply(this, [id, ...args])
   }
 }
 

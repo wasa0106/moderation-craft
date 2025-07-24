@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, Check, X, Edit2 } from 'lucide-react'
+import { Trash2, Check, X, Edit2, Plus } from 'lucide-react'
 import {
   Project,
   WeeklySchedule,

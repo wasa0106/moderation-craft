@@ -567,13 +567,14 @@ function allocateTasksToWeeks(
   }
 
   // 週の情報を生成
-  let currentWeekStart = getWeekStart(startDate)
+  const currentWeekStart = getWeekStart(startDate)
   const endDateMillis = new Date(endDate).getTime()
 
   let weekIndex = 0
-  while (currentWeekStart.getTime() <= endDateMillis && weekIndex < totalWeeks) {
-    const weekEnd = new Date(currentWeekStart)
-    weekEnd.setDate(currentWeekStart.getDate() + 6)
+  let currentWeek = currentWeekStart
+  while (currentWeek.getTime() <= endDateMillis && weekIndex < totalWeeks) {
+    const weekEnd = new Date(currentWeek)
+    weekEnd.setDate(currentWeek.getDate() + 6)
     weekEnd.setHours(23, 59, 59, 999)
 
     // この週の実際の作業期間を決定
