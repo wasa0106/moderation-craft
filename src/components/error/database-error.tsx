@@ -20,30 +20,37 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
   const [isResetting, setIsResetting] = useState(false)
   const [resetComplete, setResetComplete] = useState(false)
 
-  const isSchemaError = error.message.includes('UpgradeError') || 
-                       error.message.includes('primary key') ||
-                       error.message.includes('DatabaseClosedError')
+  const isSchemaError =
+    error.message.includes('UpgradeError') ||
+    error.message.includes('primary key') ||
+    error.message.includes('DatabaseClosedError')
 
   const handleReset = async () => {
     setIsResetting(true)
     try {
       await db.handleSchemaError()
       setResetComplete(true)
-      
+
       // 3秒後にページをリロード
       setTimeout(() => {
         window.location.reload()
       }, 3000)
     } catch (resetError) {
       console.error('Failed to reset database:', resetError)
-      alert('データベースのリセットに失敗しました。ブラウザの開発者ツールでIndexedDBを手動で削除してください。')
+      alert(
+        'データベースのリセットに失敗しました。ブラウザの開発者ツールでIndexedDBを手動で削除してください。'
+      )
     } finally {
       setIsResetting(false)
     }
   }
 
   const handleManualReset = () => {
-    if (confirm('この操作により、ローカルに保存されているすべてのデータが削除されます。続行しますか？')) {
+    if (
+      confirm(
+        'この操作により、ローカルに保存されているすべてのデータが削除されます。続行しますか？'
+      )
+    ) {
       // IndexedDBを手動削除
       indexedDB.deleteDatabase('ModerationCraftDB')
       window.location.reload()
@@ -58,9 +65,7 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
             <div className="mb-4">
               <Database className="h-12 w-12 text-green-500 mx-auto" />
             </div>
-            <h3 className="text-lg font-semibold text-green-700 mb-2">
-              復旧完了
-            </h3>
+            <h3 className="text-lg font-semibold text-green-700 mb-2">復旧完了</h3>
             <p className="text-sm text-gray-600 mb-4">
               データベースが正常に復旧されました。
               <br />
@@ -105,9 +110,9 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
               データベースのスキーマ変更により発生したエラーです。
               自動復旧機能を使用してデータベースを修復できます。
             </p>
-            
+
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={handleReset}
                 disabled={isResetting}
                 className="flex items-center gap-2"
@@ -124,7 +129,7 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
                   </>
                 )}
               </Button>
-              
+
               {onRetry && (
                 <Button variant="outline" onClick={onRetry}>
                   再試行
@@ -141,13 +146,8 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
                 <li>データベースを右クリックして「Delete」を選択</li>
                 <li>ページをリロード</li>
               </ol>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleManualReset}
-                className="mt-2"
-              >
+
+              <Button variant="outline" size="sm" onClick={handleManualReset} className="mt-2">
                 手動リセット
               </Button>
             </div>
@@ -160,7 +160,7 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
               予期しないデータベースエラーが発生しました。
               再試行するか、問題が続く場合は開発者にお問い合わせください。
             </p>
-            
+
             {onRetry && (
               <Button onClick={onRetry} variant="outline">
                 再試行

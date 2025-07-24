@@ -9,22 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { 
-  Calendar, 
-  Clock, 
-  Target, 
-  MoreHorizontal, 
-  Play, 
-  Edit, 
-  Trash2,
-  Copy
-} from 'lucide-react'
+import { Calendar, Clock, Target, MoreHorizontal, Play, Edit, Trash2, Copy } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Project } from '@/types'
 import { cn } from '@/lib/utils'
@@ -39,13 +30,13 @@ interface ProjectCardProps {
   className?: string
 }
 
-export function ProjectCard({ 
-  project, 
-  onEdit, 
-  onDelete, 
-  onDuplicate, 
+export function ProjectCard({
+  project,
+  onEdit,
+  onDelete,
+  onDuplicate,
   onViewTasks,
-  className 
+  className,
 }: ProjectCardProps) {
   const getStatusColor = (status: Project['status']) => {
     switch (status) {
@@ -96,25 +87,23 @@ export function ProjectCard({
   }
 
   const daysUntilDeadline = getDaysUntilDeadline()
-  const isDeadlineClose = daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0
+  const isDeadlineClose =
+    daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0
 
   return (
-    <Card className={cn(
-      'hover:shadow-md transition-shadow duration-200',
-      isOverdue() && 'border-red-200 bg-red-50',
-      isDeadlineClose && 'border-yellow-200 bg-yellow-50',
-      className
-    )}>
+    <Card
+      className={cn(
+        'hover:shadow-md transition-shadow duration-200',
+        isOverdue() && 'border-red-200 bg-red-50',
+        isDeadlineClose && 'border-yellow-200 bg-yellow-50',
+        className
+      )}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg font-semibold line-clamp-1">
-              {project.name}
-            </CardTitle>
-            <Badge 
-              variant="secondary" 
-              className={cn('mt-2', getStatusColor(project.status))}
-            >
+            <CardTitle className="text-lg font-semibold line-clamp-1">{project.name}</CardTitle>
+            <Badge variant="secondary" className={cn('mt-2', getStatusColor(project.status))}>
               {getStatusLabel(project.status)}
             </Badge>
           </div>
@@ -128,7 +117,7 @@ export function ProjectCard({
               {onViewTasks && (
                 <DropdownMenuItem onClick={() => onViewTasks(project)}>
                   <Play className="h-4 w-4 mr-2" />
-                  タスク管理
+                  詳細を見る
                 </DropdownMenuItem>
               )}
               {onEdit && (
@@ -146,7 +135,7 @@ export function ProjectCard({
               {onDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => onDelete(project)}
                     className="text-red-600 focus:text-red-600"
                   >
@@ -159,34 +148,33 @@ export function ProjectCard({
           </DropdownMenu>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Goal */}
         <div className="flex items-start gap-2">
           <Target className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {project.goal}
-          </p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{project.goal}</p>
         </div>
 
         {/* Deadline */}
         {project.deadline && (
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className={cn(
-              'text-sm',
-              isOverdue() && 'text-red-600 font-medium',
-              isDeadlineClose && 'text-yellow-600 font-medium'
-            )}>
+            <span
+              className={cn(
+                'text-sm',
+                isOverdue() && 'text-red-600 font-medium',
+                isDeadlineClose && 'text-yellow-600 font-medium'
+              )}
+            >
               {format(new Date(project.deadline), 'yyyy/MM/dd')}
               {daysUntilDeadline !== null && (
                 <span className="ml-1">
-                  {daysUntilDeadline > 0 
+                  {daysUntilDeadline > 0
                     ? `(あと${daysUntilDeadline}日)`
-                    : daysUntilDeadline === 0 
-                    ? '(今日)'
-                    : `(${Math.abs(daysUntilDeadline)}日超過)`
-                  }
+                    : daysUntilDeadline === 0
+                      ? '(今日)'
+                      : `(${Math.abs(daysUntilDeadline)}日超過)`}
                 </span>
               )}
             </span>
@@ -209,14 +197,10 @@ export function ProjectCard({
         </div>
 
         {/* Quick action button */}
-        {onViewTasks && project.status === 'active' && (
-          <Button 
-            onClick={() => onViewTasks(project)}
-            className="w-full"
-            size="sm"
-          >
+        {onViewTasks && (
+          <Button onClick={() => onViewTasks(project)} className="w-full" size="sm">
             <Play className="h-4 w-4 mr-2" />
-            タスク管理を開く
+            詳細を見る
           </Button>
         )}
       </CardContent>

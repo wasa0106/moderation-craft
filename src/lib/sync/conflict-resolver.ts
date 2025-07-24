@@ -22,35 +22,32 @@ export class ConflictResolver {
    * Resolves conflicts using last-write-wins strategy
    * Compares updated_at timestamps to determine which version to keep
    */
-  static resolve<T extends DatabaseEntity>(
-    local: T,
-    remote: T
-  ): ConflictResolution<T> {
+  static resolve<T extends DatabaseEntity>(local: T, remote: T): ConflictResolution<T> {
     const localUpdatedAt = new Date(local.updated_at)
     const remoteUpdatedAt = new Date(remote.updated_at)
-    
+
     // Find conflicting fields
     const conflictFields = this.findConflictFields(local, remote)
-    
+
     // Last-write-wins: use the most recently updated version
     if (localUpdatedAt > remoteUpdatedAt) {
       return {
         resolved: local,
         conflictFields,
-        strategy: 'local'
+        strategy: 'local',
       }
     } else if (remoteUpdatedAt > localUpdatedAt) {
       return {
         resolved: remote,
         conflictFields,
-        strategy: 'remote'
+        strategy: 'remote',
       }
     } else {
       // If timestamps are equal, prefer remote (server truth)
       return {
         resolved: remote,
         conflictFields,
-        strategy: 'remote'
+        strategy: 'remote',
       }
     }
   }
@@ -58,30 +55,27 @@ export class ConflictResolver {
   /**
    * Finds fields that differ between local and remote versions
    */
-  private static findConflictFields<T extends DatabaseEntity>(
-    local: T,
-    remote: T
-  ): Array<keyof T> {
+  private static findConflictFields<T extends DatabaseEntity>(local: T, remote: T): Array<keyof T> {
     const conflicts: Array<keyof T> = []
-    
+
     // Skip system fields in comparison
     const skipFields = ['id', 'created_at', 'updated_at']
-    
+
     Object.keys(local).forEach(key => {
       const field = key as keyof T
-      
+
       if (skipFields.includes(String(field))) {
         return
       }
-      
+
       const localValue = local[field]
       const remoteValue = remote[field]
-      
+
       if (!this.isEqual(localValue, remoteValue)) {
         conflicts.push(field)
       }
     })
-    
+
     return conflicts
   }
 
@@ -90,29 +84,27 @@ export class ConflictResolver {
    */
   private static isEqual(a: any, b: any): boolean {
     if (a === b) return true
-    
+
     if (a == null || b == null) return a === b
-    
+
     if (typeof a !== typeof b) return false
-    
+
     if (typeof a === 'object') {
       if (Array.isArray(a) !== Array.isArray(b)) return false
-      
+
       if (Array.isArray(a)) {
         if (a.length !== b.length) return false
         return a.every((item, index) => this.isEqual(item, b[index]))
       }
-      
+
       const keysA = Object.keys(a)
       const keysB = Object.keys(b)
-      
+
       if (keysA.length !== keysB.length) return false
-      
-      return keysA.every(key => 
-        keysB.includes(key) && this.isEqual(a[key], b[key])
-      )
+
+      return keysA.every(key => keysB.includes(key) && this.isEqual(a[key], b[key]))
     }
-    
+
     return false
   }
 
@@ -131,11 +123,11 @@ export class ConflictResolver {
 
     const conflictFields = this.findConflictFields(local, remote)
     const merged = { ...remote } // Start with remote as base
-    
+
     // Apply custom merge strategies for specific fields
     Object.entries(customMergeFields).forEach(([field, strategy]) => {
       const fieldKey = field as keyof T
-      
+
       switch (strategy) {
         case 'local':
           merged[fieldKey] = local[fieldKey]
@@ -155,7 +147,7 @@ export class ConflictResolver {
     return {
       resolved: merged,
       conflictFields,
-      strategy: 'merged'
+      strategy: 'merged',
     }
   }
 
@@ -182,13 +174,13 @@ export class ConflictResolver {
     const conflictFields = this.findConflictFields(local, remote)
     const localTime = new Date(local.updated_at)
     const remoteTime = new Date(remote.updated_at)
-    
+
     return {
       hasConflicts: conflictFields.length > 0,
       conflictFields,
       localTimestamp: local.updated_at,
       remoteTimestamp: remote.updated_at,
-      recommendedStrategy: localTime > remoteTime ? 'local' : 'remote'
+      recommendedStrategy: localTime > remoteTime ? 'local' : 'remote',
     }
   }
 }

@@ -11,24 +11,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
-import { 
-  BarChart3, 
-  Target, 
-  Clock, 
+import {
+  BarChart3,
+  Target,
+  Clock,
   Award,
   AlertTriangle,
   CheckCircle2,
-  Download
+  Download,
 } from 'lucide-react'
 import { parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 'date-fns'
 
@@ -36,7 +36,7 @@ export default function ReportsPage() {
   const { projects } = useProjects('current-user')
   const { bigTasks } = useBigTasks()
   const { smallTasks } = useSmallTasks()
-  
+
   const [selectedPeriod, setSelectedPeriod] = useState<string>('current-month')
   const [selectedProject, setSelectedProject] = useState<string>('all')
 
@@ -59,9 +59,8 @@ export default function ReportsPage() {
   const periodRange = getPeriodRange(selectedPeriod)
 
   // Filter data based on selected period and project
-  const filteredProjects = selectedProject === 'all' 
-    ? projects 
-    : projects.filter(p => p.id === selectedProject)
+  const filteredProjects =
+    selectedProject === 'all' ? projects : projects.filter(p => p.id === selectedProject)
 
   const filteredBigTasks = bigTasks.filter(task => {
     const isProjectMatch = selectedProject === 'all' || task.project_id === selectedProject
@@ -73,7 +72,7 @@ export default function ReportsPage() {
   const filteredSmallTasks = smallTasks.filter(task => {
     const bigTask = bigTasks.find(bt => bt.id === task.big_task_id)
     if (!bigTask) return false
-    
+
     const isProjectMatch = selectedProject === 'all' || bigTask.project_id === selectedProject
     const taskDate = parseISO(task.scheduled_start)
     const isInPeriod = isWithinInterval(taskDate, periodRange)
@@ -86,9 +85,9 @@ export default function ReportsPage() {
     active: filteredProjects.filter(p => p.status === 'active').length,
     completed: filteredProjects.filter(p => p.status === 'completed').length,
     planning: filteredProjects.filter(p => p.status === 'planning').length,
-    overdue: filteredProjects.filter(p => 
-      p.deadline && new Date(p.deadline) < new Date() && p.status !== 'completed'
-    ).length
+    overdue: filteredProjects.filter(
+      p => p.deadline && new Date(p.deadline) < new Date() && p.status !== 'completed'
+    ).length,
   }
 
   const bigTaskStats = {
@@ -97,7 +96,7 @@ export default function ReportsPage() {
     active: filteredBigTasks.filter(t => t.status === 'active').length,
     pending: filteredBigTasks.filter(t => t.status === 'pending').length,
     totalEstimatedHours: filteredBigTasks.reduce((sum, t) => sum + t.estimated_hours, 0),
-    totalActualHours: filteredBigTasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0)
+    totalActualHours: filteredBigTasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0),
   }
 
   const smallTaskStats = {
@@ -110,69 +109,90 @@ export default function ReportsPage() {
     overdue: filteredSmallTasks.filter(t => {
       const taskEnd = parseISO(t.scheduled_end)
       return taskEnd < new Date() && (!t.actual_minutes || t.actual_minutes === 0)
-    }).length
+    }).length,
   }
 
   // Calculate performance metrics
-  const projectCompletionRate = projectStats.total > 0 ? 
-    Math.round((projectStats.completed / projectStats.total) * 100) : 0
-  
-  const bigTaskCompletionRate = bigTaskStats.total > 0 ? 
-    Math.round((bigTaskStats.completed / bigTaskStats.total) * 100) : 0
-  
-  const smallTaskCompletionRate = smallTaskStats.total > 0 ? 
-    Math.round((smallTaskStats.completed / smallTaskStats.total) * 100) : 0
+  const projectCompletionRate =
+    projectStats.total > 0 ? Math.round((projectStats.completed / projectStats.total) * 100) : 0
 
-  const bigTaskTimeEfficiency = bigTaskStats.totalEstimatedHours > 0 ? 
-    Math.round((bigTaskStats.totalActualHours / bigTaskStats.totalEstimatedHours) * 100) : 0
+  const bigTaskCompletionRate =
+    bigTaskStats.total > 0 ? Math.round((bigTaskStats.completed / bigTaskStats.total) * 100) : 0
 
-  const smallTaskTimeEfficiency = smallTaskStats.totalEstimatedMinutes > 0 ? 
-    Math.round((smallTaskStats.totalActualMinutes / smallTaskStats.totalEstimatedMinutes) * 100) : 0
+  const smallTaskCompletionRate =
+    smallTaskStats.total > 0
+      ? Math.round((smallTaskStats.completed / smallTaskStats.total) * 100)
+      : 0
+
+  const bigTaskTimeEfficiency =
+    bigTaskStats.totalEstimatedHours > 0
+      ? Math.round((bigTaskStats.totalActualHours / bigTaskStats.totalEstimatedHours) * 100)
+      : 0
+
+  const smallTaskTimeEfficiency =
+    smallTaskStats.totalEstimatedMinutes > 0
+      ? Math.round((smallTaskStats.totalActualMinutes / smallTaskStats.totalEstimatedMinutes) * 100)
+      : 0
 
   // Project performance analysis
-  const projectPerformance = filteredProjects.map(project => {
-    const projectBigTasks = filteredBigTasks.filter(t => t.project_id === project.id)
-    const projectSmallTasks = filteredSmallTasks.filter(t => 
-      projectBigTasks.some(bt => bt.id === t.big_task_id)
-    )
-    
-    const bigTaskCompletion = projectBigTasks.length > 0 ? 
-      Math.round((projectBigTasks.filter(t => t.status === 'completed').length / projectBigTasks.length) * 100) : 0
-    
-    const smallTaskCompletion = projectSmallTasks.length > 0 ? 
-      Math.round((projectSmallTasks.filter(t => t.actual_minutes && t.actual_minutes > 0).length / projectSmallTasks.length) * 100) : 0
+  const projectPerformance = filteredProjects
+    .map(project => {
+      const projectBigTasks = filteredBigTasks.filter(t => t.project_id === project.id)
+      const projectSmallTasks = filteredSmallTasks.filter(t =>
+        projectBigTasks.some(bt => bt.id === t.big_task_id)
+      )
 
-    return {
-      project,
-      bigTaskCount: projectBigTasks.length,
-      smallTaskCount: projectSmallTasks.length,
-      bigTaskCompletion,
-      smallTaskCompletion,
-      overallCompletion: Math.round((bigTaskCompletion + smallTaskCompletion) / 2)
-    }
-  }).sort((a, b) => b.overallCompletion - a.overallCompletion)
+      const bigTaskCompletion =
+        projectBigTasks.length > 0
+          ? Math.round(
+              (projectBigTasks.filter(t => t.status === 'completed').length /
+                projectBigTasks.length) *
+                100
+            )
+          : 0
+
+      const smallTaskCompletion =
+        projectSmallTasks.length > 0
+          ? Math.round(
+              (projectSmallTasks.filter(t => t.actual_minutes && t.actual_minutes > 0).length /
+                projectSmallTasks.length) *
+                100
+            )
+          : 0
+
+      return {
+        project,
+        bigTaskCount: projectBigTasks.length,
+        smallTaskCount: projectSmallTasks.length,
+        bigTaskCompletion,
+        smallTaskCompletion,
+        overallCompletion: Math.round((bigTaskCompletion + smallTaskCompletion) / 2),
+      }
+    })
+    .sort((a, b) => b.overallCompletion - a.overallCompletion)
 
   // Time variance analysis
   const timeVarianceAnalysis = filteredSmallTasks
     .filter(task => task.actual_minutes && task.actual_minutes > 0)
     .map(task => {
       const variance = (task.actual_minutes || 0) - task.estimated_minutes
-      const variancePercent = task.estimated_minutes > 0 ? 
-        Math.round((variance / task.estimated_minutes) * 100) : 0
+      const variancePercent =
+        task.estimated_minutes > 0 ? Math.round((variance / task.estimated_minutes) * 100) : 0
       return {
         task,
         variance,
         variancePercent,
         isAccurate: Math.abs(variancePercent) <= 20,
         isOver: variance > 0,
-        isUnder: variance < 0
+        isUnder: variance < 0,
       }
     })
 
   const accurateEstimates = timeVarianceAnalysis.filter(t => t.isAccurate).length
-  const estimateAccuracy = timeVarianceAnalysis.length > 0 ? 
-    Math.round((accurateEstimates / timeVarianceAnalysis.length) * 100) : 0
-
+  const estimateAccuracy =
+    timeVarianceAnalysis.length > 0
+      ? Math.round((accurateEstimates / timeVarianceAnalysis.length) * 100)
+      : 0
 
   const getEfficiencyColor = (efficiency: number) => {
     if (efficiency >= 90) return 'text-green-600'
@@ -200,7 +220,7 @@ export default function ReportsPage() {
               <p className="text-gray-600">プロジェクトとタスクの総合的な分析結果</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
@@ -371,11 +391,11 @@ export default function ReportsPage() {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      予定: {Math.round(bigTaskStats.totalEstimatedHours)}h / 
-                      実績: {Math.round(bigTaskStats.totalActualHours)}h
+                      予定: {Math.round(bigTaskStats.totalEstimatedHours)}h / 実績:{' '}
+                      {Math.round(bigTaskStats.totalActualHours)}h
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm">小タスク時間効率</span>
@@ -384,21 +404,23 @@ export default function ReportsPage() {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      予定: {Math.round(smallTaskStats.totalEstimatedMinutes / 60)}h / 
-                      実績: {Math.round(smallTaskStats.totalActualMinutes / 60)}h
+                      予定: {Math.round(smallTaskStats.totalEstimatedMinutes / 60)}h / 実績:{' '}
+                      {Math.round(smallTaskStats.totalActualMinutes / 60)}h
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm">総予定時間</span>
                       <span className="font-bold">
-                        {Math.round(bigTaskStats.totalEstimatedHours + smallTaskStats.totalEstimatedMinutes / 60)}h
+                        {Math.round(
+                          bigTaskStats.totalEstimatedHours +
+                            smallTaskStats.totalEstimatedMinutes / 60
+                        )}
+                        h
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      大タスク + 小タスク
-                    </div>
+                    <div className="text-xs text-gray-500">大タスク + 小タスク</div>
                   </div>
                 </div>
               </CardContent>
@@ -422,18 +444,25 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium">{item.project.name}</h4>
-                        <Badge variant={item.project.status === 'completed' ? 'default' : 'secondary'}>
-                          {item.project.status === 'completed' ? '完了' : 
-                           item.project.status === 'active' ? 'アクティブ' : 
-                           item.project.status === 'planning' ? '計画中' : 
-                           item.project.status}
+                        <Badge
+                          variant={item.project.status === 'completed' ? 'default' : 'secondary'}
+                        >
+                          {item.project.status === 'completed'
+                            ? '完了'
+                            : item.project.status === 'active'
+                              ? 'アクティブ'
+                              : item.project.status === 'planning'
+                                ? '計画中'
+                                : item.project.status}
                         </Badge>
                       </div>
-                      <div className={`text-lg font-bold ${getCompletionColor(item.overallCompletion)}`}>
+                      <div
+                        className={`text-lg font-bold ${getCompletionColor(item.overallCompletion)}`}
+                      >
                         {item.overallCompletion}%
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="flex justify-between mb-1">
@@ -489,13 +518,15 @@ export default function ReportsPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h4 className="font-medium mb-2">小タスク</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>完了:</span>
-                        <span className="font-medium text-green-600">{smallTaskStats.completed}</span>
+                        <span className="font-medium text-green-600">
+                          {smallTaskStats.completed}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>未完了:</span>
@@ -507,7 +538,9 @@ export default function ReportsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>期限超過:</span>
-                        <span className="font-medium text-orange-600">{smallTaskStats.overdue}</span>
+                        <span className="font-medium text-orange-600">
+                          {smallTaskStats.overdue}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -536,7 +569,7 @@ export default function ReportsPage() {
                       </p>
                     </div>
                   )}
-                  
+
                   {smallTaskStats.emergency > 0 && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded">
                       <div className="flex items-center gap-2 mb-1">
@@ -548,7 +581,7 @@ export default function ReportsPage() {
                       </p>
                     </div>
                   )}
-                  
+
                   {projectStats.overdue > 0 && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
                       <div className="flex items-center gap-2 mb-1">
@@ -560,18 +593,18 @@ export default function ReportsPage() {
                       </p>
                     </div>
                   )}
-                  
-                  {smallTaskStats.overdue === 0 && smallTaskStats.emergency === 0 && projectStats.overdue === 0 && (
-                    <div className="p-3 bg-green-50 border border-green-200 rounded">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <span className="font-medium text-green-800">問題なし</span>
+
+                  {smallTaskStats.overdue === 0 &&
+                    smallTaskStats.emergency === 0 &&
+                    projectStats.overdue === 0 && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <span className="font-medium text-green-800">問題なし</span>
+                        </div>
+                        <p className="text-sm text-green-700">現在、緊急の課題はありません</p>
                       </div>
-                      <p className="text-sm text-green-700">
-                        現在、緊急の課題はありません
-                      </p>
-                    </div>
-                  )}
+                    )}
                 </div>
               </CardContent>
             </Card>
@@ -597,9 +630,7 @@ export default function ReportsPage() {
                     <div className="text-sm text-green-700">予定より短縮</div>
                   </div>
                   <div className="p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {accurateEstimates}
-                    </div>
+                    <div className="text-2xl font-bold text-blue-600">{accurateEstimates}</div>
                     <div className="text-sm text-blue-700">正確な見積り</div>
                   </div>
                   <div className="p-4 bg-red-50 rounded-lg">
@@ -609,11 +640,9 @@ export default function ReportsPage() {
                     <div className="text-sm text-red-700">予定より超過</div>
                   </div>
                 </div>
-                
+
                 <div className="text-center">
-                  <div className="text-lg font-medium mb-2">
-                    見積り精度: {estimateAccuracy}%
-                  </div>
+                  <div className="text-lg font-medium mb-2">見積り精度: {estimateAccuracy}%</div>
                   <Progress value={estimateAccuracy} className="max-w-md mx-auto" />
                 </div>
               </div>

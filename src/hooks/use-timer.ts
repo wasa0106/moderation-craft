@@ -5,7 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { workSessionRepository } from '@/lib/db/repositories'
+import { workSessionRepository, taskRepository, projectRepository } from '@/lib/db/repositories'
 import { useTimerStore } from '@/stores/timer-store'
 import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
@@ -19,41 +19,73 @@ export function useTimer(userId: string) {
   const timerStore = useTimerStore()
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Get active session
+  // Get active session and restore timer state
   const activeSessionQuery = useQuery({
     queryKey: queryKeys.activeSession(userId),
     queryFn: async () => {
       const session = await workSessionRepository.getActiveSession(userId)
       if (session && !timerStore.activeSession) {
-        timerStore.startTimer(session)
+        // セッションが存在し、タイマーストアにまだ設定されていない場合
+        // 経過時間を計算
+        const startTime = new Date(session.start_time)
+        const now = new Date()
+        const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000)
+        
+        // タスクとプロジェクトの情報を取得
+        let task = null
+        let project = null
+        if (session.small_task_id) {
+          try {
+            const taskData = await taskRepository.getById(session.small_task_id)
+            task = taskData
+            if (taskData?.project_id) {
+              const projectData = await projectRepository.getById(taskData.project_id)
+              project = projectData
+            }
+          } catch (error) {
+            console.error('Failed to restore task/project:', error)
+          }
+        }
+        
+        // タイマーを復元
+        timerStore.startTimer(session, task, project)
+        // 経過時間を更新
+        timerStore.updateElapsedTime(elapsedSeconds)
       }
-      return session
+      return session || null  // undefinedの代わりにnullを返す
     },
     staleTime: 30 * 1000, // 30 seconds
-    enabled: !!userId
+    enabled: !!userId,
   })
 
   // Start timer mutation
   const startTimerMutation = useMutation({
-    mutationFn: async (data?: { taskId?: string }) => {
+    mutationFn: async (data?: { taskId?: string; taskDescription?: string }) => {
       const sessionData: CreateWorkSessionData = {
         user_id: userId,
         small_task_id: data?.taskId,
+        task_description: data?.taskDescription,
         start_time: new Date().toISOString(),
         duration_minutes: 0,
-        is_synced: false
+        is_synced: false,
       }
 
-      const session = await workSessionRepository.startSession(userId, data?.taskId)
-      await syncService.addToSyncQueue('work_session', session.id, 'create', session)
-      
+      const session = await workSessionRepository.startSession(
+        userId, 
+        data?.taskId,
+        undefined,
+        data?.taskDescription
+      )
+      // 開発中は自動同期を無効化（手動で同期キューに追加）
+      // await syncService.addToSyncQueue('work_session', session.id, 'create', session)
+
       timerStore.startTimer(session)
       return session
     },
     onSuccess: () => {
       invalidateQueries.activeSession(userId)
       invalidateQueries.workSessions()
-    }
+    },
   })
 
   // End timer mutation
@@ -76,15 +108,16 @@ export function useTimer(userId: string) {
         await workSessionRepository.addMoodNotes(session.id, moodNotes)
       }
 
-      await syncService.addToSyncQueue('work_session', session.id, 'update', session)
-      
+      // 開発中は自動同期を無効化（手動で同期キューに追加）
+      // await syncService.addToSyncQueue('work_session', session.id, 'update', session)
+
       timerStore.stopTimer()
       return session
     },
     onSuccess: () => {
       invalidateQueries.activeSession(userId)
       invalidateQueries.workSessions()
-    }
+    },
   })
 
   // Pause timer mutation
@@ -96,14 +129,15 @@ export function useTimer(userId: string) {
       }
 
       const session = await workSessionRepository.pauseSession(activeSession.id)
-      await syncService.addToSyncQueue('work_session', session.id, 'update', session)
-      
+      // 開発中は自動同期を無効化（手動で同期キューに追加）
+      // await syncService.addToSyncQueue('work_session', session.id, 'update', session)
+
       timerStore.pauseTimer()
       return session
     },
     onSuccess: () => {
       invalidateQueries.activeSession(userId)
-    }
+    },
   })
 
   // Resume timer mutation
@@ -115,14 +149,15 @@ export function useTimer(userId: string) {
       }
 
       const session = await workSessionRepository.resumeSession(activeSession.id)
-      await syncService.addToSyncQueue('work_session', session.id, 'update', session)
-      
+      // 開発中は自動同期を無効化（手動で同期キューに追加）
+      // await syncService.addToSyncQueue('work_session', session.id, 'update', session)
+
       timerStore.resumeTimer()
       return session
     },
     onSuccess: () => {
       invalidateQueries.activeSession(userId)
-    }
+    },
   })
 
   // Update focus level mutation
@@ -134,11 +169,12 @@ export function useTimer(userId: string) {
       }
 
       const session = await workSessionRepository.updateFocusLevel(activeSession.id, focusLevel)
-      await syncService.addToSyncQueue('work_session', session.id, 'update', session)
-      
+      // 開発中は自動同期を無効化（手動で同期キューに追加）
+      // await syncService.addToSyncQueue('work_session', session.id, 'update', session)
+
       timerStore.setFocusLevel(focusLevel)
       return session
-    }
+    },
   })
 
   // Timer interval effect
@@ -169,7 +205,8 @@ export function useTimer(userId: string) {
     const autoSaveInterval = setInterval(async () => {
       try {
         await workSessionRepository.pauseSession(timerStore.activeSession!.id)
-        await syncService.addToSyncQueue('work_session', timerStore.activeSession!.id, 'update')
+        // 開発中は自動同期を無効化
+        // await syncService.addToSyncQueue('work_session', timerStore.activeSession!.id, 'update')
       } catch (error) {
         console.error('Auto-save failed:', error)
       }
@@ -214,15 +251,13 @@ export function useTimer(userId: string) {
     // Query state
     isLoadingActiveSession: activeSessionQuery.isLoading,
     activeSessionError: activeSessionQuery.error,
-    refetchActiveSession: activeSessionQuery.refetch
+    refetchActiveSession: activeSessionQuery.refetch,
   }
 }
 
 export function useWorkSessions(userId: string, date?: string) {
   return useQuery({
-    queryKey: date 
-      ? queryKeys.workSessionsByDate(userId, date)
-      : queryKeys.workSessions(),
+    queryKey: date ? queryKeys.workSessionsByDate(userId, date) : queryKeys.workSessions(),
     queryFn: async () => {
       if (date) {
         return await workSessionRepository.getSessionsForDate(userId, date)
@@ -231,7 +266,7 @@ export function useWorkSessions(userId: string, date?: string) {
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId
+    enabled: !!userId,
   })
 }
 
@@ -240,6 +275,6 @@ export function useWorkSessionsByTask(taskId: string) {
     queryKey: queryKeys.workSessionsByTask(taskId),
     queryFn: () => workSessionRepository.getByTaskId(taskId),
     staleTime: 5 * 60 * 1000,
-    enabled: !!taskId
+    enabled: !!taskId,
   })
 }

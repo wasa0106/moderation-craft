@@ -8,7 +8,14 @@ import { bigTaskRepository, smallTaskRepository } from '@/lib/db/repositories'
 import { useTaskStore } from '@/stores/task-store'
 import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
-import { BigTask, SmallTask, CreateBigTaskData, CreateSmallTaskData, UpdateBigTaskData, UpdateSmallTaskData } from '@/types'
+import {
+  BigTask,
+  SmallTask,
+  CreateBigTaskData,
+  CreateSmallTaskData,
+  UpdateBigTaskData,
+  UpdateSmallTaskData,
+} from '@/types'
 import { generateId } from '@/lib/utils'
 
 const syncService = SyncService.getInstance()
@@ -25,7 +32,7 @@ export function useBigTasks(projectId: string) {
       return tasks
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!projectId
+    enabled: !!projectId,
   })
 
   const createBigTaskMutation = useMutation({
@@ -37,7 +44,7 @@ export function useBigTasks(projectId: string) {
     onSuccess: () => {
       invalidateQueries.bigTasksByProject(projectId)
       invalidateQueries.bigTasks()
-    }
+    },
   })
 
   const updateBigTaskMutation = useMutation({
@@ -50,11 +57,11 @@ export function useBigTasks(projectId: string) {
       const updatedTask = {
         ...originalTask,
         ...data,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       taskStore.optimisticUpdateBigTask(id, updatedTask)
-      
+
       try {
         const result = await bigTaskRepository.update(id, data)
         await syncService.addToSyncQueue('big_task', id, 'update', result)
@@ -64,10 +71,10 @@ export function useBigTasks(projectId: string) {
         throw error
       }
     },
-    onSuccess: (task) => {
+    onSuccess: task => {
       invalidateQueries.bigTask(task.id)
       invalidateQueries.bigTasksByProject(projectId)
-    }
+    },
   })
 
   const deleteBigTaskMutation = useMutation({
@@ -78,7 +85,7 @@ export function useBigTasks(projectId: string) {
       }
 
       taskStore.optimisticDeleteBigTask(id)
-      
+
       try {
         await bigTaskRepository.delete(id)
         await syncService.addToSyncQueue('big_task', id, 'delete')
@@ -89,23 +96,23 @@ export function useBigTasks(projectId: string) {
     },
     onSuccess: () => {
       invalidateQueries.bigTasksByProject(projectId)
-    }
+    },
   })
 
   return {
     bigTasks: bigTasksQuery.data || [],
     isLoading: bigTasksQuery.isLoading,
     error: bigTasksQuery.error,
-    
+
     createBigTask: createBigTaskMutation.mutate,
     updateBigTask: updateBigTaskMutation.mutate,
     deleteBigTask: deleteBigTaskMutation.mutate,
-    
+
     isCreating: createBigTaskMutation.isPending,
     isUpdating: updateBigTaskMutation.isPending,
     isDeleting: deleteBigTaskMutation.isPending,
-    
-    refetch: bigTasksQuery.refetch
+
+    refetch: bigTasksQuery.refetch,
   }
 }
 
@@ -114,14 +121,14 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
   const taskStore = useTaskStore()
 
   const smallTasksQuery = useQuery({
-    queryKey: bigTaskId 
+    queryKey: bigTaskId
       ? queryKeys.smallTasksByBigTask(bigTaskId)
-      : date && userId 
-      ? queryKeys.smallTasksByDate(userId, date)
-      : queryKeys.smallTasks(),
+      : date && userId
+        ? queryKeys.smallTasksByDate(userId, date)
+        : queryKeys.smallTasks(),
     queryFn: async () => {
       let tasks: SmallTask[]
-      
+
       if (bigTaskId) {
         tasks = await smallTaskRepository.getByBigTaskId(bigTaskId)
       } else if (date && userId) {
@@ -129,12 +136,12 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
       } else {
         tasks = []
       }
-      
+
       taskStore.setSmallTasks(tasks)
       return tasks
     },
     staleTime: 2 * 60 * 1000,
-    enabled: !!(bigTaskId || (date && userId))
+    enabled: !!(bigTaskId || (date && userId)),
   })
 
   const createSmallTaskMutation = useMutation({
@@ -151,7 +158,7 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
         invalidateQueries.smallTasksByDate(userId, date)
       }
       invalidateQueries.smallTasks()
-    }
+    },
   })
 
   const updateSmallTaskMutation = useMutation({
@@ -164,11 +171,11 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
       const updatedTask = {
         ...originalTask,
         ...data,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       taskStore.optimisticUpdateSmallTask(id, updatedTask)
-      
+
       try {
         const result = await smallTaskRepository.update(id, data)
         await syncService.addToSyncQueue('small_task', id, 'update', result)
@@ -178,7 +185,7 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
         throw error
       }
     },
-    onSuccess: (task) => {
+    onSuccess: task => {
       invalidateQueries.smallTask(task.id)
       if (bigTaskId) {
         invalidateQueries.smallTasksByBigTask(bigTaskId)
@@ -186,7 +193,7 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
       if (date && userId) {
         invalidateQueries.smallTasksByDate(userId, date)
       }
-    }
+    },
   })
 
   const deleteSmallTaskMutation = useMutation({
@@ -197,7 +204,7 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
       }
 
       taskStore.optimisticDeleteSmallTask(id)
-      
+
       try {
         await smallTaskRepository.delete(id)
         await syncService.addToSyncQueue('small_task', id, 'delete')
@@ -213,7 +220,7 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
       if (date && userId) {
         invalidateQueries.smallTasksByDate(userId, date)
       }
-    }
+    },
   })
 
   const startTaskMutation = useMutation({
@@ -223,12 +230,12 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
       await syncService.addToSyncQueue('small_task', id, 'update', task)
       return task
     },
-    onSuccess: (task) => {
+    onSuccess: task => {
       invalidateQueries.smallTask(task.id)
       if (userId) {
         invalidateQueries.activeTasks(userId)
       }
-    }
+    },
   })
 
   const completeTaskMutation = useMutation({
@@ -240,32 +247,32 @@ export function useSmallTasks(bigTaskId?: string, userId?: string, date?: string
       await syncService.addToSyncQueue('small_task', id, 'update', task)
       return task
     },
-    onSuccess: (task) => {
+    onSuccess: task => {
       invalidateQueries.smallTask(task.id)
       if (userId) {
         invalidateQueries.activeTasks(userId)
       }
-    }
+    },
   })
 
   return {
     smallTasks: smallTasksQuery.data || [],
     isLoading: smallTasksQuery.isLoading,
     error: smallTasksQuery.error,
-    
+
     createSmallTask: createSmallTaskMutation.mutate,
     updateSmallTask: updateSmallTaskMutation.mutate,
     deleteSmallTask: deleteSmallTaskMutation.mutate,
     startTask: startTaskMutation.mutate,
     completeTask: completeTaskMutation.mutate,
-    
+
     isCreating: createSmallTaskMutation.isPending,
     isUpdating: updateSmallTaskMutation.isPending,
     isDeleting: deleteSmallTaskMutation.isPending,
     isStarting: startTaskMutation.isPending,
     isCompleting: completeTaskMutation.isPending,
-    
-    refetch: smallTasksQuery.refetch
+
+    refetch: smallTasksQuery.refetch,
   }
 }
 
@@ -274,7 +281,7 @@ export function useTasksForDate(userId: string, date: string) {
     queryKey: queryKeys.smallTasksByDate(userId, date),
     queryFn: () => smallTaskRepository.getScheduledForDate(userId, date),
     staleTime: 2 * 60 * 1000,
-    enabled: !!(userId && date)
+    enabled: !!(userId && date),
   })
 }
 
@@ -288,6 +295,6 @@ export function useActiveTasks(userId: string) {
       return tasks
     },
     staleTime: 30 * 1000, // 30 seconds
-    enabled: !!userId
+    enabled: !!userId,
   })
 }

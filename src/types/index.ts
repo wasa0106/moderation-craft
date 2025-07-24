@@ -15,7 +15,7 @@ export interface Project extends DatabaseEntity {
   name: string
   goal: string
   deadline: string
-  status: 'planning' | 'active' | 'completed' | 'paused' | 'cancelled'
+  status: 'active' | 'completed'
   version: number
   estimated_total_hours?: number
 }
@@ -26,6 +26,8 @@ export interface BigTask extends DatabaseEntity {
   name: string
   category: string
   week_number: number
+  week_start_date?: string // 週の開始日（ISO 8601形式）
+  week_end_date?: string // 週の終了日（ISO 8601形式）
   estimated_hours: number
   actual_hours?: number
   status: 'pending' | 'active' | 'completed' | 'cancelled'
@@ -48,6 +50,9 @@ export interface SmallTask extends DatabaseEntity {
   is_emergency?: boolean
   variance_ratio?: number
   description?: string
+  tags?: string[]
+  task_no?: string
+  project_id?: string
 }
 
 export interface WorkSession extends DatabaseEntity {
@@ -65,6 +70,13 @@ export interface MoodEntry extends DatabaseEntity {
   user_id: string
   timestamp: string
   mood_level: number
+  notes?: string
+}
+
+export interface DopamineEntry extends DatabaseEntity {
+  user_id: string
+  timestamp: string
+  event_description: string
   notes?: string
 }
 
@@ -88,7 +100,15 @@ export interface CategoryColor extends DatabaseEntity {
 export interface SyncOperation extends DatabaseEntity {
   operation_id: string
   operation_type: 'CREATE' | 'UPDATE' | 'DELETE'
-  entity_type: 'project' | 'big_task' | 'small_task' | 'work_session' | 'mood_entry' | 'daily_condition' | 'category_color'
+  entity_type:
+    | 'project'
+    | 'big_task'
+    | 'small_task'
+    | 'work_session'
+    | 'mood_entry'
+    | 'dopamine_entry'
+    | 'daily_condition'
+    | 'category_color'
   entity_id: string
   payload: Record<string, unknown>
   timestamp: string
@@ -102,7 +122,7 @@ export interface SyncQueueItem extends DatabaseEntity {
   user_id: string
   entity_type: string
   entity_id: string
-  operation: 'create' | 'update' | 'delete'
+  operation_type: 'CREATE' | 'UPDATE' | 'DELETE'
   data?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   attempt_count: number
@@ -120,11 +140,41 @@ export type UpdateBigTaskData = Partial<Omit<BigTask, 'id' | 'created_at'>>
 export type CreateSmallTaskData = Omit<SmallTask, 'id' | 'created_at' | 'updated_at'>
 export type UpdateSmallTaskData = Partial<Omit<SmallTask, 'id' | 'created_at'>>
 
+export interface ScheduleBlock {
+  id: string
+  taskId: string
+  startTime: string
+  endTime: string
+  projectId: string
+  projectName: string
+  taskName: string
+  tags?: string[]
+  color?: string
+}
+
+export interface WeeklySchedule {
+  weekStartDate: string
+  weekEndDate: string
+  scheduleBlocks: ScheduleBlock[]
+  unscheduledTasks: SmallTask[]
+}
+
+export interface SmallTaskFormData {
+  name: string
+  estimated_minutes: number
+  tags: string[]
+  task_no?: string
+  description?: string
+}
+
 export type CreateWorkSessionData = Omit<WorkSession, 'id' | 'created_at' | 'updated_at'>
 export type UpdateWorkSessionData = Partial<Omit<WorkSession, 'id' | 'created_at'>>
 
 export type CreateMoodEntryData = Omit<MoodEntry, 'id' | 'created_at' | 'updated_at'>
 export type UpdateMoodEntryData = Partial<Omit<MoodEntry, 'id' | 'created_at'>>
+
+export type CreateDopamineEntryData = Omit<DopamineEntry, 'id' | 'created_at' | 'updated_at'>
+export type UpdateDopamineEntryData = Partial<Omit<DopamineEntry, 'id' | 'created_at'>>
 
 export type CreateCategoryColorData = Omit<CategoryColor, 'id' | 'created_at' | 'updated_at'>
 export type UpdateCategoryColorData = Partial<Omit<CategoryColor, 'id' | 'created_at'>>
@@ -132,7 +182,10 @@ export type UpdateCategoryColorData = Partial<Omit<CategoryColor, 'id' | 'create
 export type CreateDailyConditionData = Omit<DailyCondition, 'id' | 'created_at' | 'updated_at'>
 export type UpdateDailyConditionData = Partial<Omit<DailyCondition, 'id' | 'created_at'>>
 
-export type CreateSyncOperationData = Omit<SyncOperation, 'id' | 'retry_count' | 'status' | 'created_at' | 'updated_at'>
+export type CreateSyncOperationData = Omit<
+  SyncOperation,
+  'id' | 'retry_count' | 'status' | 'created_at' | 'updated_at'
+>
 export type CreateSyncQueueData = Omit<SyncQueueItem, 'id' | 'created_at' | 'updated_at'>
 
 export interface DatabaseEntity {
@@ -148,12 +201,11 @@ export interface UserEntity extends DatabaseEntity {
 
 export interface TaskStatus {
   pending: 'pending'
-  active: 'active' 
+  active: 'active'
   completed: 'completed'
 }
 
 export interface ProjectStatus {
-  planning: 'planning'
   active: 'active'
   completed: 'completed'
 }
@@ -177,6 +229,7 @@ export interface EntityType {
   small_task: 'small_task'
   work_session: 'work_session'
   mood_entry: 'mood_entry'
+  dopamine_entry: 'dopamine_entry'
   daily_condition: 'daily_condition'
 }
 
@@ -316,6 +369,12 @@ export interface WorkSessionRepository extends RepositoryInterface<WorkSession> 
 export interface MoodEntryRepository extends RepositoryInterface<MoodEntry> {
   getByDateRange(userId: string, startDate: string, endDate: string): Promise<MoodEntry[]>
   getLatestEntry(userId: string): Promise<MoodEntry | undefined>
+}
+
+export interface DopamineEntryRepository extends RepositoryInterface<DopamineEntry> {
+  getByDateRange(userId: string, startDate: string, endDate: string): Promise<DopamineEntry[]>
+  getLatestEntry(userId: string): Promise<DopamineEntry | undefined>
+  getTodayEntries(userId: string): Promise<DopamineEntry[]>
 }
 
 export interface DailyConditionRepository extends RepositoryInterface<DailyCondition> {

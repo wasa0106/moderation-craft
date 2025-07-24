@@ -19,7 +19,7 @@ export function AutoSaveIndicator({ status, lastSaved, error }: AutoSaveIndicato
   useEffect(() => {
     if (status !== 'idle') {
       setIsVisible(true)
-      
+
       if (status === 'saved' || status === 'error') {
         const timer = setTimeout(() => setIsVisible(false), 3000)
         return () => clearTimeout(timer)

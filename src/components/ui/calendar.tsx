@@ -7,20 +7,18 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { 
-  ChevronLeft, 
-  ChevronRight 
-} from 'lucide-react'
-import { format, 
-  startOfMonth, 
-  endOfMonth, 
-  startOfWeek, 
-  endOfWeek, 
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
   eachDayOfInterval,
   isSameMonth,
   isSameDay,
   addMonths,
-  subMonths
+  subMonths,
 } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -33,12 +31,7 @@ interface CalendarProps {
   locale?: typeof ja
 }
 
-export function Calendar({ 
-  selected, 
-  onSelect, 
-  className,
-  locale = ja
-}: CalendarProps) {
+export function Calendar({ selected, onSelect, className, locale = ja }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(selected || new Date())
 
   const monthStart = startOfMonth(currentMonth)
@@ -68,36 +61,21 @@ export function Calendar({
     <div className={cn('p-3', className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={goToPreviousMonth}
-          className="h-8 w-8 p-0"
-        >
+        <Button variant="outline" size="sm" onClick={goToPreviousMonth} className="h-8 w-8 p-0">
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        
-        <h2 className="font-semibold text-lg">
-          {format(currentMonth, 'yyyy年MM月', { locale })}
-        </h2>
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={goToNextMonth}
-          className="h-8 w-8 p-0"
-        >
+
+        <h2 className="font-semibold text-lg">{format(currentMonth, 'yyyy年MM月', { locale })}</h2>
+
+        <Button variant="outline" size="sm" onClick={goToNextMonth} className="h-8 w-8 p-0">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Week days */}
       <div className="grid grid-cols-7 gap-1 mb-2">
-        {weekDays.map((day) => (
-          <div 
-            key={day}
-            className="text-center text-sm font-medium text-gray-500 py-2"
-          >
+        {weekDays.map(day => (
+          <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
             {day}
           </div>
         ))}
@@ -105,11 +83,11 @@ export function Calendar({
 
       {/* Days */}
       <div className="grid grid-cols-7 gap-1">
-        {days.map((day) => {
+        {days.map(day => {
           const isCurrentMonth = isSameMonth(day, currentMonth)
           const isSelected = selected && isSameDay(day, selected)
           const isToday = isSameDay(day, new Date())
-          
+
           return (
             <Button
               key={day.toISOString()}

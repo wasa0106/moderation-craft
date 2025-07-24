@@ -4,7 +4,12 @@
 
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import { getDefaultColorForCategory, getNextColor, DEFAULT_CATEGORY_MAPPING, DEFAULT_CATEGORY_COLORS } from '@/lib/colors/category-colors'
+import {
+  getDefaultColorForCategory,
+  getNextColor,
+  DEFAULT_CATEGORY_MAPPING,
+  DEFAULT_CATEGORY_COLORS,
+} from '@/lib/colors/category-colors'
 
 // 完全なカラーパレット（重複防止用）
 const COMPLETE_COLOR_PALETTE = [
@@ -32,6 +37,8 @@ export interface Task {
   name: string
   estimatedHours: number
   order: number
+  week_start?: number
+  week_end?: number
 }
 
 export interface WeeklyAllocation {
@@ -69,7 +76,7 @@ interface ProjectCreationState {
   // タスク一覧
   tasks: Task[]
   totalTaskHours: number
-  
+
   // カテゴリ管理
   projectCategories: string[]
   categoryColors: Map<string, string>
@@ -102,7 +109,8 @@ interface ProjectCreationActions {
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
   reorderTasks: (startIndex: number, endIndex: number) => void
-  
+  updateTaskWeeks: (id: string, weekStart: number, weekEnd: number) => void
+
   // カテゴリ管理
   addCategory: (category: string) => void
   updateTaskCategory: (taskId: string, category: string) => void
@@ -142,14 +150,14 @@ const initialState: ProjectCreationState = {
 
   tasks: [],
   totalTaskHours: 0,
-  
+
   projectCategories: ['企画・設計', 'デザイン', '実装', 'テスト', 'デプロイ'],
   categoryColors: new Map([
     ['企画・設計', COMPLETE_COLOR_PALETTE[0]], // #5E621B
-    ['デザイン', COMPLETE_COLOR_PALETTE[1]],     // #3C6659
-    ['実装', COMPLETE_COLOR_PALETTE[2]],         // #5F6044
-    ['テスト', COMPLETE_COLOR_PALETTE[3]],       // #BA1A1A
-    ['デプロイ', COMPLETE_COLOR_PALETTE[4]],     // #4A90E2
+    ['デザイン', COMPLETE_COLOR_PALETTE[1]], // #3C6659
+    ['実装', COMPLETE_COLOR_PALETTE[2]], // #5F6044
+    ['テスト', COMPLETE_COLOR_PALETTE[3]], // #BA1A1A
+    ['デプロイ', COMPLETE_COLOR_PALETTE[4]], // #4A90E2
   ]),
 
   weeklyAllocations: [],
@@ -165,54 +173,54 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       ...initialState,
 
       // プロジェクト基本情報
-      setProjectName: (name) => {
+      setProjectName: name => {
         set({ projectName: name })
         get().clearValidationErrors()
       },
 
-      setGoal: (goal) => {
+      setGoal: goal => {
         set({ goal })
         get().clearValidationErrors()
       },
 
-      setStartDate: (date) => {
+      setStartDate: date => {
         set({ startDate: date })
         get().calculateTotalWeeks()
         get().calculateTaskAllocation()
       },
 
-      setEndDate: (date) => {
+      setEndDate: date => {
         set({ endDate: date })
         get().calculateTotalWeeks()
         get().calculateTaskAllocation()
       },
 
       // 投下可能時間の計算
-      setWeekdayWorkDays: (days) => {
+      setWeekdayWorkDays: days => {
         set({ weekdayWorkDays: days })
         get().calculateWeeklyHours()
         get().calculateTaskAllocation()
       },
 
-      setWeekendWorkDays: (days) => {
+      setWeekendWorkDays: days => {
         set({ weekendWorkDays: days })
         get().calculateWeeklyHours()
         get().calculateTaskAllocation()
       },
 
-      setWeekdayHoursPerDay: (hours) => {
+      setWeekdayHoursPerDay: hours => {
         set({ weekdayHoursPerDay: hours })
         get().calculateWeeklyHours()
         get().calculateTaskAllocation()
       },
 
-      setWeekendHoursPerDay: (hours) => {
+      setWeekendHoursPerDay: hours => {
         set({ weekendHoursPerDay: hours })
         get().calculateWeeklyHours()
         get().calculateTaskAllocation()
       },
 
-      setBufferRate: (rate) => {
+      setBufferRate: rate => {
         set({ bufferRate: rate })
         get().calculateWeeklyHours()
         get().calculateTaskAllocation()
@@ -231,14 +239,12 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       },
 
       updateTask: (id, updates) => {
-        const tasks = get().tasks.map(task => 
-          task.id === id ? { ...task, ...updates } : task
-        )
+        const tasks = get().tasks.map(task => (task.id === id ? { ...task, ...updates } : task))
         set({ tasks })
         get().calculateTaskAllocation()
       },
 
-      deleteTask: (id) => {
+      deleteTask: id => {
         const tasks = get().tasks.filter(task => task.id !== id)
         set({ tasks })
         get().calculateTaskAllocation()
@@ -248,24 +254,45 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
         const tasks = [...get().tasks]
         const [removed] = tasks.splice(startIndex, 1)
         tasks.splice(endIndex, 0, removed)
-        
+
         // order を更新
         const updatedTasks = tasks.map((task, index) => ({
           ...task,
-          order: index
+          order: index,
         }))
-        
+
         set({ tasks: updatedTasks })
         get().calculateTaskAllocation()
       },
-      
+
+      updateTaskWeeks: (id, weekStart, weekEnd) => {
+        const tasks = get().tasks.map(task => {
+          if (task.id === id) {
+            // 週数から見積時間を再計算
+            const weeks = weekEnd - weekStart + 1
+            const estimatedHours = weeks * get().weeklyAvailableHours
+
+            return {
+              ...task,
+              week_start: weekStart,
+              week_end: weekEnd,
+              estimatedHours: Number(estimatedHours.toFixed(1)),
+            }
+          }
+          return task
+        })
+
+        set({ tasks })
+        get().calculateTaskAllocation()
+      },
+
       // カテゴリ管理
-      addCategory: (category) => {
+      addCategory: category => {
         const trimmedCategory = category.trim()
         if (trimmedCategory && !get().projectCategories.includes(trimmedCategory)) {
           console.log('➕ Adding new category:', trimmedCategory)
           set({ projectCategories: [...get().projectCategories, trimmedCategory] })
-          
+
           // カテゴリ追加時に色を自動割り当て（getCategoryColorを使用して重複防止）
           const currentColors = get().categoryColors
           if (!currentColors.has(trimmedCategory)) {
@@ -276,11 +303,9 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       },
 
       updateTaskCategory: (taskId, category) => {
-        const tasks = get().tasks.map(task => 
-          task.id === taskId ? { ...task, category } : task
-        )
+        const tasks = get().tasks.map(task => (task.id === taskId ? { ...task, category } : task))
         set({ tasks })
-        
+
         // 新しいカテゴリの場合は追加
         get().addCategory(category)
         get().calculateTaskAllocation()
@@ -292,27 +317,27 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
         set({ categoryColors: newColors })
       },
 
-      getCategoryColor: (category) => {
+      getCategoryColor: category => {
         console.log('🎨 Getting color for category:', category)
-        
+
         const { categoryColors } = get()
         console.log('📊 Current categoryColors:', Array.from(categoryColors.entries()))
-        
+
         if (!category) {
           console.log('⚠️ Empty category, returning gray')
           return '#999999' // 空の場合はグレー
         }
-        
+
         if (categoryColors.has(category)) {
           const existingColor = categoryColors.get(category)!
           console.log('✅ Found existing color:', existingColor, 'for category:', category)
           return existingColor
         }
-        
+
         // 新しいカテゴリに自動で色を割り当て
         const usedColors = new Set(categoryColors.values())
         console.log('🚫 Used colors:', Array.from(usedColors))
-        
+
         // 使用されていない色を探す
         let newColor = null
         for (const color of COMPLETE_COLOR_PALETTE) {
@@ -321,72 +346,100 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
             break
           }
         }
-        
+
         // すべての色が使用済みの場合
         if (!newColor) {
           const index = categoryColors.size % COMPLETE_COLOR_PALETTE.length
           newColor = COMPLETE_COLOR_PALETTE[index]
           console.log('🔄 All colors used, cycling with index:', index)
         }
-        
+
         console.log('🆕 Assigning new color:', newColor, 'to category:', category)
-        
+
         // 新しい色をマップに追加
         const newColors = new Map(categoryColors)
         newColors.set(category, newColor)
         set({ categoryColors: newColors })
-        
+
         console.log('💾 Updated categoryColors:', Array.from(newColors.entries()))
-        
+
         return newColor
       },
 
       loadCategoryColors: () => {
         const { projectCategories } = get()
         const newColors = new Map()
-        
+
         // デフォルトカテゴリの色を設定
         projectCategories.forEach(category => {
           const defaultColor = getDefaultColorForCategory(category)
           newColors.set(category, defaultColor)
         })
-        
+
         set({ categoryColors: newColors })
       },
 
       // 計算
       calculateWeeklyHours: () => {
-        const { weekdayWorkDays, weekendWorkDays, weekdayHoursPerDay, weekendHoursPerDay, bufferRate } = get()
-        
-        const weeklyHours = (weekdayWorkDays * weekdayHoursPerDay + weekendWorkDays * weekendHoursPerDay) * (bufferRate / 100)
-        
+        const {
+          weekdayWorkDays,
+          weekendWorkDays,
+          weekdayHoursPerDay,
+          weekendHoursPerDay,
+          bufferRate,
+        } = get()
+
+        const weeklyHours =
+          (weekdayWorkDays * weekdayHoursPerDay + weekendWorkDays * weekendHoursPerDay) *
+          (bufferRate / 100)
+
         set({ weeklyAvailableHours: Number(weeklyHours.toFixed(1)) })
       },
 
       calculateTaskAllocation: () => {
         const { weeklyAvailableHours, totalWeeks } = get()
         const validTasks = get().getValidTasks()
-        
+
         if (validTasks.length === 0 || weeklyAvailableHours === 0 || totalWeeks === 0) {
-          set({ 
-            weeklyAllocations: [], 
+          set({
+            weeklyAllocations: [],
             isOverCapacity: false,
-            totalTaskHours: 0
+            totalTaskHours: 0,
           })
           return
         }
 
-        const totalTaskHours = Number(validTasks.reduce((sum, task) => sum + task.estimatedHours, 0).toFixed(1))
-        const totalAvailableHours = Number((weeklyAvailableHours * totalWeeks).toFixed(1))
+        const totalTaskHours = Number(
+          validTasks.reduce((sum, task) => sum + task.estimatedHours, 0).toFixed(1)
+        )
+
+        // 週別配分を先に計算して、実際の利用可能時間を算出
+        const workSettings = {
+          weekdayWorkDays: get().weekdayWorkDays,
+          weekendWorkDays: get().weekendWorkDays,
+          weekdayHoursPerDay: get().weekdayHoursPerDay,
+          weekendHoursPerDay: get().weekendHoursPerDay,
+          bufferRate: get().bufferRate,
+        }
+        const weeklyAllocations = allocateTasksToWeeks(
+          validTasks,
+          weeklyAvailableHours,
+          totalWeeks,
+          get().startDate,
+          get().endDate,
+          workSettings
+        )
+
+        // 実際の合計利用可能時間を計算
+        const totalAvailableHours = Number(
+          weeklyAllocations.reduce((sum, week) => sum + week.availableHours, 0).toFixed(1)
+        )
         const isOverCapacity = totalTaskHours > totalAvailableHours
 
-        // 週別配分を計算（有効なタスクのみ）
-        const weeklyAllocations = allocateTasksToWeeks(validTasks, weeklyAvailableHours, totalWeeks, get().startDate)
-
-        set({ 
+        set({
           weeklyAllocations,
           isOverCapacity,
-          totalTaskHours
+          totalTaskHours,
         })
       },
 
@@ -415,9 +468,7 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
         }
 
         // 有効なタスクが1つもない場合
-        const validTasks = tasks.filter(task => 
-          task.name.trim() && task.estimatedHours > 0
-        )
+        const validTasks = tasks.filter(task => task.name.trim() && task.estimatedHours > 0)
         if (validTasks.length === 0) {
           errors.tasks = '少なくとも1つの有効なタスクを追加してください'
         }
@@ -429,9 +480,7 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       // 有効なタスクのみを取得
       getValidTasks: () => {
         const { tasks } = get()
-        return tasks.filter(task => 
-          task.name.trim() && task.estimatedHours > 0
-        )
+        return tasks.filter(task => task.name.trim() && task.estimatedHours > 0)
       },
 
       clearValidationErrors: () => {
@@ -445,11 +494,11 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           projectCategories: ['企画・設計', 'デザイン', '実装', 'テスト', 'デプロイ'], // デフォルトカテゴリをリセット
           categoryColors: new Map([
             ['企画・設計', COMPLETE_COLOR_PALETTE[0]], // #5E621B
-            ['デザイン', COMPLETE_COLOR_PALETTE[1]],     // #3C6659
-            ['実装', COMPLETE_COLOR_PALETTE[2]],         // #5F6044
-            ['テスト', COMPLETE_COLOR_PALETTE[3]],       // #BA1A1A
-            ['デプロイ', COMPLETE_COLOR_PALETTE[4]],     // #4A90E2
-          ])
+            ['デザイン', COMPLETE_COLOR_PALETTE[1]], // #3C6659
+            ['実装', COMPLETE_COLOR_PALETTE[2]], // #5F6044
+            ['テスト', COMPLETE_COLOR_PALETTE[3]], // #BA1A1A
+            ['デプロイ', COMPLETE_COLOR_PALETTE[4]], // #4A90E2
+          ]),
         }
         set(resetState)
       },
@@ -461,77 +510,146 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
 )
 
 // タスク配分アルゴリズム
+interface WorkSettings {
+  weekdayWorkDays: number
+  weekendWorkDays: number
+  weekdayHoursPerDay: number
+  weekendHoursPerDay: number
+  bufferRate: number
+}
+
 function allocateTasksToWeeks(
   tasks: Task[],
   weeklyHours: number,
   totalWeeks: number,
-  startDate: Date
+  startDate: Date,
+  endDate: Date,
+  workSettings: WorkSettings
 ): WeeklyAllocation[] {
   const allocations: WeeklyAllocation[] = []
-  
+
+  // 開始日を含む週の月曜日を取得
+  const getWeekStart = (date: Date): Date => {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1) // 日曜日の場合は前週の月曜日
+    d.setDate(diff)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+
+  // 特定の期間の作業可能時間を計算
+  const calculateAvailableHours = (periodStart: Date, periodEnd: Date): number => {
+    let weekdayCount = 0
+    let weekendCount = 0
+
+    const current = new Date(periodStart)
+    while (current <= periodEnd) {
+      const dayOfWeek = current.getDay()
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        weekendCount++
+      } else {
+        weekdayCount++
+      }
+      current.setDate(current.getDate() + 1)
+    }
+
+    // 設定された作業日数を超えないように調整
+    const effectiveWeekdays = Math.min(weekdayCount, workSettings.weekdayWorkDays)
+    const effectiveWeekends = Math.min(weekendCount, workSettings.weekendWorkDays)
+
+    const hours =
+      (effectiveWeekdays * workSettings.weekdayHoursPerDay +
+        effectiveWeekends * workSettings.weekendHoursPerDay) *
+      (workSettings.bufferRate / 100)
+
+    return Number(hours.toFixed(1))
+  }
+
   // 週の情報を生成
-  for (let week = 0; week < totalWeeks; week++) {
-    const weekStart = new Date(startDate)
-    weekStart.setDate(startDate.getDate() + week * 7)
-    
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-    
+  let currentWeekStart = getWeekStart(startDate)
+  const endDateMillis = new Date(endDate).getTime()
+
+  let weekIndex = 0
+  while (currentWeekStart.getTime() <= endDateMillis && weekIndex < totalWeeks) {
+    const weekEnd = new Date(currentWeekStart)
+    weekEnd.setDate(currentWeekStart.getDate() + 6)
+    weekEnd.setHours(23, 59, 59, 999)
+
+    // この週の実際の作業期間を決定
+    const actualStart =
+      weekIndex === 0
+        ? new Date(Math.max(startDate.getTime(), currentWeekStart.getTime()))
+        : currentWeekStart
+    const actualEnd = new Date(Math.min(endDate.getTime(), weekEnd.getTime()))
+
+    // 実際の作業日数に基づいて利用可能時間を計算
+    const availableHours = calculateAvailableHours(actualStart, actualEnd)
+
     allocations.push({
-      weekNumber: week + 1,
-      startDate: weekStart,
-      endDate: weekEnd,
-      availableHours: weeklyHours,
+      weekNumber: weekIndex + 1,
+      startDate: new Date(currentWeekStart),
+      endDate: new Date(weekEnd),
+      availableHours: availableHours,
       allocatedTasks: [],
       totalAllocatedHours: 0,
       utilizationRate: 0,
     })
+
+    // 次の週へ
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+    weekIndex++
   }
-  
+
   // タスクを週に配分
   let currentWeekIndex = 0
-  let remainingWeeklyHours = weeklyHours
-  
+  let remainingWeeklyHours = allocations.length > 0 ? allocations[0].availableHours : 0
+
   for (const task of tasks) {
     let remainingTaskHours = task.estimatedHours
     let partCount = 0
-    
-    while (remainingTaskHours > 0 && currentWeekIndex < totalWeeks) {
+
+    while (remainingTaskHours > 0 && currentWeekIndex < allocations.length) {
       const allocation = allocations[currentWeekIndex]
       const hoursToAllocate = Math.min(remainingTaskHours, remainingWeeklyHours)
-      
+
       if (hoursToAllocate > 0) {
         const isPartial = remainingTaskHours > remainingWeeklyHours || partCount > 0
         const taskName = isPartial && partCount > 0 ? `${task.name}（続き）` : task.name
-        
+
         allocation.allocatedTasks.push({
           taskId: task.id,
           taskName,
           allocatedHours: Number(hoursToAllocate.toFixed(1)),
           isPartial,
-          partialSuffix: isPartial && partCount > 0 ? '（続き）' : undefined
+          partialSuffix: isPartial && partCount > 0 ? '（続き）' : undefined,
         })
-        
-        allocation.totalAllocatedHours = Number((allocation.totalAllocatedHours + hoursToAllocate).toFixed(1))
+
+        allocation.totalAllocatedHours = Number(
+          (allocation.totalAllocatedHours + hoursToAllocate).toFixed(1)
+        )
         remainingTaskHours -= hoursToAllocate
         remainingWeeklyHours -= hoursToAllocate
         partCount++
       }
-      
+
       if (remainingWeeklyHours === 0) {
         currentWeekIndex++
-        remainingWeeklyHours = weeklyHours
+        if (currentWeekIndex < allocations.length) {
+          remainingWeeklyHours = allocations[currentWeekIndex].availableHours
+        }
       }
     }
   }
-  
+
   // 使用率を計算
   allocations.forEach(allocation => {
-    allocation.utilizationRate = allocation.availableHours > 0 
-      ? Number(((allocation.totalAllocatedHours / allocation.availableHours) * 100).toFixed(1))
-      : 0
+    allocation.utilizationRate =
+      allocation.availableHours > 0
+        ? Number(((allocation.totalAllocatedHours / allocation.availableHours) * 100).toFixed(1))
+        : 0
   })
-  
+
   return allocations
 }
 

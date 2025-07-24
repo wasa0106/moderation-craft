@@ -8,22 +8,17 @@
 import { useState, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ProjectCard } from './project-card'
 import { ProjectDeleteDialog } from './project-delete-dialog'
-import { 
-  Search, 
-  Plus, 
-  Grid, 
-  List 
-} from 'lucide-react'
+import { Search, Plus, Grid, List } from 'lucide-react'
 import { Project } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -50,7 +45,7 @@ export function ProjectList({
   onDuplicateProject,
   onViewTasks,
   isLoading = false,
-  className
+  className,
 }: ProjectListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all')
@@ -66,9 +61,9 @@ export function ProjectList({
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(project =>
-        project.name.toLowerCase().includes(query) ||
-        project.goal.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        project =>
+          project.name.toLowerCase().includes(query) || project.goal.toLowerCase().includes(query)
       )
     }
 
@@ -97,7 +92,6 @@ export function ProjectList({
     return filtered
   }, [projects, searchQuery, statusFilter, sortField, sortDirection])
 
-
   const handleDeleteProject = (project: Project) => {
     setProjectToDelete(project)
   }
@@ -116,7 +110,7 @@ export function ProjectList({
       active: projects.filter(p => p.status === 'active').length,
       completed: projects.filter(p => p.status === 'completed').length,
       paused: projects.filter(p => p.status === 'paused').length,
-      cancelled: projects.filter(p => p.status === 'cancelled').length
+      cancelled: projects.filter(p => p.status === 'cancelled').length,
     }
     return counts
   }
@@ -159,42 +153,42 @@ export function ProjectList({
 
       {/* Status badges */}
       <div className="flex flex-wrap gap-2">
-        <Badge 
+        <Badge
           variant={statusFilter === 'all' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setStatusFilter('all')}
         >
           すべて ({statusCounts.all})
         </Badge>
-        <Badge 
+        <Badge
           variant={statusFilter === 'planning' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setStatusFilter('planning')}
         >
           計画中 ({statusCounts.planning})
         </Badge>
-        <Badge 
+        <Badge
           variant={statusFilter === 'active' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setStatusFilter('active')}
         >
           アクティブ ({statusCounts.active})
         </Badge>
-        <Badge 
+        <Badge
           variant={statusFilter === 'completed' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setStatusFilter('completed')}
         >
           完了 ({statusCounts.completed})
         </Badge>
-        <Badge 
+        <Badge
           variant={statusFilter === 'paused' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setStatusFilter('paused')}
         >
           一時停止 ({statusCounts.paused})
         </Badge>
-        <Badge 
+        <Badge
           variant={statusFilter === 'cancelled' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setStatusFilter('cancelled')}
@@ -210,17 +204,20 @@ export function ProjectList({
           <Input
             placeholder="プロジェクトを検索..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
-        
+
         <div className="flex gap-2">
-          <Select value={`${sortField}-${sortDirection}`} onValueChange={(value) => {
-            const [field, direction] = value.split('-')
-            setSortField(field as SortField)
-            setSortDirection(direction as SortDirection)
-          }}>
+          <Select
+            value={`${sortField}-${sortDirection}`}
+            onValueChange={value => {
+              const [field, direction] = value.split('-')
+              setSortField(field as SortField)
+              setSortDirection(direction as SortDirection)
+            }}
+          >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="並び替え" />
             </SelectTrigger>
@@ -259,19 +256,20 @@ export function ProjectList({
       {filteredProjects.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            {projects.length === 0 
+            {projects.length === 0
               ? 'プロジェクトがありません。新しいプロジェクトを作成してください。'
-              : '検索条件に一致するプロジェクトが見つかりません。'
-            }
+              : '検索条件に一致するプロジェクトが見つかりません。'}
           </p>
         </div>
       ) : (
-        <div className={cn(
-          viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-            : 'space-y-4'
-        )}>
-          {filteredProjects.map((project) => (
+        <div
+          className={cn(
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+              : 'space-y-4'
+          )}
+        >
+          {filteredProjects.map(project => (
             <ProjectCard
               key={project.id}
               project={project}
@@ -289,7 +287,7 @@ export function ProjectList({
       <ProjectDeleteDialog
         project={projectToDelete}
         open={!!projectToDelete}
-        onOpenChange={(open) => !open && setProjectToDelete(null)}
+        onOpenChange={open => !open && setProjectToDelete(null)}
         onConfirm={confirmDeleteProject}
       />
     </div>

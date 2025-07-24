@@ -14,11 +14,7 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
 
   async getByUserId(userId: string): Promise<Project[]> {
     try {
-      return await this.table
-        .where('user_id')
-        .equals(userId)
-        .reverse()
-        .sortBy('updated_at')
+      return await this.table.where('user_id').equals(userId).reverse().sortBy('updated_at')
     } catch (error) {
       throw new Error(`Failed to get projects by user ID: ${error}`)
     }
@@ -26,11 +22,7 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
 
   async getByStatus(status: Project['status']): Promise<Project[]> {
     try {
-      return await this.table
-        .where('status')
-        .equals(status)
-        .reverse()
-        .sortBy('updated_at')
+      return await this.table.where('status').equals(status).reverse().sortBy('updated_at')
     } catch (error) {
       throw new Error(`Failed to get projects by status: ${error}`)
     }
@@ -62,7 +54,11 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
     }
   }
 
-  async getProjectsByDeadline(userId: string, startDate: string, endDate: string): Promise<Project[]> {
+  async getProjectsByDeadline(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<Project[]> {
     try {
       return await this.table
         .where('user_id')
@@ -107,7 +103,10 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
       return await this.table
         .where('user_id')
         .equals(userId)
-        .and(project => project.estimated_total_hours !== undefined && project.estimated_total_hours > 0)
+        .and(
+          project =>
+            project.estimated_total_hours !== undefined && project.estimated_total_hours > 0
+        )
         .reverse()
         .sortBy('updated_at')
     } catch (error) {
@@ -142,41 +141,44 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
       const projects = await this.getByUserId(userId)
       const today = new Date().toISOString().split('T')[0]
 
-      const stats = projects.reduce((acc, project) => {
-        acc.total++
-        
-        switch (project.status) {
-          case 'active':
-            acc.active++
-            break
-          case 'completed':
-            acc.completed++
-            break
-          case 'planning':
-            acc.planning++
-            break
-          case 'paused':
-            acc.paused++
-            break
-          case 'cancelled':
-            acc.cancelled++
-            break
+      const stats = projects.reduce(
+        (acc, project) => {
+          acc.total++
+
+          switch (project.status) {
+            case 'active':
+              acc.active++
+              break
+            case 'completed':
+              acc.completed++
+              break
+            case 'planning':
+              acc.planning++
+              break
+            case 'paused':
+              acc.paused++
+              break
+            case 'cancelled':
+              acc.cancelled++
+              break
+          }
+
+          if (project.deadline < today && project.status !== 'completed') {
+            acc.overdue++
+          }
+
+          return acc
+        },
+        {
+          total: 0,
+          active: 0,
+          completed: 0,
+          planning: 0,
+          paused: 0,
+          cancelled: 0,
+          overdue: 0,
         }
-        
-        if (project.deadline < today && project.status !== 'completed') {
-          acc.overdue++
-        }
-        
-        return acc
-      }, {
-        total: 0,
-        active: 0,
-        completed: 0,
-        planning: 0,
-        paused: 0,
-        cancelled: 0,
-        overdue: 0
-      })
+      )
 
       return stats
     } catch (error) {
@@ -190,9 +192,10 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
       return await this.table
         .where('user_id')
         .equals(userId)
-        .and(project => 
-          project.name.toLowerCase().includes(searchQuery) ||
-          project.goal.toLowerCase().includes(searchQuery)
+        .and(
+          project =>
+            project.name.toLowerCase().includes(searchQuery) ||
+            project.goal.toLowerCase().includes(searchQuery)
         )
         .reverse()
         .sortBy('updated_at')
@@ -210,26 +213,30 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
   }> {
     try {
       const bigTasks = await db.big_tasks.where('project_id').equals(projectId).toArray()
-      
-      const progress = bigTasks.reduce((acc, task) => {
-        acc.totalTasks++
-        if (task.status === 'completed') {
-          acc.completedTasks++
-        }
-        acc.estimatedHours += task.estimated_hours
-        acc.actualHours += task.actual_hours || 0
-        return acc
-      }, {
-        totalTasks: 0,
-        completedTasks: 0,
-        progressPercentage: 0,
-        estimatedHours: 0,
-        actualHours: 0
-      })
 
-      progress.progressPercentage = progress.totalTasks > 0 
-        ? Math.round((progress.completedTasks / progress.totalTasks) * 100)
-        : 0
+      const progress = bigTasks.reduce(
+        (acc, task) => {
+          acc.totalTasks++
+          if (task.status === 'completed') {
+            acc.completedTasks++
+          }
+          acc.estimatedHours += task.estimated_hours
+          acc.actualHours += task.actual_hours || 0
+          return acc
+        },
+        {
+          totalTasks: 0,
+          completedTasks: 0,
+          progressPercentage: 0,
+          estimatedHours: 0,
+          actualHours: 0,
+        }
+      )
+
+      progress.progressPercentage =
+        progress.totalTasks > 0
+          ? Math.round((progress.completedTasks / progress.totalTasks) * 100)
+          : 0
 
       return progress
     } catch (error) {
@@ -237,7 +244,11 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
     }
   }
 
-  async getProjectsByDateRange(userId: string, startDate: string, endDate: string): Promise<Project[]> {
+  async getProjectsByDateRange(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<Project[]> {
     try {
       return await this.table
         .where('user_id')
@@ -258,12 +269,12 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
       }
 
       const { id, created_at, updated_at, version, ...projectData } = originalProject // eslint-disable-line @typescript-eslint/no-unused-vars
-      
+
       return await this.create({
         ...projectData,
         name: newName,
         status: 'planning',
-        version: 1
+        version: 1,
       })
     } catch (error) {
       throw new Error(`Failed to duplicate project: ${error}`)

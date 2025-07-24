@@ -41,7 +41,7 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
     try {
       const startOfDay = `${date}T00:00:00.000Z`
       const endOfDay = `${date}T23:59:59.999Z`
-      
+
       return await this.table
         .where('user_id')
         .equals(userId)
@@ -65,7 +65,11 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
     }
   }
 
-  async getEntriesByMoodRange(userId: string, minMood: number, maxMood: number): Promise<MoodEntry[]> {
+  async getEntriesByMoodRange(
+    userId: string,
+    minMood: number,
+    maxMood: number
+  ): Promise<MoodEntry[]> {
     try {
       return await this.table
         .where('user_id')
@@ -104,7 +108,12 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
     }
   }
 
-  async createEntry(userId: string, moodLevel: number, notes?: string, timestamp?: string): Promise<MoodEntry> {
+  async createEntry(
+    userId: string,
+    moodLevel: number,
+    notes?: string,
+    timestamp?: string
+  ): Promise<MoodEntry> {
     try {
       if (moodLevel < 1 || moodLevel > 9) {
         throw new Error('Mood level must be between 1 and 9')
@@ -114,7 +123,7 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
         user_id: userId,
         mood_level: moodLevel,
         timestamp: timestamp || new Date().toISOString(),
-        notes: notes
+        notes: notes,
       }
 
       return await this.create(entryData)
@@ -144,10 +153,14 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
     }
   }
 
-  async getAverageMoodForPeriod(userId: string, startDate: string, endDate: string): Promise<number> {
+  async getAverageMoodForPeriod(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<number> {
     try {
       const entries = await this.getByDateRange(userId, startDate, endDate)
-      
+
       if (entries.length === 0) {
         return 0
       }
@@ -159,11 +172,16 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
     }
   }
 
-  async getMoodTrend(userId: string, days: number = 7): Promise<{
-    date: string
-    averageMood: number
-    entryCount: number
-  }[]> {
+  async getMoodTrend(
+    userId: string,
+    days: number = 7
+  ): Promise<
+    {
+      date: string
+      averageMood: number
+      entryCount: number
+    }[]
+  > {
     try {
       const endDate = new Date()
       const startDate = new Date(endDate)
@@ -186,67 +204,91 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
         trendData[date].count += 1
       })
 
-      return Object.entries(trendData).map(([date, data]) => ({
-        date,
-        averageMood: Math.round((data.totalMood / data.count) * 100) / 100,
-        entryCount: data.count
-      })).sort((a, b) => a.date.localeCompare(b.date))
+      return Object.entries(trendData)
+        .map(([date, data]) => ({
+          date,
+          averageMood: Math.round((data.totalMood / data.count) * 100) / 100,
+          entryCount: data.count,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date))
     } catch (error) {
       throw new Error(`Failed to get mood trend: ${error}`)
     }
   }
 
-  async getMoodDistribution(userId: string, startDate: string, endDate: string): Promise<{
-    moodLevel: number
-    count: number
-    percentage: number
-  }[]> {
+  async getMoodDistribution(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<
+    {
+      moodLevel: number
+      count: number
+      percentage: number
+    }[]
+  > {
     try {
       const entries = await this.getByDateRange(userId, startDate, endDate)
-      
+
       if (entries.length === 0) {
         return []
       }
 
       const distribution: Record<number, number> = {}
-      
+
       entries.forEach(entry => {
         distribution[entry.mood_level] = (distribution[entry.mood_level] || 0) + 1
       })
 
-      return Object.entries(distribution).map(([moodLevel, count]) => ({
-        moodLevel: parseInt(moodLevel),
-        count,
-        percentage: Math.round((count / entries.length) * 100)
-      })).sort((a, b) => a.moodLevel - b.moodLevel)
+      return Object.entries(distribution)
+        .map(([moodLevel, count]) => ({
+          moodLevel: parseInt(moodLevel),
+          count,
+          percentage: Math.round((count / entries.length) * 100),
+        }))
+        .sort((a, b) => a.moodLevel - b.moodLevel)
     } catch (error) {
       throw new Error(`Failed to get mood distribution: ${error}`)
     }
   }
 
-  async getHighestMoodEntry(userId: string, startDate: string, endDate: string): Promise<MoodEntry | undefined> {
+  async getHighestMoodEntry(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<MoodEntry | undefined> {
     try {
       const entries = await this.getByDateRange(userId, startDate, endDate)
-      return entries.reduce((highest, entry) => 
-        !highest || entry.mood_level > highest.mood_level ? entry : highest
-      , undefined as MoodEntry | undefined)
+      return entries.reduce(
+        (highest, entry) => (!highest || entry.mood_level > highest.mood_level ? entry : highest),
+        undefined as MoodEntry | undefined
+      )
     } catch (error) {
       throw new Error(`Failed to get highest mood entry: ${error}`)
     }
   }
 
-  async getLowestMoodEntry(userId: string, startDate: string, endDate: string): Promise<MoodEntry | undefined> {
+  async getLowestMoodEntry(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<MoodEntry | undefined> {
     try {
       const entries = await this.getByDateRange(userId, startDate, endDate)
-      return entries.reduce((lowest, entry) => 
-        !lowest || entry.mood_level < lowest.mood_level ? entry : lowest
-      , undefined as MoodEntry | undefined)
+      return entries.reduce(
+        (lowest, entry) => (!lowest || entry.mood_level < lowest.mood_level ? entry : lowest),
+        undefined as MoodEntry | undefined
+      )
     } catch (error) {
       throw new Error(`Failed to get lowest mood entry: ${error}`)
     }
   }
 
-  async getMoodStatistics(userId: string, startDate: string, endDate: string): Promise<{
+  async getMoodStatistics(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<{
     totalEntries: number
     averageMood: number
     highestMood: number
@@ -258,7 +300,7 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
   }> {
     try {
       const entries = await this.getByDateRange(userId, startDate, endDate)
-      
+
       if (entries.length === 0) {
         return {
           totalEntries: 0,
@@ -268,7 +310,7 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
           moodVariance: 0,
           entriesWithNotes: 0,
           goodMoodDays: 0,
-          badMoodDays: 0
+          badMoodDays: 0,
         }
       }
 
@@ -276,12 +318,15 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
       const totalMood = moodLevels.reduce((sum, mood) => sum + mood, 0)
       const averageMood = totalMood / entries.length
 
-      const moodVariance = moodLevels.reduce((sum, mood) => {
-        const diff = mood - averageMood
-        return sum + (diff * diff)
-      }, 0) / entries.length
+      const moodVariance =
+        moodLevels.reduce((sum, mood) => {
+          const diff = mood - averageMood
+          return sum + diff * diff
+        }, 0) / entries.length
 
-      const entriesWithNotes = entries.filter(entry => entry.notes && entry.notes.trim().length > 0).length
+      const entriesWithNotes = entries.filter(
+        entry => entry.notes && entry.notes.trim().length > 0
+      ).length
       const goodMoodDays = entries.filter(entry => entry.mood_level >= 7).length
       const badMoodDays = entries.filter(entry => entry.mood_level <= 3).length
 
@@ -293,14 +338,17 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
         moodVariance: Math.round(moodVariance * 100) / 100,
         entriesWithNotes,
         goodMoodDays,
-        badMoodDays
+        badMoodDays,
       }
     } catch (error) {
       throw new Error(`Failed to get mood statistics: ${error}`)
     }
   }
 
-  async getDailyMoodSummary(userId: string, date: string): Promise<{
+  async getDailyMoodSummary(
+    userId: string,
+    date: string
+  ): Promise<{
     date: string
     entryCount: number
     averageMood: number
@@ -310,7 +358,7 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
   }> {
     try {
       const entries = await this.getEntriesForDate(userId, date)
-      
+
       if (entries.length === 0) {
         return {
           date,
@@ -318,7 +366,7 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
           averageMood: 0,
           highestMood: 0,
           lowestMood: 0,
-          notes: []
+          notes: [],
         }
       }
 
@@ -332,7 +380,7 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
         averageMood: Math.round(averageMood * 100) / 100,
         highestMood: Math.max(...moodLevels),
         lowestMood: Math.min(...moodLevels),
-        notes
+        notes,
       }
     } catch (error) {
       throw new Error(`Failed to get daily mood summary: ${error}`)
@@ -353,11 +401,16 @@ export class MoodEntryRepository extends BaseRepository<MoodEntry> implements IM
     }
   }
 
-  async getEntriesAroundTime(userId: string, timestamp: string, hoursBefore: number = 2, hoursAfter: number = 2): Promise<MoodEntry[]> {
+  async getEntriesAroundTime(
+    userId: string,
+    timestamp: string,
+    hoursBefore: number = 2,
+    hoursAfter: number = 2
+  ): Promise<MoodEntry[]> {
     try {
       const centerTime = new Date(timestamp)
-      const startTime = new Date(centerTime.getTime() - (hoursBefore * 60 * 60 * 1000))
-      const endTime = new Date(centerTime.getTime() + (hoursAfter * 60 * 60 * 1000))
+      const startTime = new Date(centerTime.getTime() - hoursBefore * 60 * 60 * 1000)
+      const endTime = new Date(centerTime.getTime() + hoursAfter * 60 * 60 * 1000)
 
       return await this.getByDateRange(userId, startTime.toISOString(), endTime.toISOString())
     } catch (error) {

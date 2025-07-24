@@ -9,9 +9,4 @@ export { useSyncStore } from './sync-store'
 export { useProjectCreationStore } from './project-creation-store'
 
 // Re-export types for convenience
-export type {
-  ProjectState,
-  TaskState,
-  TimerState,
-  SyncState
-} from '@/types'
+export type { ProjectState, TaskState, TimerState, SyncState } from '@/types'

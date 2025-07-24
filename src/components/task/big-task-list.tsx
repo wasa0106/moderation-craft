@@ -15,12 +15,12 @@ interface BigTaskListProps {
   isLoading: boolean
 }
 
-export function BigTaskList({ 
-  bigTasks, 
-  onEdit, 
-  onDelete, 
-  onCreateSmallTask, 
-  isLoading 
+export function BigTaskList({
+  bigTasks,
+  onEdit,
+  onDelete,
+  onCreateSmallTask,
+  isLoading,
 }: BigTaskListProps) {
   if (isLoading) {
     return <div className="text-center py-8">読み込み中...</div>

@@ -26,7 +26,7 @@ export function useSync() {
       return queue
     },
     staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 30 * 1000 // Refetch every 30 seconds
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
   })
 
   // Force sync mutation
@@ -40,7 +40,7 @@ export function useSync() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.syncQueue() })
       queryClient.invalidateQueries({ queryKey: queryKeys.all })
-    }
+    },
   })
 
   // Clear failed items mutation
@@ -50,7 +50,7 @@ export function useSync() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.syncQueue() })
-    }
+    },
   })
 
   // Retry failed items mutation
@@ -60,7 +60,7 @@ export function useSync() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.syncQueue() })
-    }
+    },
   })
 
   // Toggle auto-sync mutation
@@ -72,7 +72,7 @@ export function useSync() {
       } else {
         syncService.stopAutoSync()
       }
-    }
+    },
   })
 
   // Initialize sync service
@@ -100,35 +100,35 @@ export function useSync() {
     autoSyncEnabled: syncStore.autoSyncEnabled,
     lastSyncTime: syncStore.lastSyncTime,
     syncErrors: syncStore.syncErrors,
-    
+
     // Queue state
     syncQueue: syncQueueQuery.data || [],
     pendingItemsCount: syncStore.getPendingItemsCount(),
     failedItemsCount: syncStore.getFailedItemsCount(),
-    
+
     // Actions
     forceSync: forceSyncMutation.mutate,
     clearFailedItems: clearFailedItemsMutation.mutate,
     retryFailedItems: retryFailedItemsMutation.mutate,
     toggleAutoSync: toggleAutoSyncMutation.mutate,
     clearSyncErrors: syncStore.clearSyncErrors,
-    
+
     // Mutation states
     isForcingSyncing: forceSyncMutation.isPending,
     isClearingFailed: clearFailedItemsMutation.isPending,
     isRetryingFailed: retryFailedItemsMutation.isPending,
     isTogglingAutoSync: toggleAutoSyncMutation.isPending,
-    
+
     // Utility functions
     needsSync: syncStore.needsSync,
     canSync: syncStore.canSync,
     checkConnectivity,
     getSyncStats: syncService.getSyncStats,
-    
+
     // Query state
     isLoadingQueue: syncQueueQuery.isLoading,
     queueError: syncQueueQuery.error,
-    refetchQueue: syncQueueQuery.refetch
+    refetchQueue: syncQueueQuery.refetch,
   }
 }
 
@@ -143,7 +143,7 @@ export function useSyncStatus() {
     lastSyncTime: syncStore.lastSyncTime,
     needsSync: syncStore.needsSync(),
     canSync: syncStore.canSync(),
-    autoSyncEnabled: syncStore.autoSyncEnabled
+    autoSyncEnabled: syncStore.autoSyncEnabled,
   }
 }
 
@@ -153,6 +153,6 @@ export function useSyncErrors() {
   return {
     syncErrors: syncStore.syncErrors,
     clearSyncErrors: syncStore.clearSyncErrors,
-    addSyncError: syncStore.addSyncError
+    addSyncError: syncStore.addSyncError,
   }
 }

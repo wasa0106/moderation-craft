@@ -3,11 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  projectRepository, 
-  bigTaskRepository,
-  smallTaskRepository
-} from '@/lib/db/repositories'
+import { projectRepository, bigTaskRepository, smallTaskRepository } from '@/lib/db/repositories'
 
 export default function RepositoriesTestPage() {
   const [results, setResults] = useState<Record<string, unknown> | null>(null)
@@ -17,7 +13,7 @@ export default function RepositoriesTestPage() {
     setLoading(true)
     try {
       console.log('Repository テスト開始...')
-      
+
       // 1. プロジェクト作成テスト
       const newProject = {
         user_id: 'test-user-123',
@@ -25,28 +21,34 @@ export default function RepositoriesTestPage() {
         goal: 'Repository動作確認',
         deadline: '2025-08-15',
         status: 'active' as const,
-        version: 1
+        version: 1,
       }
-      
+
       const createdProject = await projectRepository.create(newProject)
       console.log('プロジェクト作成成功:', createdProject)
-      
+
       // 2. プロジェクト取得テスト
       const project = await projectRepository.getById(createdProject.id)
       console.log('プロジェクト取得成功:', project)
-      
+
       // 3. アクティブプロジェクト取得テスト
       const activeProjects = await projectRepository.getActiveProjects('test-user-123')
       console.log('アクティブプロジェクト取得成功:', activeProjects)
-      
+
       // 4. 今日のタスク取得テスト
-      const todayTasks = await smallTaskRepository.getScheduledForDate('test-user-123', '2025-07-09')
+      const todayTasks = await smallTaskRepository.getScheduledForDate(
+        'test-user-123',
+        '2025-07-09'
+      )
       console.log('今日のタスク取得成功:', todayTasks)
-      
+
       // 5. BigTaskRepositoryの委譲メソッドテスト
-      const bigTaskTodayTasks = await bigTaskRepository.getScheduledForDate('test-user-123', '2025-07-09')
+      const bigTaskTodayTasks = await bigTaskRepository.getScheduledForDate(
+        'test-user-123',
+        '2025-07-09'
+      )
       console.log('BigTaskRepository委譲メソッドテスト成功:', bigTaskTodayTasks)
-      
+
       const testResults = {
         projectId: createdProject.id,
         project: project?.name,
@@ -54,18 +56,17 @@ export default function RepositoriesTestPage() {
         todayTasks: todayTasks.length,
         bigTaskTodayTasks: bigTaskTodayTasks.length,
         status: 'success',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }
-      
+
       setResults(testResults)
       console.log('Repository テスト完了:', testResults)
-      
     } catch (error) {
       console.error('Repository test error:', error)
-      setResults({ 
+      setResults({
         error: error instanceof Error ? error.message : 'Unknown error',
         status: 'error',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     } finally {
       setLoading(false)
@@ -76,7 +77,7 @@ export default function RepositoriesTestPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Repository 動作確認</h1>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>データベース Repository テスト</CardTitle>
@@ -85,15 +86,11 @@ export default function RepositoriesTestPage() {
             <p className="text-gray-600">
               プロジェクト作成・取得・一覧表示の基本機能をテストします。
             </p>
-            
-            <Button 
-              onClick={testRepositories} 
-              disabled={loading}
-              className="w-full"
-            >
+
+            <Button onClick={testRepositories} disabled={loading} className="w-full">
               {loading ? 'テスト実行中...' : 'Repository テスト実行'}
             </Button>
-            
+
             {results && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-2">テスト結果:</h3>
@@ -104,7 +101,7 @@ export default function RepositoriesTestPage() {
             )}
           </CardContent>
         </Card>
-        
+
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Repository機能一覧</CardTitle>

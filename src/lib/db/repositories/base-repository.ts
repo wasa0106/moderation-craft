@@ -9,7 +9,7 @@ import {
   DatabaseEntity,
   RepositoryInterface,
   CreateSyncOperationData,
-  OptimisticUpdateHandler
+  OptimisticUpdateHandler,
 } from '@/types'
 
 export abstract class BaseRepository<T extends DatabaseEntity> implements RepositoryInterface<T> {
@@ -19,27 +19,23 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   async create(data: Omit<T, 'id' | 'created_at' | 'updated_at'>): Promise<T> {
     const id = db.generateId()
     const timestamps = db.createTimestamps()
-    
+
     const entity = {
       ...data,
       id,
-      ...timestamps
+      ...timestamps,
     } as T
 
     try {
       await this.table.add(entity)
-      
-      await db.sync_queue.add({
-        operation_id: db.generateId(),
-        operation_type: 'CREATE',
-        entity_type: this.entityType,
-        entity_id: id,
-        payload: entity,
-        timestamp: timestamps.created_at,
-        retry_count: 0,
-        max_retries: 3,
-        status: 'pending'
-      } as any)
+
+      // 同期キュー自体は同期しない
+      if (this.entityType !== 'sync_queue') {
+        // 同期キューに追加
+        const { SyncService } = await import('@/lib/sync/sync-service')
+        const syncService = SyncService.getInstance()
+        await syncService.addToSyncQueue(this.entityType, id, 'create', entity)
+      }
 
       return entity
     } catch (error) {
@@ -58,12 +54,12 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   async update(id: string, data: Partial<Omit<T, 'id' | 'created_at'>>): Promise<T> {
     const updateData = {
       ...data,
-      ...db.updateTimestamp()
+      ...db.updateTimestamp(),
     }
 
     try {
       const result = await this.table.update(id, updateData as any)
-      
+
       if (result === 0) {
         throw new Error(`${this.entityType} with ID ${id} not found`)
       }
@@ -73,17 +69,20 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         throw new Error(`Failed to retrieve updated ${this.entityType}`)
       }
 
-      await db.sync_queue.add({
-        operation_id: db.generateId(),
-        operation_type: 'UPDATE',
-        entity_type: this.entityType,
-        entity_id: id,
-        payload: updatedEntity,
-        timestamp: db.getCurrentTimestamp(),
-        retry_count: 0,
-        max_retries: 3,
-        status: 'pending'
-      } as any)
+      // 同期キュー自体は同期しない
+      if (this.entityType !== 'sync_queue') {
+        // SyncServiceを動的インポートして同期キューに追加
+        const { SyncService } = await import('@/lib/sync/sync-service')
+        const syncService = SyncService.getInstance()
+        
+        // UPDATE操作を同期キューに追加
+        await syncService.addToSyncQueue(
+          this.entityType,
+          id,
+          'update',
+          updatedEntity
+        )
+      }
 
       return updatedEntity
     } catch (error) {
@@ -98,19 +97,23 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         throw new Error(`${this.entityType} with ID ${id} not found`)
       }
 
-      await this.table.delete(id)
+      // 同期キュー自体は同期しない
+      if (this.entityType !== 'sync_queue') {
+        // 削除前にエンティティ情報を同期キューに追加
+        const { SyncService } = await import('@/lib/sync/sync-service')
+        const syncService = SyncService.getInstance()
+        
+        // DELETE操作を同期キューに追加（エンティティ情報を含める）
+        await syncService.addToSyncQueue(
+          this.entityType,
+          id,
+          'delete',
+          entity // 削除されるエンティティの情報を保持
+        )
+      }
 
-      await db.sync_queue.add({
-        operation_id: db.generateId(),
-        operation_type: 'DELETE',
-        entity_type: this.entityType,
-        entity_id: id,
-        payload: entity,
-        timestamp: db.getCurrentTimestamp(),
-        retry_count: 0,
-        max_retries: 3,
-        status: 'pending'
-      } as any)
+      // エンティティを削除
+      await this.table.delete(id)
     } catch (error) {
       throw new Error(`Failed to delete ${this.entityType}: ${error}`)
     }
@@ -144,14 +147,20 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     }
   }
 
-  protected applyFilters(query: any, filters: Record<string, unknown>): any { // eslint-disable-line @typescript-eslint/no-explicit-any
+  protected applyFilters(query: any, filters: Record<string, unknown>): any {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     let filteredQuery = query
 
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (Array.isArray(value)) {
           filteredQuery = filteredQuery.where(key).anyOf(value)
-        } else if (typeof value === 'object' && value !== null && 'from' in value && 'to' in value) {
+        } else if (
+          typeof value === 'object' &&
+          value !== null &&
+          'from' in value &&
+          'to' in value
+        ) {
           filteredQuery = filteredQuery.where(key).between((value as any).from, (value as any).to)
         } else {
           filteredQuery = filteredQuery.where(key).equals(value)
@@ -174,11 +183,11 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     const entities = items.map(item => {
       const id = db.generateId()
       const timestamps = db.createTimestamps()
-      
+
       return {
         ...item,
         id,
-        ...timestamps
+        ...timestamps,
       } as T
     })
 
@@ -188,13 +197,19 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       const syncOperations = entities.map(entity => ({
         operation_id: db.generateId(),
         operation_type: 'CREATE' as const,
-        entity_type: this.entityType as 'project' | 'big_task' | 'small_task' | 'work_session' | 'mood_entry' | 'daily_condition',
+        entity_type: this.entityType as
+          | 'project'
+          | 'big_task'
+          | 'small_task'
+          | 'work_session'
+          | 'mood_entry'
+          | 'daily_condition',
         entity_id: entity.id,
         payload: entity,
         timestamp: entity.created_at,
         retry_count: 0,
         max_retries: 3,
-        status: 'pending' as const
+        status: 'pending' as const,
       }))
 
       await db.sync_queue.bulkAdd(syncOperations as any)
@@ -205,7 +220,9 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     }
   }
 
-  async bulkUpdate(updates: Array<{ id: string; data: Partial<Omit<T, 'id' | 'created_at'>> }>): Promise<T[]> {
+  async bulkUpdate(
+    updates: Array<{ id: string; data: Partial<Omit<T, 'id' | 'created_at'>> }>
+  ): Promise<T[]> {
     const timestamp = db.getCurrentTimestamp()
     const updatedEntities: T[] = []
 
@@ -214,11 +231,11 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         for (const update of updates) {
           const updateData = {
             ...update.data,
-            updated_at: timestamp
+            updated_at: timestamp,
           }
 
           await this.table.update(update.id, updateData as any)
-          
+
           const entity = await this.table.get(update.id)
           if (entity) {
             updatedEntities.push(entity)
@@ -229,13 +246,19 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       const syncOperations = updatedEntities.map(entity => ({
         operation_id: db.generateId(),
         operation_type: 'UPDATE' as const,
-        entity_type: this.entityType as 'project' | 'big_task' | 'small_task' | 'work_session' | 'mood_entry' | 'daily_condition',
+        entity_type: this.entityType as
+          | 'project'
+          | 'big_task'
+          | 'small_task'
+          | 'work_session'
+          | 'mood_entry'
+          | 'daily_condition',
         entity_id: entity.id,
         payload: entity,
         timestamp,
         retry_count: 0,
         max_retries: 3,
-        status: 'pending' as const
+        status: 'pending' as const,
       }))
 
       await db.sync_queue.bulkAdd(syncOperations as any)
@@ -249,19 +272,25 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   async bulkDelete(ids: string[]): Promise<void> {
     try {
       const entities = await this.table.where('id').anyOf(ids).toArray()
-      
+
       await this.table.where('id').anyOf(ids).delete()
 
       const syncOperations = entities.map(entity => ({
         operation_id: db.generateId(),
         operation_type: 'DELETE' as const,
-        entity_type: this.entityType as 'project' | 'big_task' | 'small_task' | 'work_session' | 'mood_entry' | 'daily_condition',
+        entity_type: this.entityType as
+          | 'project'
+          | 'big_task'
+          | 'small_task'
+          | 'work_session'
+          | 'mood_entry'
+          | 'daily_condition',
         entity_id: entity.id,
         payload: entity,
         timestamp: db.getCurrentTimestamp(),
         retry_count: 0,
         max_retries: 3,
-        status: 'pending' as const
+        status: 'pending' as const,
       }))
 
       await db.sync_queue.bulkAdd(syncOperations as any)
@@ -342,18 +371,12 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       today.setHours(0, 0, 0, 0)
       const todayISOString = today.toISOString()
 
-      const [
-        total,
-        createdToday,
-        updatedToday,
-        oldest,
-        newest
-      ] = await Promise.all([
+      const [total, createdToday, updatedToday, oldest, newest] = await Promise.all([
         this.table.count(),
         this.table.where('created_at').above(todayISOString).count(),
         this.table.where('updated_at').above(todayISOString).count(),
         this.table.orderBy('created_at').first(),
-        this.table.orderBy('created_at').reverse().first()
+        this.table.orderBy('created_at').reverse().first(),
       ])
 
       return {
@@ -361,7 +384,7 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         createdToday,
         updatedToday,
         oldestRecord: oldest?.created_at,
-        newestRecord: newest?.created_at
+        newestRecord: newest?.created_at,
       }
     } catch (error) {
       throw new Error(`Failed to get ${this.entityType} statistics: ${error}`)
@@ -377,13 +400,12 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       applyOptimisticUpdate: (data: T) => {
         onUpdate(data)
       },
-      
+
       revertOptimisticUpdate: (data: T) => {
         onRevert(data)
       },
-      
-      confirmOptimisticUpdate: () => {
-      }
+
+      confirmOptimisticUpdate: () => {},
     }
   }
 
@@ -400,12 +422,12 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     }
 
     const optimisticEntity = { ...originalEntity, ...optimisticData } as T
-    
+
     try {
       onUpdate(optimisticEntity)
-      
+
       const result = await operation()
-      
+
       return result
     } catch (error) {
       onRevert(originalEntity)

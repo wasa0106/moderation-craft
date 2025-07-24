@@ -39,15 +39,17 @@
 1. UI操作 → IndexedDB（即座に保存）
 2. IndexedDB → Sync Queue（バックグラウンド）
 3. Sync Queue → DynamoDB（ネットワーク接続時）
+4. DynamoDB → IndexedDB（プル同期）
 
 #### 同期戦略
 - **ローカルストレージ**: 全データのキャッシュとオフライン編集 (IndexedDB + Dexie)
 - **同期タイミング**:
   - オンライン復帰時に自動同期
-  - 5分ごとのバックグラウンド同期
+  - 30秒ごとのプッシュ同期（IndexedDB → DynamoDB）
+  - 5分ごとのプル同期（DynamoDB → IndexedDB）
   - 手動同期ボタン
 - **競合解決**: last-write-wins (タイムスタンプベース)
-- **ユーザー通知**: 競合発生時に通知
+- **ユーザー通知**: 開発環境でのみ通知（本番では静かに同期）
 
 #### 同期キュー構造
 - `operation_id`: string
@@ -239,7 +241,7 @@
 | created_at | timestamp | 作成日時 |
 | updated_at | timestamp | 更新日時 |
 
-#### SmallTask
+#### SmallTask（修正版）
 | フィールド | 型 | 説明 |
 |---|---|---|
 | id | string | PK |
@@ -247,8 +249,8 @@
 | user_id | string | FK: User |
 | name | string | タスク名 |
 | estimated_minutes | number | 見積時間（分） |
-| scheduled_start | datetime | 予定開始時刻 |
-| scheduled_end | datetime | 予定終了時刻 |
+| scheduled_start | datetime? | 予定開始時刻 |
+| scheduled_end | datetime? | 予定終了時刻 |
 | actual_start | datetime? | 実際の開始時刻 |
 | actual_end | datetime? | 実際の終了時刻 |
 | actual_minutes | number? | 実際の作業時間 |
@@ -256,8 +258,10 @@
 | notes | string? | メモ |
 | is_emergency | boolean | 突発タスクフラグ |
 | variance_ratio | number? | 予実差分率（実績/見積） |
+| tags | string[] | タグ配列（追加） |
 | created_at | timestamp | 作成日時 |
 | updated_at | timestamp | 更新日時 |
+
 
 #### WorkSession
 | フィールド | 型 | 説明 |
@@ -375,18 +379,24 @@
 | コンディション | USER#user123 | CONDITION#2025-07-08 |
 
 #### Global Secondary Indexes (GSI)
-| GSI | 用途 | PK | SK |
-|---|---|---|---|
-| GSI1 | 週次タスク検索 | USER#user123#WEEK#2025-W28 | TASK#timestamp |
-| GSI2 | プロジェクト別検索 | PROJECT#proj001 | ENTITY#type#timestamp |
-| GSI3 | 日付範囲検索 | USER#user123#YEARMONTH#2025-07 | DATE#2025-07-08#entity_type#id |
-| GSI4 | 分析用同期検索 | ANALYTICS_EXPORT#pending | UPDATED_AT#timestamp |
+
+##### user-time-index
+- **用途**: 特定ユーザーの特定期間のデータを取得
+- **PK (user_time_pk)**: `USER#${userId}#WEEK#${weekNumber}` / `USER#${userId}#DATE#${date}` / `USER#${userId}#MONTH#${yearMonth}`
+- **SK (user_time_sk)**: `BIGTASK#${taskId}` / `SMALLTASK#${taskId}` / `SESSION#${sessionId}` など
+- **例**: 「ユーザーAの今週のタスク一覧」「ユーザーBの今月の感情記録」
+
+##### entity-type-index  
+- **用途**: 全ユーザーの特定タイプのデータを更新順に取得
+- **PK (entity_type)**: `project` / `big_task` / `small_task` / `mood_entry` など
+- **SK (updated_at)**: ISO8601形式の更新日時
+- **例**: 「システム全体で最近更新されたプロジェクト一覧」
 
 ### IndexedDB設計（Dexie）
 
 #### データベース設定
 - **データベース名**: moderation-craft-local
-- **バージョン**: 1
+- **バージョン**: 2
 
 #### テーブル設計
 | テーブル | スキーマ | インデックス |
@@ -451,20 +461,49 @@
 - オフライン時の動作継続
 
 ### 2. 週間スケジュール（/schedule/weekly）
-**目的**: 週次計画立案・調整
+**目的**: 週次計画立案・調整（主に日曜日に翌週の計画を立てる）
 
-**表示要素**:
-- 7日分の縦型カレンダー
-- タスクブロック（ドラッグ可能）
-- タスクリスト（未配置）
-- WBS参照エリア
-- **予実差分の色分け表示**
+**レイアウト**: 3カラム構成
+- 左カラム（3/12）: WBS参照パネル
+- 中央カラム（4/12）: 小タスク入力パネル
+- 右カラム（5/12）: 週間カレンダー
+
+**WBS参照パネル**:
+- 今週のタスク
+  - 進捗率表示（パーセンテージ + プログレスバー）
+  - 予実差分（超過は赤、削減は緑で表示）
+  - 見積時間と期限表示
+- 来週のタスク
+  - 見積時間表示
+  - プロジェクト期限までの残日数
+
+**小タスク入力パネル**:
+- プロジェクトごとのタブ切り替え
+- タグ管理機能（プロジェクトごと）
+- 登録済みタスク一覧
+- 新規タスク入力フォーム
+  - タスクNo自動採番（A1, A2, B1...）
+  - タスク名入力
+  - 見積時間入力（0.1時間刻み）
+  - タグ選択（複数可）
+- 大タスクごとにグループ化表示
+
+**週間カレンダー**:
+- 7日×24時間のグリッド表示
+- 未スケジュールタスクサイドバー
+- ドラッグ&ドロップでタスク配置
+- タスクの色分け（プロジェクトごと）
+- 土日の背景色区別
+- 同時間帯への複数タスク配置可能
+- タスククリックでスケジュール解除
 
 **主要機能**:
-- ドラッグ&ドロップでタスク移動
+- ドラッグ&ドロップでタスク配置/移動
 - タスク追加/編集/削除
 - 見積時間調整
-- スケジュール保存
+- 前週スケジュールコピー機能
+- タグによるタスク分類
+- オフライン対応（IndexedDB）
 
 ### 3. 明日のスケジュール調整（/schedule/tomorrow）
 **目的**: 23時時点での翌日調整
@@ -632,6 +671,11 @@ css
   - データ種別: sleep/date（前日の睡眠時間）、activities/steps/date（前日の歩数）
   - 同期スケジュール: 毎日6:00 (Lambda Cron)
 
+### 使用ライブラリ（追加分）
+- **@dnd-kit/core**: ドラッグ&ドロップ基盤
+- **@dnd-kit/sortable**: ソート可能なドラッグ&ドロップ
+- **@dnd-kit/utilities**: ユーティリティ関数
+
 #### Phase 5以降の追加技術スタック
 - **データパイプライン**:
   - 抽出: AWS Lambda (DynamoDB → S3)
@@ -794,8 +838,12 @@ css
 ### Phase 3（Week 3）: スケジュール・外部連携
 1. **スケジュール管理**
    - 週間カレンダー実装
-   - ドラッグ&ドロップ機能
+   - 3カラムレイアウト構築
+   - WBS参照パネル（進捗・予実差分表示）
+   - 小タスク入力フォーム（タグ管理含む）
+   - ドラッグ&ドロップ機能（@dnd-kit使用）
    - リスケジュール機能
+   - 前週スケジュールコピー機能
 
 2. **Fitbit連携**
    - OAuth認証実装
@@ -1033,6 +1081,190 @@ css
 
 ---
 
-**最終更新**: 2025年7月8日
-**バージョン**: 1.0.0
+## 同期システム詳細設計
+
+### 概要
+オフラインファーストを前提とした双方向同期システム。ローカル（IndexedDB）とクラウド（DynamoDB）間でデータを同期。
+
+### アーキテクチャ
+
+#### 1. プッシュ同期（IndexedDB → DynamoDB）
+```
+[UI操作] → [Repository] → [IndexedDB] → [SyncQueue] → [SyncService] → [API] → [DynamoDB]
+```
+
+- **即座にローカル保存**: ユーザー操作は即座にIndexedDBに反映
+- **バックグラウンド同期**: 30秒ごとに同期キューを処理
+- **操作の種類**: CREATE, UPDATE, DELETE
+- **失敗時のリトライ**: エラータイプに応じて最大10回まで自動リトライ
+
+#### 2. プル同期（DynamoDB → IndexedDB）
+```
+[DynamoDB] → [API] → [PullSyncService] → [IndexedDB] → [UI更新]
+```
+
+- **初回起動時**: アプリ起動時に全データを取得
+- **定期同期**: 5分ごとに最新データをチェック
+- **競合解決**: `updated_at`タイムスタンプで最新を優先
+
+### 実装の詳細
+
+#### 同期キュー（sync_queue）
+```typescript
+interface SyncQueueItem {
+  id: string
+  user_id: string
+  entity_type: string  // 'project' | 'big_task' | 'small_task' | ...
+  entity_id: string
+  operation_type: 'CREATE' | 'UPDATE' | 'DELETE'
+  data?: string  // JSONシリアライズされたエンティティデータ
+  status: 'pending' | 'processing' | 'failed' | 'dormant'
+  attempt_count: number
+  last_attempted?: string
+  error_message?: string
+  created_at: string
+  updated_at: string
+}
+```
+
+#### リトライ戦略
+```typescript
+// エラータイプ別の最大リトライ回数
+const maxRetries = {
+  NETWORK: 10,      // ネットワークエラー
+  AUTH: 2,          // 認証エラー
+  RATE_LIMIT: 20,   // レート制限
+  DEFAULT: 5        // その他
+}
+
+// 指数バックオフ（1.5倍ずつ増加、最大10分）
+const retryDelay = Math.min(30000 * Math.pow(1.5, attemptCount - 1), 600000)
+```
+
+### 今後の開発で注意すべき点
+
+#### 1. データ整合性
+- **問題**: 削除操作の同期順序
+  - 親エンティティ（Project）を削除する前に子エンティティ（Task）が同期されると外部キー制約エラー
+- **対策案**: 
+  - 同期キューの処理順序を制御（DELETE操作は最後に）
+  - カスケード削除の実装
+
+#### 2. パフォーマンス
+- **問題**: 大量データの同期
+  - 1000件以上のタスクがある場合、初回同期が重い
+- **対策案**:
+  - ページネーション対応
+  - 差分同期（最終同期時刻以降のデータのみ取得）
+  - 同期の優先度付け（最近使用したプロジェクトを優先）
+
+#### 3. 競合解決
+- **現状**: Last-Write-Wins（最新のタイムスタンプが勝つ）
+- **課題**: 
+  - 同時編集時にデータが失われる可能性
+  - オフライン期間が長いとローカル変更が上書きされる
+- **改善案**:
+  - 3-way merge（ベース、ローカル、リモートの差分を比較）
+  - 競合時のユーザー選択UI
+  - 操作履歴ベースの同期（CRDT）
+
+#### 4. セキュリティ
+- **現状**: シンプルなAPIキー認証
+- **本番環境での課題**:
+  - ユーザー認証の実装（Auth0、Firebase Auth等）
+  - Row Level Security（ユーザーは自分のデータのみアクセス可能）
+  - APIレート制限
+
+#### 5. エラーハンドリング
+- **現状**: ユーザーに見せない設計（バックグラウンドでリトライ）
+- **課題**:
+  - 永続的なエラーの検知と通知
+  - 同期状態の可視化（どれくらいのデータが未同期か）
+- **改善案**:
+  - 同期ダッシュボード
+  - エラー分析とレポート機能
+
+#### 6. マルチデバイス対応
+- **現状**: 単純な上書き同期
+- **将来の課題**:
+  - デバイス識別
+  - プッシュ通知での即時同期
+  - WebSocketでのリアルタイム同期
+
+### 環境変数と設定
+
+#### 必須の環境変数
+```env
+# AWS認証情報
+AWS_ACCESS_KEY_ID=xxx
+AWS_SECRET_ACCESS_KEY=xxx
+NEXT_PUBLIC_AWS_REGION=ap-northeast-1
+
+# DynamoDBテーブル
+NEXT_PUBLIC_DYNAMODB_TABLE_DEV=moderation-craft-data-dev
+NEXT_PUBLIC_DYNAMODB_TABLE_PROD=moderation-craft-data
+
+# API保護
+SYNC_API_KEY=your-api-key
+NEXT_PUBLIC_SYNC_API_KEY=your-api-key
+
+# 環境設定
+NEXT_PUBLIC_ENV=development
+```
+
+#### AWS IAMポリシー要件
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:Query",
+      "dynamodb:Scan"
+    ],
+    "Resource": [
+      "arn:aws:dynamodb:*:*:table/moderation-craft-data*"
+    ]
+  }]
+}
+```
+
+### DynamoDB スキーマ設計
+
+#### シングルテーブル設計
+```
+PK (Partition Key): USER#<user_id>
+SK (Sort Key): <ENTITY_TYPE>#<entity_id>
+
+例:
+PK: USER#current-user
+SK: PROJECT#123-456-789
+```
+
+#### GSI設計
+上記の「Global Secondary Indexes (GSI)」セクションを参照
+
+### 開発時のデバッグ
+
+#### 同期状態の確認
+1. Chrome DevTools → Application → IndexedDB → moderation-craft → sync_queue
+2. `/test/update-delete` ページで同期テスト
+3. AWS Management Console → DynamoDB → Items
+
+#### ログレベル
+```typescript
+// src/lib/utils/logger.ts
+syncLogger.debug()  // 詳細なデバッグ情報
+syncLogger.info()   // 重要な操作
+syncLogger.error()  // エラー情報
+```
+
+---
+
+**最終更新**: 2025年7月24日
+**バージョン**: 1.1.0
 **作成者**: moderation-craft開発チーム

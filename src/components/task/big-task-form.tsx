@@ -12,12 +12,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BigTask, CreateBigTaskData, UpdateBigTaskData } from '@/types'
@@ -26,10 +26,16 @@ import { cn } from '@/lib/utils'
 const bigTaskFormSchema = z.object({
   name: z.string().min(1, 'タスク名は必須です').max(100, 'タスク名は100文字以内で入力してください'),
   description: z.string().max(500, '説明は500文字以内で入力してください').optional(),
-  week_number: z.number().min(1, '週番号は1以上である必要があります').max(52, '週番号は52以下である必要があります'),
-  estimated_hours: z.number().min(0.5, '見積時間は0.5時間以上である必要があります').max(168, '見積時間は168時間以下である必要があります'),
+  week_number: z
+    .number()
+    .min(1, '週番号は1以上である必要があります')
+    .max(52, '週番号は52以下である必要があります'),
+  estimated_hours: z
+    .number()
+    .min(0.5, '見積時間は0.5時間以上である必要があります')
+    .max(168, '見積時間は168時間以下である必要があります'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
-  status: z.enum(['pending', 'active', 'completed', 'cancelled']).optional().default('pending')
+  status: z.enum(['pending', 'active', 'completed', 'cancelled']).optional().default('pending'),
 })
 
 type BigTaskFormData = z.infer<typeof bigTaskFormSchema>
@@ -43,13 +49,13 @@ interface BigTaskFormProps {
   className?: string
 }
 
-export function BigTaskForm({ 
+export function BigTaskForm({
   projectId,
-  task, 
-  onSubmit, 
-  onCancel, 
+  task,
+  onSubmit,
+  onCancel,
   isLoading = false,
-  className 
+  className,
 }: BigTaskFormProps) {
   const isEditing = !!task
 
@@ -61,8 +67,8 @@ export function BigTaskForm({
       week_number: task?.week_number || 1,
       estimated_hours: task?.estimated_hours || 8,
       priority: task?.priority || 'medium',
-      status: task?.status || 'pending'
-    }
+      status: task?.status || 'pending',
+    },
   })
 
   const handleSubmit = (data: BigTaskFormData) => {
@@ -74,19 +80,15 @@ export function BigTaskForm({
         project_id: projectId,
         user_id: 'current-user', // In a real app, get from auth context
         actual_hours: 0,
-        version: 1
+        version: 1,
       } as CreateBigTaskData)
     }
   }
 
-
-
   return (
     <Card className={cn('max-w-2xl', className)}>
       <CardHeader>
-        <CardTitle>
-          {isEditing ? '大タスクを編集' : '新しい大タスクを作成'}
-        </CardTitle>
+        <CardTitle>{isEditing ? '大タスクを編集' : '新しい大タスクを作成'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -97,14 +99,10 @@ export function BigTaskForm({
               id="name"
               placeholder="タスク名を入力"
               {...form.register('name')}
-              className={cn(
-                form.formState.errors.name && 'border-red-500 focus:border-red-500'
-              )}
+              className={cn(form.formState.errors.name && 'border-red-500 focus:border-red-500')}
             />
             {form.formState.errors.name && (
-              <p className="text-sm text-red-600">
-                {form.formState.errors.name.message}
-              </p>
+              <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
             )}
           </div>
 
@@ -121,9 +119,7 @@ export function BigTaskForm({
               )}
             />
             {form.formState.errors.description && (
-              <p className="text-sm text-red-600">
-                {form.formState.errors.description.message}
-              </p>
+              <p className="text-sm text-red-600">{form.formState.errors.description.message}</p>
             )}
           </div>
 
@@ -143,9 +139,7 @@ export function BigTaskForm({
                 )}
               />
               {form.formState.errors.week_number && (
-                <p className="text-sm text-red-600">
-                  {form.formState.errors.week_number.message}
-                </p>
+                <p className="text-sm text-red-600">{form.formState.errors.week_number.message}</p>
               )}
             </div>
 
@@ -177,7 +171,7 @@ export function BigTaskForm({
               <Label htmlFor="priority">優先度</Label>
               <Select
                 value={form.watch('priority') || undefined}
-                onValueChange={(value) => form.setValue('priority', value as BigTask['priority'])}
+                onValueChange={value => form.setValue('priority', value as BigTask['priority'])}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="優先度を選択" />
@@ -196,7 +190,7 @@ export function BigTaskForm({
                 <Label htmlFor="status">ステータス</Label>
                 <Select
                   value={form.watch('status')}
-                  onValueChange={(value) => form.setValue('status', value as BigTask['status'])}
+                  onValueChange={value => form.setValue('status', value as BigTask['status'])}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="ステータスを選択" />
@@ -214,18 +208,16 @@ export function BigTaskForm({
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={isLoading} className="flex-1">
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   {isEditing ? '更新中...' : '作成中...'}
                 </span>
+              ) : isEditing ? (
+                '更新'
               ) : (
-                isEditing ? '更新' : '作成'
+                '作成'
               )}
             </Button>
             {onCancel && (

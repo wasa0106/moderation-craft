@@ -53,7 +53,7 @@ const COLUMNS = [
   { key: 'category', label: 'カテゴリ', width: '140px' },
   { key: 'name', label: 'タスク名', width: 'auto' },
   { key: 'estimatedHours', label: '見積時間', width: '100px' },
-  { key: 'actions', label: '', width: '40px' }
+  { key: 'actions', label: '', width: '40px' },
 ]
 
 // ドラッグ可能な行コンポーネント
@@ -90,16 +90,11 @@ function SortableRow({
   cellRefs,
   getCellKey,
   getCategoryColor,
-  getCategoryBgColor
+  getCategoryBgColor,
 }: SortableRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -108,8 +103,8 @@ function SortableRow({
   }
 
   return (
-    <tr 
-      ref={setNodeRef} 
+    <tr
+      ref={setNodeRef}
       style={style}
       className={`sortable-item ${selectedRows.has(task.id) ? 'bg-muted' : ''} ${isDragging ? 'dragging' : ''}`}
     >
@@ -136,14 +131,14 @@ function SortableRow({
         {task.category && (
           <div
             className="absolute left-0 top-0 bottom-0 w-1"
-            style={{ 
+            style={{
               backgroundColor: getCategoryColor(task.category),
-              borderRadius: '2px 0 0 2px'
+              borderRadius: '2px 0 0 2px',
             }}
           />
         )}
         <Input
-          ref={(el) => {
+          ref={el => {
             if (el) {
               cellRefs.current.set(getCellKey(rowIndex, 2), el)
             }
@@ -151,10 +146,10 @@ function SortableRow({
           type="text"
           list={`category-options-${rowIndex}`}
           value={task.category}
-          onChange={(e) => onUpdateCellValue(rowIndex, 2, e.target.value)}
-          onKeyDown={(e) => onKeyDown(e, rowIndex, 2)}
+          onChange={e => onUpdateCellValue(rowIndex, 2, e.target.value)}
+          onKeyDown={e => onKeyDown(e, rowIndex, 2)}
           onFocus={() => onFocus(rowIndex, 2)}
-          onBlur={(e) => {
+          onBlur={e => {
             const value = e.target.value.trim()
             if (value) {
               onAddCategory(value)
@@ -164,10 +159,14 @@ function SortableRow({
           className={`border-none bg-transparent cell-input pl-3 ${
             focusedCell?.row === rowIndex && focusedCell?.col === 2 ? 'cell-focused' : ''
           }`}
-          style={task.category ? {
-            backgroundColor: getCategoryBgColor(getCategoryColor(task.category)),
-            borderLeft: `3px solid ${getCategoryColor(task.category)}`
-          } : {}}
+          style={
+            task.category
+              ? {
+                  backgroundColor: getCategoryBgColor(getCategoryColor(task.category)),
+                  borderLeft: `3px solid ${getCategoryColor(task.category)}`,
+                }
+              : {}
+          }
         />
         <datalist id={`category-options-${rowIndex}`}>
           {projectCategories.map(category => (
@@ -179,14 +178,14 @@ function SortableRow({
       {/* タスク名 */}
       <td>
         <Input
-          ref={(el) => {
+          ref={el => {
             if (el) {
               cellRefs.current.set(getCellKey(rowIndex, 3), el)
             }
           }}
           value={task.name}
-          onChange={(e) => onUpdateCellValue(rowIndex, 3, e.target.value)}
-          onKeyDown={(e) => onKeyDown(e, rowIndex, 3)}
+          onChange={e => onUpdateCellValue(rowIndex, 3, e.target.value)}
+          onKeyDown={e => onKeyDown(e, rowIndex, 3)}
           onFocus={() => onFocus(rowIndex, 3)}
           placeholder=""
           className={`border-none bg-transparent cell-input ${
@@ -199,7 +198,7 @@ function SortableRow({
       <td>
         <div className="flex items-center gap-1">
           <Input
-            ref={(el) => {
+            ref={el => {
               if (el) {
                 cellRefs.current.set(getCellKey(rowIndex, 4), el)
               }
@@ -208,8 +207,8 @@ function SortableRow({
             min="0"
             step="0.5"
             value={task.estimatedHours || ''}
-            onChange={(e) => onUpdateCellValue(rowIndex, 4, e.target.value)}
-            onKeyDown={(e) => onKeyDown(e, rowIndex, 4)}
+            onChange={e => onUpdateCellValue(rowIndex, 4, e.target.value)}
+            onKeyDown={e => onKeyDown(e, rowIndex, 4)}
             onFocus={() => onFocus(rowIndex, 4)}
             placeholder=""
             className={`border-none bg-transparent cell-input text-right ${
@@ -244,17 +243,17 @@ export function EditableTaskTable({
   onDeleteTask,
   onReorderTasks,
   onAddCategory,
-  onUpdateTaskCategory
+  onUpdateTaskCategory,
 }: EditableTaskTableProps) {
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
-  
+
   const tableRef = useRef<HTMLTableElement>(null)
   const cellRefs = useRef<Map<string, HTMLElement>>(new Map())
-  
+
   // カテゴリ色取得
   const getCategoryColor = useProjectCreationStore(state => state.getCategoryColor)
-  
+
   // 背景色を薄くする関数
   const getCategoryBgColor = (color: string) => {
     const r = parseInt(color.slice(1, 3), 16)
@@ -275,33 +274,39 @@ export function EditableTaskTable({
   const getCellKey = (row: number, col: number) => `${row}-${col}`
 
   // セルにフォーカスを設定
-  const focusCell = useCallback((row: number, col: number) => {
-    if (row < 0 || row >= tasks.length || col < 0 || col >= COLUMNS.length) {
-      return
-    }
-    
-    const cellKey = getCellKey(row, col)
-    const cellElement = cellRefs.current.get(cellKey)
-    
-    if (cellElement) {
-      cellElement.focus()
-      setFocusedCell({ row, col })
-    }
-  }, [tasks.length])
+  const focusCell = useCallback(
+    (row: number, col: number) => {
+      if (row < 0 || row >= tasks.length || col < 0 || col >= COLUMNS.length) {
+        return
+      }
+
+      const cellKey = getCellKey(row, col)
+      const cellElement = cellRefs.current.get(cellKey)
+
+      if (cellElement) {
+        cellElement.focus()
+        setFocusedCell({ row, col })
+      }
+    },
+    [tasks.length]
+  )
 
   // ドラッグ終了時の処理
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
 
-    if (active.id !== over?.id) {
-      const oldIndex = tasks.findIndex((task) => task.id === active.id)
-      const newIndex = tasks.findIndex((task) => task.id === over?.id)
-      
-      if (oldIndex !== -1 && newIndex !== -1) {
-        onReorderTasks(oldIndex, newIndex)
+      if (active.id !== over?.id) {
+        const oldIndex = tasks.findIndex(task => task.id === active.id)
+        const newIndex = tasks.findIndex(task => task.id === over?.id)
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          onReorderTasks(oldIndex, newIndex)
+        }
       }
-    }
-  }, [tasks, onReorderTasks])
+    },
+    [tasks, onReorderTasks]
+  )
 
   // 新しいタスクを追加
   const addNewTask = useCallback(() => {
@@ -313,98 +318,106 @@ export function EditableTaskTable({
   }, [onAddTask, tasks.length, focusCell])
 
   // キーボードイベントハンドラー
-  const handleKeyDown = useCallback((e: React.KeyboardEvent, row: number, col: number) => {
-    switch (e.key) {
-      case 'ArrowUp':
-        e.preventDefault()
-        focusCell(row - 1, col)
-        break
-      case 'ArrowDown':
-        e.preventDefault()
-        focusCell(row + 1, col)
-        break
-      case 'ArrowLeft':
-        e.preventDefault()
-        focusCell(row, col - 1)
-        break
-      case 'ArrowRight':
-        e.preventDefault()
-        focusCell(row, col + 1)
-        break
-      case 'Tab':
-        e.preventDefault()
-        if (e.shiftKey) {
-          // Shift+Tab: 前のセルへ
-          if (col > 2) {
-            focusCell(row, col - 1)
-          } else if (row > 0) {
-            focusCell(row - 1, 4) // 前の行の見積時間へ
-          }
-        } else {
-          // Tab: 次のセルへ
-          if (col < 4) {
-            focusCell(row, col + 1)
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, row: number, col: number) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault()
+          focusCell(row - 1, col)
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          focusCell(row + 1, col)
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          focusCell(row, col - 1)
+          break
+        case 'ArrowRight':
+          e.preventDefault()
+          focusCell(row, col + 1)
+          break
+        case 'Tab':
+          e.preventDefault()
+          if (e.shiftKey) {
+            // Shift+Tab: 前のセルへ
+            if (col > 2) {
+              focusCell(row, col - 1)
+            } else if (row > 0) {
+              focusCell(row - 1, 4) // 前の行の見積時間へ
+            }
           } else {
-            // 見積時間セル（col=4）から次の行のカテゴリ（col=2）へ
+            // Tab: 次のセルへ
+            if (col < 4) {
+              focusCell(row, col + 1)
+            } else {
+              // 見積時間セル（col=4）から次の行のカテゴリ（col=2）へ
+              if (row === tasks.length - 1) {
+                addNewTask()
+              }
+              setTimeout(() => focusCell(row + 1, 2), 0)
+            }
+          }
+          break
+        case 'Enter':
+          e.preventDefault() // すべての列でフォーム送信を防ぐ
+          if (col === 4) {
+            // 見積時間列でのみ次の行へ移動
             if (row === tasks.length - 1) {
               addNewTask()
             }
-            setTimeout(() => focusCell(row + 1, 2), 0)
+            setTimeout(() => focusCell(row + 1, 2), 0) // 次の行のカテゴリへ
           }
-        }
-        break
-      case 'Enter':
-        if (col === 4) { // 見積時間列でのみ処理
-          e.preventDefault()
-          if (row === tasks.length - 1) {
-            addNewTask()
-          }
-          setTimeout(() => focusCell(row + 1, 2), 0) // 次の行のカテゴリへ
-        }
-        // カテゴリ・タスク名セルではEnterキーのデフォルト動作（入力確定）のみ
-        break
-      case 'Delete':
-      case 'Backspace':
-        if (e.ctrlKey || e.metaKey) {
-          // Ctrl+Delete: 行を削除
-          e.preventDefault()
-          if (window.confirm('このタスクを削除しますか？')) {
-            onDeleteTask(tasks[row].id)
-            // フォーカスを調整
-            if (row > 0) {
-              setTimeout(() => focusCell(row - 1, col), 0)
-            } else if (tasks.length > 1) {
-              setTimeout(() => focusCell(0, col), 0)
+          // カテゴリ・タスク名セルではEnterキーは入力確定のみ（次の行へは移動しない）
+          break
+        case 'Delete':
+        case 'Backspace':
+          if (e.ctrlKey || e.metaKey) {
+            // Ctrl+Delete: 行を削除
+            e.preventDefault()
+            if (window.confirm('このタスクを削除しますか？')) {
+              onDeleteTask(tasks[row].id)
+              // フォーカスを調整
+              if (row > 0) {
+                setTimeout(() => focusCell(row - 1, col), 0)
+              } else if (tasks.length > 1) {
+                setTimeout(() => focusCell(0, col), 0)
+              }
             }
           }
-        }
-        break
-    }
-  }, [focusCell, tasks.length, onDeleteTask, addNewTask])
+          break
+      }
+    },
+    [focusCell, tasks.length, onDeleteTask, addNewTask]
+  )
 
   // セルの値を更新
-  const updateCellValue = useCallback((row: number, col: number, value: string | number) => {
-    const task = tasks[row]
-    if (!task) return
+  const updateCellValue = useCallback(
+    (row: number, col: number, value: string | number) => {
+      const task = tasks[row]
+      if (!task) return
 
-    const column = COLUMNS[col]
-    const updates: Partial<Task> = {}
+      const column = COLUMNS[col]
+      const updates: Partial<Task> = {}
 
-    switch (column.key) {
-      case 'category':
-        const categoryValue = value as string
-        onUpdateTaskCategory(task.id, categoryValue)
-        return // カテゴリ更新は専用メソッドで処理
-      case 'name':
-        updates.name = value as string
-        break
-      case 'estimatedHours':
-        updates.estimatedHours = typeof value === 'number' ? value : parseFloat(value as string) || 0
-        break
-    }
+      switch (column.key) {
+        case 'category':
+          const categoryValue = value as string
+          onUpdateTaskCategory(task.id, categoryValue)
+          return // カテゴリ更新は専用メソッドで処理
+        case 'name':
+          updates.name = value as string
+          break
+        case 'estimatedHours':
+          updates.estimatedHours =
+            typeof value === 'number' ? value : parseFloat(value as string) || 0
+          break
+      }
 
-    onUpdateTask(task.id, updates)
-  }, [tasks, onUpdateTask, onUpdateTaskCategory])
+      onUpdateTask(task.id, updates)
+    },
+    [tasks, onUpdateTask, onUpdateTaskCategory]
+  )
 
   // チェックボックスの状態変更
   const toggleRowSelection = useCallback((taskId: string) => {
@@ -422,7 +435,7 @@ export function EditableTaskTable({
   // 選択された行を削除
   const deleteSelectedRows = useCallback(() => {
     if (selectedRows.size === 0) return
-    
+
     if (window.confirm(`${selectedRows.size}件のタスクを削除しますか？`)) {
       selectedRows.forEach(taskId => {
         onDeleteTask(taskId)
@@ -432,17 +445,19 @@ export function EditableTaskTable({
   }, [selectedRows, onDeleteTask])
 
   // カテゴリ別時間配分の計算
-  const categoryStats = projectCategories.map(category => {
-    const categoryTasks = tasks.filter(t => t.category === category)
-    const categoryHours = categoryTasks.reduce((sum, t) => sum + t.estimatedHours, 0)
-    const percentage = totalTaskHours > 0 ? (categoryHours / totalTaskHours) * 100 : 0
-    
-    return {
-      category,
-      hours: Number(categoryHours.toFixed(1)),
-      percentage: Number(percentage.toFixed(1))
-    }
-  }).filter(stat => stat.hours > 0)
+  const categoryStats = projectCategories
+    .map(category => {
+      const categoryTasks = tasks.filter(t => t.category === category)
+      const categoryHours = categoryTasks.reduce((sum, t) => sum + t.estimatedHours, 0)
+      const percentage = totalTaskHours > 0 ? (categoryHours / totalTaskHours) * 100 : 0
+
+      return {
+        category,
+        hours: Number(categoryHours.toFixed(1)),
+        percentage: Number(percentage.toFixed(1)),
+      }
+    })
+    .filter(stat => stat.hours > 0)
 
   return (
     <div className="space-y-4">
@@ -460,28 +475,18 @@ export function EditableTaskTable({
             </Button>
           )}
         </div>
-        
-        <div className="text-sm text-muted-foreground">
-          合計: {totalTaskHours.toFixed(1)}時間
-        </div>
+
+        <div className="text-sm text-muted-foreground">合計: {totalTaskHours.toFixed(1)}時間</div>
       </div>
 
       {/* テーブル */}
       <div className="border rounded-lg overflow-hidden">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <table ref={tableRef} className="editable-table w-full">
             <thead>
               <tr>
                 {COLUMNS.map((column, colIndex) => (
-                  <th
-                    key={column.key}
-                    style={{ width: column.width }}
-                    className="text-left"
-                  >
+                  <th key={column.key} style={{ width: column.width }} className="text-left">
                     {column.label}
                   </th>
                 ))}
@@ -497,7 +502,9 @@ export function EditableTaskTable({
                     <td colSpan={COLUMNS.length} className="text-center py-8 text-muted-foreground">
                       <div>
                         <p>タスクがありません</p>
-                        <p className="text-sm mt-1">「タスクを追加」ボタンでタスクを作成してください</p>
+                        <p className="text-sm mt-1">
+                          「タスクを追加」ボタンでタスクを作成してください
+                        </p>
                       </div>
                     </td>
                   </tr>
@@ -538,30 +545,32 @@ export function EditableTaskTable({
               const categoryColor = getCategoryColor(category)
               return (
                 <div key={category} className="flex items-center gap-3">
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className="min-w-[80px] flex items-center gap-2"
                     style={{
                       backgroundColor: getCategoryBgColor(categoryColor),
                       borderColor: categoryColor,
                       color: categoryColor,
-                      borderWidth: '1px'
+                      borderWidth: '1px',
                     }}
                   >
-                    <div 
+                    <div
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: categoryColor }}
                     />
                     {category}
                   </Badge>
                   <div className="flex-1">
-                    <Progress 
-                      value={percentage} 
+                    <Progress
+                      value={percentage}
                       className="h-2"
-                      style={{
-                        '--progress-foreground': categoryColor,
-                        backgroundColor: getCategoryBgColor(categoryColor)
-                      } as React.CSSProperties}
+                      style={
+                        {
+                          '--progress-foreground': categoryColor,
+                          backgroundColor: getCategoryBgColor(categoryColor),
+                        } as React.CSSProperties
+                      }
                     />
                   </div>
                   <span className="text-sm text-muted-foreground min-w-[80px]">
@@ -577,7 +586,10 @@ export function EditableTaskTable({
       {/* キーボードショートカットのヘルプ */}
       <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
         <p className="font-medium mb-1">キーボードショートカット：</p>
-        <p>矢印キー: セル移動 | Tab: 次のセル | Shift+Tab: 前のセル | Enter: 次の行 | Ctrl+Delete: 行削除</p>
+        <p>
+          矢印キー: セル移動 | Tab: 次のセル | Shift+Tab: 前のセル | Enter: 次の行 | Ctrl+Delete:
+          行削除
+        </p>
       </div>
     </div>
   )

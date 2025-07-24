@@ -8,17 +8,16 @@ import { db } from '../database'
 import { BaseRepository } from './base-repository'
 import { WorkSession, WorkSessionRepository as IWorkSessionRepository } from '@/types'
 
-export class WorkSessionRepository extends BaseRepository<WorkSession> implements IWorkSessionRepository {
+export class WorkSessionRepository
+  extends BaseRepository<WorkSession>
+  implements IWorkSessionRepository
+{
   protected table: Table<WorkSession> = db.work_sessions
   protected entityType = 'work_session'
 
   async getByUserId(userId: string): Promise<WorkSession[]> {
     try {
-      return await this.table
-        .where('user_id')
-        .equals(userId)
-        .reverse()
-        .sortBy('start_time')
+      return await this.table.where('user_id').equals(userId).reverse().sortBy('start_time')
     } catch (error) {
       throw new Error(`Failed to get work sessions by user ID: ${error}`)
     }
@@ -26,10 +25,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
 
   async getByTaskId(taskId: string): Promise<WorkSession[]> {
     try {
-      return await this.table
-        .where('small_task_id')
-        .equals(taskId)
-        .sortBy('start_time')
+      return await this.table.where('small_task_id').equals(taskId).sortBy('start_time')
     } catch (error) {
       throw new Error(`Failed to get work sessions by task ID: ${error}`)
     }
@@ -49,22 +45,28 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
 
   async getActiveSession(userId: string): Promise<WorkSession | undefined> {
     try {
-      return await this.table
+      // userIdが無効な場合は早期リターン
+      if (!userId || typeof userId !== 'string') {
+        console.warn('Invalid userId provided to getActiveSession:', userId)
+        return undefined
+      }
+      
+      const sessions = await this.table
         .where('user_id')
         .equals(userId)
-        .and(session => Boolean(session.start_time) && !session.end_time)
-        .first()
+        .toArray()
+      
+      // アクティブなセッション（開始時刻があり、終了時刻がない）を探す
+      return sessions.find(session => session.start_time && !session.end_time)
     } catch (error) {
+      console.error('getActiveSession error:', error)
       throw new Error(`Failed to get active session: ${error}`)
     }
   }
 
   async getUnsyncedSessions(): Promise<WorkSession[]> {
     try {
-      return await this.table
-        .where('is_synced')
-        .equals(0)
-        .sortBy('start_time')
+      return await this.table.where('is_synced').equals(0).sortBy('start_time')
     } catch (error) {
       throw new Error(`Failed to get unsynced sessions: ${error}`)
     }
@@ -74,7 +76,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
     try {
       const startOfDay = `${date}T00:00:00.000Z`
       const endOfDay = `${date}T23:59:59.999Z`
-      
+
       return await this.table
         .where('user_id')
         .equals(userId)
@@ -111,14 +113,20 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
     }
   }
 
-  async getSessionsByDuration(userId: string, minDuration: number, maxDuration?: number): Promise<WorkSession[]> {
+  async getSessionsByDuration(
+    userId: string,
+    minDuration: number,
+    maxDuration?: number
+  ): Promise<WorkSession[]> {
     try {
       return await this.table
         .where('user_id')
         .equals(userId)
         .and(session => {
           if (maxDuration !== undefined) {
-            return session.duration_minutes >= minDuration && session.duration_minutes <= maxDuration
+            return (
+              session.duration_minutes >= minDuration && session.duration_minutes <= maxDuration
+            )
           }
           return session.duration_minutes >= minDuration
         })
@@ -129,7 +137,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
     }
   }
 
-  async startSession(userId: string, taskId?: string, startTime?: string): Promise<WorkSession> {
+  async startSession(userId: string, taskId?: string, startTime?: string, taskDescription?: string): Promise<WorkSession> {
     try {
       const activeSession = await this.getActiveSession(userId)
       if (activeSession) {
@@ -141,7 +149,8 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
         small_task_id: taskId,
         start_time: startTime || new Date().toISOString(),
         duration_minutes: 0,
-        is_synced: false
+        task_description: taskDescription,
+        is_synced: false,
       }
 
       return await this.create(sessionData)
@@ -169,7 +178,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
       const updates: Partial<WorkSession> = {
         end_time: actualEndTime,
         duration_minutes: durationMinutes,
-        is_synced: false
+        is_synced: false,
       }
 
       if (focusLevel !== undefined) {
@@ -200,7 +209,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
 
       return await this.update(sessionId, {
         duration_minutes: currentDuration,
-        is_synced: false
+        is_synced: false,
       })
     } catch (error) {
       throw new Error(`Failed to pause session: ${error}`)
@@ -220,7 +229,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
 
       return await this.update(sessionId, {
         start_time: new Date().toISOString(),
-        is_synced: false
+        is_synced: false,
       })
     } catch (error) {
       throw new Error(`Failed to resume session: ${error}`)
@@ -231,7 +240,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
     try {
       return await this.update(sessionId, {
         mood_notes: moodNotes,
-        is_synced: false
+        is_synced: false,
       })
     } catch (error) {
       throw new Error(`Failed to add mood notes: ${error}`)
@@ -246,7 +255,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
 
       return await this.update(sessionId, {
         focus_level: focusLevel,
-        is_synced: false
+        is_synced: false,
       })
     } catch (error) {
       throw new Error(`Failed to update focus level: ${error}`)
@@ -265,7 +274,7 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
     try {
       const updates = sessionIds.map(id => ({
         id,
-        data: { is_synced: true }
+        data: { is_synced: true },
       }))
 
       return await this.bulkUpdate(updates)
@@ -274,7 +283,11 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
     }
   }
 
-  async getSessionStatistics(userId: string, startDate: string, endDate: string): Promise<{
+  async getSessionStatistics(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<{
     totalSessions: number
     totalDuration: number
     averageDuration: number
@@ -286,49 +299,53 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
   }> {
     try {
       const sessions = await this.getByDateRange(userId, startDate, endDate)
-      
-      const stats = sessions.reduce((acc, session) => {
-        acc.totalSessions++
-        acc.totalDuration += session.duration_minutes
-        
-        if (session.focus_level !== undefined) {
-          acc.focusLevelSum += session.focus_level
-          acc.focusLevelCount++
+
+      const stats = sessions.reduce(
+        (acc, session) => {
+          acc.totalSessions++
+          acc.totalDuration += session.duration_minutes
+
+          if (session.focus_level !== undefined) {
+            acc.focusLevelSum += session.focus_level
+            acc.focusLevelCount++
+          }
+
+          if (session.small_task_id) {
+            acc.sessionsWithTasks++
+          } else {
+            acc.sessionsWithoutTasks++
+          }
+
+          if (session.is_synced) {
+            acc.syncedSessions++
+          } else {
+            acc.unsyncedSessions++
+          }
+
+          return acc
+        },
+        {
+          totalSessions: 0,
+          totalDuration: 0,
+          focusLevelSum: 0,
+          focusLevelCount: 0,
+          sessionsWithTasks: 0,
+          sessionsWithoutTasks: 0,
+          syncedSessions: 0,
+          unsyncedSessions: 0,
         }
-        
-        if (session.small_task_id) {
-          acc.sessionsWithTasks++
-        } else {
-          acc.sessionsWithoutTasks++
-        }
-        
-        if (session.is_synced) {
-          acc.syncedSessions++
-        } else {
-          acc.unsyncedSessions++
-        }
-        
-        return acc
-      }, {
-        totalSessions: 0,
-        totalDuration: 0,
-        focusLevelSum: 0,
-        focusLevelCount: 0,
-        sessionsWithTasks: 0,
-        sessionsWithoutTasks: 0,
-        syncedSessions: 0,
-        unsyncedSessions: 0
-      })
+      )
 
       return {
         totalSessions: stats.totalSessions,
         totalDuration: stats.totalDuration,
         averageDuration: stats.totalSessions > 0 ? stats.totalDuration / stats.totalSessions : 0,
-        averageFocusLevel: stats.focusLevelCount > 0 ? stats.focusLevelSum / stats.focusLevelCount : 0,
+        averageFocusLevel:
+          stats.focusLevelCount > 0 ? stats.focusLevelSum / stats.focusLevelCount : 0,
         sessionsWithTasks: stats.sessionsWithTasks,
         sessionsWithoutTasks: stats.sessionsWithoutTasks,
         syncedSessions: stats.syncedSessions,
-        unsyncedSessions: stats.unsyncedSessions
+        unsyncedSessions: stats.unsyncedSessions,
       }
     } catch (error) {
       throw new Error(`Failed to get session statistics: ${error}`)
@@ -393,14 +410,20 @@ export class WorkSessionRepository extends BaseRepository<WorkSession> implement
     }
   }
 
-  async getLongestSession(userId: string, startDate: string, endDate: string): Promise<WorkSession | undefined> {
+  async getLongestSession(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<WorkSession | undefined> {
     try {
       const sessions = await this.getByDateRange(userId, startDate, endDate)
       return sessions
         .filter(session => session.end_time)
-        .reduce((longest, session) => 
-          !longest || session.duration_minutes > longest.duration_minutes ? session : longest
-        , undefined as WorkSession | undefined)
+        .reduce(
+          (longest, session) =>
+            !longest || session.duration_minutes > longest.duration_minutes ? session : longest,
+          undefined as WorkSession | undefined
+        )
     } catch (error) {
       throw new Error(`Failed to get longest session: ${error}`)
     }

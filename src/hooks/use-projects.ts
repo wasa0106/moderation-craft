@@ -22,19 +22,24 @@ export function useProjects(userId: string) {
   const projectsQuery = useQuery({
     queryKey: queryKeys.projectsByUser(userId),
     queryFn: async () => {
+      console.log('useProjects queryFn called with userId:', userId)
+      console.log('Query key:', queryKeys.projectsByUser(userId))
+      
       try {
         const projects = await projectRepository.getByUserId(userId)
+        console.log('Projects fetched from repository:', projects)
         projectStore.setProjects(projects)
         return projects
       } catch (error) {
         console.error('Failed to get projects by user ID:', error)
-        
+
         // データベースエラーの場合は復旧を試行
-        if (error instanceof Error && (
-          error.message.includes('UpgradeError') ||
-          error.message.includes('DatabaseClosedError') ||
-          error.message.includes('primary key')
-        )) {
+        if (
+          error instanceof Error &&
+          (error.message.includes('UpgradeError') ||
+            error.message.includes('DatabaseClosedError') ||
+            error.message.includes('primary key'))
+        ) {
           console.warn('Database schema error detected, attempting recovery...')
           try {
             await db.handleSchemaError()
@@ -47,7 +52,7 @@ export function useProjects(userId: string) {
             throw new Error('データベースの復旧に失敗しました。ページをリロードしてください。')
           }
         }
-        
+
         throw error
       }
     },
@@ -55,15 +60,16 @@ export function useProjects(userId: string) {
     enabled: !!userId,
     retry: (failureCount, error) => {
       // データベースエラーの場合は自動リトライしない
-      if (error instanceof Error && (
-        error.message.includes('UpgradeError') ||
-        error.message.includes('DatabaseClosedError') ||
-        error.message.includes('primary key')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('UpgradeError') ||
+          error.message.includes('DatabaseClosedError') ||
+          error.message.includes('primary key'))
+      ) {
         return false
       }
       return failureCount < 3
-    }
+    },
   })
 
   // Create project mutation
@@ -73,14 +79,14 @@ export function useProjects(userId: string) {
       await syncService.addToSyncQueue('project', createdProject.id, 'create', createdProject)
       return createdProject
     },
-    onSuccess: (project) => {
+    onSuccess: project => {
       invalidateQueries.projectsByUser(userId)
       invalidateQueries.projects()
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Failed to create project:', error)
       projectStore.setError(error instanceof Error ? error.message : 'Failed to create project')
-    }
+    },
   })
 
   // Update project mutation
@@ -94,12 +100,12 @@ export function useProjects(userId: string) {
       const updatedProject = {
         ...originalProject,
         ...data,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       // Optimistic update
       projectStore.optimisticUpdate(id, updatedProject)
-      
+
       try {
         const result = await projectRepository.update(id, data)
         await syncService.addToSyncQueue('project', id, 'update', result)
@@ -110,14 +116,14 @@ export function useProjects(userId: string) {
         throw error
       }
     },
-    onSuccess: (project) => {
+    onSuccess: project => {
       invalidateQueries.project(project.id)
       invalidateQueries.projectsByUser(userId)
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Failed to update project:', error)
       projectStore.setError(error instanceof Error ? error.message : 'Failed to update project')
-    }
+    },
   })
 
   // Delete project mutation
@@ -130,7 +136,7 @@ export function useProjects(userId: string) {
 
       // Optimistic update
       projectStore.optimisticDelete(id)
-      
+
       try {
         await projectRepository.delete(id)
         await syncService.addToSyncQueue('project', id, 'delete')
@@ -144,10 +150,10 @@ export function useProjects(userId: string) {
       invalidateQueries.project(deletedId)
       invalidateQueries.projectsByUser(userId)
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Failed to delete project:', error)
       projectStore.setError(error instanceof Error ? error.message : 'Failed to delete project')
-    }
+    },
   })
 
   // Duplicate project mutation
@@ -164,11 +170,11 @@ export function useProjects(userId: string) {
         goal: originalProject.goal,
         deadline: originalProject.deadline,
         status: 'active',
-        version: 1
+        version: 1,
       }
 
       return createProjectMutation.mutateAsync(duplicateData)
-    }
+    },
   })
 
   return {
@@ -176,34 +182,34 @@ export function useProjects(userId: string) {
     projects: projectsQuery.data || [],
     isLoading: projectsQuery.isLoading,
     error: projectsQuery.error,
-    
+
     // Store state
     activeProject: projectStore.getActiveProject(),
     activeProjects: projectStore.getActiveProjects(),
     completedProjects: projectStore.getCompletedProjects(),
-    
+
     // Mutations
     createProject: createProjectMutation.mutateAsync,
     updateProject: updateProjectMutation.mutateAsync,
     deleteProject: deleteProjectMutation.mutateAsync,
     duplicateProject: duplicateProjectMutation.mutateAsync,
-    
+
     // Mutation states
     isCreating: createProjectMutation.isPending,
     isUpdating: updateProjectMutation.isPending,
     isDeleting: deleteProjectMutation.isPending,
     isDuplicating: duplicateProjectMutation.isPending,
-    
+
     // Store actions
     setActiveProject: projectStore.setActiveProject,
     clearError: () => projectStore.setError(null),
-    
+
     // Utility functions
     getProjectById: projectStore.getProjectById,
     getProjectsByStatus: projectStore.getProjectsByStatus,
-    
+
     // Refresh data
-    refetch: projectsQuery.refetch
+    refetch: projectsQuery.refetch,
   }
 }
 
@@ -218,14 +224,14 @@ export function useProject(projectId: string) {
       return project
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!projectId
+    enabled: !!projectId,
   })
 
   return {
     project: projectQuery.data,
     isLoading: projectQuery.isLoading,
     error: projectQuery.error,
-    refetch: projectQuery.refetch
+    refetch: projectQuery.refetch,
   }
 }
 
@@ -239,13 +245,13 @@ export function useActiveProjects(userId: string) {
       return projects
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!userId
+    enabled: !!userId,
   })
 
   return {
     activeProjects: activeProjectsQuery.data || [],
     isLoading: activeProjectsQuery.isLoading,
     error: activeProjectsQuery.error,
-    refetch: activeProjectsQuery.refetch
+    refetch: activeProjectsQuery.refetch,
   }
 }

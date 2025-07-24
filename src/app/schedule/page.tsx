@@ -1,369 +1,206 @@
 /**
- * SchedulePage - スケジュール管理ページ
- * 小タスクのスケジュール表示と週間管理
+ * WeeklySchedulePage - 週次スケジュール管理画面
+ * 来週の計画を立てるためのページ（主に日曜日に使用）
  */
 
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Calendar } from '@/components/ui/calendar'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select'
+import { useState, useMemo, useEffect } from 'react'
+import { useWeeklySchedule } from '@/hooks/use-weekly-schedule'
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
-import { useSmallTasks } from '@/hooks/use-small-tasks'
-import { SmallTask } from '@/types'
-import { 
-  Calendar as CalendarIcon, 
-  Zap,
-  TrendingUp
-} from 'lucide-react'
-import Link from 'next/link'
-import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, getWeek } from 'date-fns'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { WeeklyCalendar } from '@/components/schedule/weekly-calendar'
+import { TaskMemo } from '@/components/schedule/task-memo'
 
-export default function SchedulePage() {
-  const { projects } = useProjects('current-user')
-  const { bigTasks } = useBigTasks()
-  const { smallTasks } = useSmallTasks()
-  
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [selectedProject, setSelectedProject] = useState<string>('all')
-  const [viewMode, setViewMode] = useState<'day' | 'week'>('week')
-
-  // Filter tasks based on selected project
-  const filteredBigTasks = selectedProject === 'all' 
-    ? bigTasks 
-    : bigTasks.filter(task => task.project_id === selectedProject)
-  
-  const filteredSmallTasks = smallTasks.filter(task => 
-    filteredBigTasks.some(bigTask => bigTask.id === task.big_task_id)
-  )
-
-  // Get current week range
-  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 })
-  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 })
-
-  // Filter tasks for current week
-  const weekTasks = filteredSmallTasks.filter(task => {
-    const taskDate = parseISO(task.scheduled_start)
-    return isWithinInterval(taskDate, { start: weekStart, end: weekEnd })
+// デバッグユーティリティを動的インポート
+if (typeof window !== 'undefined') {
+  import('@/utils/debug-utils').then(() => {
+    console.log('Debug utilities loaded for weekly schedule page')
   })
+}
 
-  // Filter tasks for selected day
-  const dayTasks = filteredSmallTasks.filter(task => {
-    const taskDate = parseISO(task.scheduled_start)
-    return format(taskDate, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
-  })
+export default function WeeklySchedulePage() {
+  const userId = 'current-user' // 仮のユーザーID
 
-  // Get current week number
-  const currentWeek = getWeek(selectedDate)
-
-  // Group tasks by day for week view
-  const groupTasksByDay = (tasks: SmallTask[]) => {
-    const grouped: { [key: string]: SmallTask[] } = {}
-    
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(weekStart)
-      day.setDate(weekStart.getDate() + i)
-      const dateKey = format(day, 'yyyy-MM-dd')
-      grouped[dateKey] = tasks.filter(task => {
-        const taskDate = parseISO(task.scheduled_start)
-        return format(taskDate, 'yyyy-MM-dd') === dateKey
-      })
+  // 統一された週選択状態（タスク一覧とカレンダーで共有）
+  const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [memoContent, setMemoContent] = useState(() => {
+    // localStorageから保存されたメモを読み込み
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('weeklyScheduleMemo')
+      return saved || ''
     }
+    return ''
+  })
+
+  // メモ保存ハンドラ
+  const handleMemoSave = (content: string) => {
+    setMemoContent(content)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('weeklyScheduleMemo', content)
+    }
+  }
+
+  // Task Overview Table用のデータ
+  const { projects } = useProjects(userId)
+  const { bigTasks: allBigTasks } = useBigTasks(userId)
+
+  // 週の開始日と終了日を計算
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 })
+  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
+
+  // Weekly Calendar用のデータ
+  const calendarData = useWeeklySchedule(userId, currentWeek)
+  
+  // デバッグ用ログ出力
+  useEffect(() => {
+    console.log('週が変更されました:', {
+      currentWeek: format(currentWeek, 'yyyy-MM-dd'),
+      weekStart: format(weekStart, 'yyyy-MM-dd'),
+      weekEnd: format(weekEnd, 'yyyy-MM-dd')
+    })
+  }, [currentWeek, weekStart, weekEnd])
+
+  // 現在の週に対応するBigTasksをフィルタリング
+  const currentWeekBigTasks = useMemo(() => {
+    // 存在するプロジェクトIDのセットを作成
+    const existingProjectIds = new Set(projects.map(p => p.id))
     
-    return grouped
-  }
+    // weekStartとweekEndは既に上で計算済み
+    
+    console.log('ページ側: カレンダー週の変更', {
+      currentWeek: format(currentWeek, 'yyyy-MM-dd'),
+      weekStart: format(weekStart, 'yyyy-MM-dd'),
+      weekEnd: format(weekEnd, 'yyyy-MM-dd'),
+      全BigTasks数: allBigTasks.length,
+      プロジェクト数: projects.length
+    })
+    
+    // 全てのBigTaskをデバッグ出力
+    console.log('BigTasksの詳細:', allBigTasks.map(task => ({
+      name: task.name,
+      project_id: task.project_id,
+      week_start_date: task.week_start_date,
+      week_end_date: task.week_end_date,
+      week_number: task.week_number
+    })))
+    
+    const filtered = allBigTasks.filter(task => {
+      // 存在しないプロジェクトのタスクを除外
+      if (!existingProjectIds.has(task.project_id)) {
+        console.log('プロジェクトが存在しないタスク:', task.name, task.project_id)
+        return false
+      }
+      
+      // week_start_dateとweek_end_dateがある場合
+      if (task.week_start_date && task.week_end_date) {
+        const taskStart = new Date(task.week_start_date)
+        const taskEnd = new Date(task.week_end_date)
+        
+        // タスクの期間が選択された週と重なっているかチェック
+        const isInWeek = (
+          (taskStart >= weekStart && taskStart <= weekEnd) ||
+          (taskEnd >= weekStart && taskEnd <= weekEnd) ||
+          (taskStart <= weekStart && taskEnd >= weekEnd)
+        )
+        
+        if (isInWeek) {
+          console.log('週に含まれるタスク:', task.name)
+        }
+        
+        return isInWeek
+      }
+      
+      console.log('日付情報がないタスク:', task.name)
+      return false
+    })
+    
+    console.log('フィルタリング結果:', filtered.length, '件')
+    return filtered
+  }, [allBigTasks, weekStart, weekEnd, projects, currentWeek])
+  
+  // デバッグ用：週が変更されたときのログ
+  console.log('Week changed:', {
+    currentWeek: format(currentWeek, 'yyyy-MM-dd'),
+    weekStartDate: calendarData.weeklySchedule.weekStartDate,
+    weekEndDate: calendarData.weeklySchedule.weekEndDate,
+    allBigTasksCount: allBigTasks.length,
+    filteredBigTasksCount: currentWeekBigTasks.length
+  })
 
-  const groupedTasks = groupTasksByDay(weekTasks)
-
-  // Calculate statistics
-  const stats = {
-    total: weekTasks.length,
-    completed: weekTasks.filter(task => task.actual_minutes && task.actual_minutes > 0).length,
-    pending: weekTasks.filter(task => !task.actual_minutes || task.actual_minutes === 0).length,
-    emergency: weekTasks.filter(task => task.is_emergency).length,
-    totalMinutes: weekTasks.reduce((sum, task) => sum + task.estimated_minutes, 0),
-    completedMinutes: weekTasks.reduce((sum, task) => sum + (task.actual_minutes || 0), 0)
-  }
-
-  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
-
-  // Get task status color
-  const getTaskStatusColor = (task: SmallTask) => {
-    if (task.actual_minutes && task.actual_minutes > 0) return 'bg-green-100 text-green-800'
-    if (task.is_emergency) return 'bg-red-100 text-red-800'
-    const now = new Date()
-    const taskTime = parseISO(task.scheduled_start)
-    if (taskTime < now) return 'bg-yellow-100 text-yellow-800'
-    return 'bg-blue-100 text-blue-800'
-  }
-
-  const getTaskStatusText = (task: SmallTask) => {
-    if (task.actual_minutes && task.actual_minutes > 0) return '完了'
-    if (task.is_emergency) return '緊急'
-    const now = new Date()
-    const taskTime = parseISO(task.scheduled_start)
-    if (taskTime < now) return '期限超過'
-    return '予定'
-  }
-
-  const getBigTaskName = (bigTaskId: string) => {
-    const bigTask = bigTasks.find(task => task.id === bigTaskId)
-    return bigTask?.name || '不明なタスク'
-  }
+  // 統一された週切り替え関数
+  const goToPreviousWeek = () => setCurrentWeek(prev => subWeeks(prev, 1))
+  const goToNextWeek = () => setCurrentWeek(prev => addWeeks(prev, 1))
 
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <CalendarIcon className="h-8 w-8 text-purple-600" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">スケジュール管理</h1>
-              <p className="text-gray-600">
-                {format(selectedDate, 'yyyy年MM月dd日 (E)', { locale: ja })} - 
-                第{currentWeek}週
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Link href="/schedule/weekly">
-              <Button variant="outline">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                週間詳細
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
+    <div>
 
-      {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">プロジェクト:</label>
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">すべてのプロジェクト</SelectItem>
-              {projects.map(project => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Main Content */}
+      <div className="container mx-auto px-6 py-6">
+        <div className="space-y-6">
 
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">表示:</label>
-          <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'day' | 'week')}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">日表示</SelectItem>
-              <SelectItem value="week">週表示</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+          {/* Weekly Calendar - Always Visible */}
+          <Card className="bg-[#E5E3D2] border border-[#C9C7B6] shadow-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#C9C7B6]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-[#1C1C14] flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-[#3C6659]" />
+                  週間カレンダー
+                </h2>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={goToPreviousWeek}
+                    variant="ghost"
+                    size="sm"
+                    className="text-[#47473B] hover:bg-[#D4D5C0]"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">完了率</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{completionRate}%</div>
-            <div className="text-sm text-gray-500">{stats.completed}/{stats.total} タスク</div>
-          </CardContent>
-        </Card>
+                  <span className="px-3 py-1 text-sm font-medium text-[#47473B]">
+                    {format(weekStart, 'yyyy年M月d日(E)', { locale: ja })} ~ {format(weekEnd, 'M月d日(E)', { locale: ja })}
+                  </span>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">予定時間</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{Math.round(stats.totalMinutes / 60)}h</div>
-            <div className="text-sm text-gray-500">{stats.totalMinutes}分</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">実績時間</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{Math.round(stats.completedMinutes / 60)}h</div>
-            <div className="text-sm text-gray-500">{stats.completedMinutes}分</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">緊急タスク</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.emergency}</div>
-            <div className="text-sm text-gray-500">要優先対応</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Calendar */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">カレンダー</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              className="rounded-md border"
-              locale={ja}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Schedule View */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              {viewMode === 'week' ? '週間スケジュール' : '日間スケジュール'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {viewMode === 'week' ? (
-              <div className="space-y-4">
-                {Array.from({ length: 7 }, (_, i) => {
-                  const day = new Date(weekStart)
-                  day.setDate(weekStart.getDate() + i)
-                  const dateKey = format(day, 'yyyy-MM-dd')
-                  const dayTasks = groupedTasks[dateKey] || []
-                  
-                  return (
-                    <div key={dateKey} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">
-                            {format(day, 'MM月dd日 (E)', { locale: ja })}
-                          </h3>
-                          <Badge variant="outline">
-                            {dayTasks.length}件
-                          </Badge>
-                        </div>
-                        {format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && (
-                          <Badge>今日</Badge>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        {dayTasks.length === 0 ? (
-                          <p className="text-sm text-gray-500">タスクがありません</p>
-                        ) : (
-                          dayTasks.map(task => (
-                            <div key={task.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium truncate">{task.name}</span>
-                                  <Badge className={getTaskStatusColor(task)}>
-                                    {getTaskStatusText(task)}
-                                  </Badge>
-                                  {task.is_emergency && (
-                                    <Zap className="h-3 w-3 text-red-500" />
-                                  )}
-                                </div>
-                                <div className="text-xs text-gray-500 truncate">
-                                  {getBigTaskName(task.big_task_id)} • {task.estimated_minutes}分
-                                </div>
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {format(parseISO(task.scheduled_start), 'HH:mm', { locale: ja })}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">
-                    {format(selectedDate, 'yyyy年MM月dd日 (E)', { locale: ja })}
-                  </h3>
-                  <Badge variant="outline">
-                    {dayTasks.length}件のタスク
-                  </Badge>
+                  <Button
+                    onClick={goToNextWeek}
+                    variant="ghost"
+                    size="sm"
+                    className="text-[#47473B] hover:bg-[#D4D5C0]"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
-                
-                {dayTasks.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">この日にはタスクがありません</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {dayTasks
-                      .sort((a, b) => parseISO(a.scheduled_start).getTime() - parseISO(b.scheduled_start).getTime())
-                      .map(task => (
-                        <div key={task.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-medium truncate">{task.name}</h4>
-                                <Badge className={getTaskStatusColor(task)}>
-                                  {getTaskStatusText(task)}
-                                </Badge>
-                                {task.is_emergency && (
-                                  <Zap className="h-4 w-4 text-red-500" />
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 mb-1">
-                                {getBigTaskName(task.big_task_id)}
-                              </p>
-                              {task.description && (
-                                <p className="text-sm text-gray-500 truncate">
-                                  {task.description}
-                                </p>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-500 text-right">
-                              <div>{format(parseISO(task.scheduled_start), 'HH:mm', { locale: ja })}</div>
-                              <div>{task.estimated_minutes}分</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+            <div className="h-[600px]">
+              <WeeklyCalendar
+                weeklySchedule={calendarData.weeklySchedule}
+                onScheduleTask={calendarData.scheduleTask}
+                onUnscheduleTask={calendarData.unscheduleTask}
+                onCreateTask={calendarData.createSmallTask}
+                onUpdateTask={calendarData.updateSmallTask}
+                onDeleteTask={calendarData.deleteSmallTask}
+                projects={calendarData.projects}
+                bigTasks={currentWeekBigTasks}
+                userId={userId}
+              />
+            </div>
+          </Card>
+
+          {/* Task Memo */}
+          <Card className="bg-[#E5E3D2] border border-[#C9C7B6] shadow-lg overflow-hidden">
+            <TaskMemo
+              value={memoContent}
+              onChange={handleMemoSave}
+            />
+          </Card>
+        </div>
       </div>
     </div>
   )

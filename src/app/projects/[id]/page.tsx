@@ -16,16 +16,16 @@ import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
 import { Project, UpdateProjectData } from '@/types'
-import { 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
-  Target, 
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Target,
   Calendar,
   Plus,
   CheckCircle2,
   AlertCircle,
-  Settings
+  Settings,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -42,14 +42,14 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const router = useRouter()
   const { projects, updateProject, deleteProject } = useProjects('current-user')
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null)
-  const { bigTasks } = useBigTasks(resolvedParams?.id)
-  const { smallTasks } = useSmallTasks(resolvedParams?.id)
+  const { bigTasks } = useBigTasks('current-user', resolvedParams?.id)
+  const { smallTasks } = useSmallTasks('current-user', resolvedParams?.id)
 
   // Resolve params promise
   useEffect(() => {
     params.then(setResolvedParams)
   }, [params])
-  
+
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -72,7 +72,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">プロジェクトが見つかりません</h2>
-          <p className="text-gray-600 mb-6">指定されたプロジェクトは存在しないか、削除されています。</p>
+          <p className="text-gray-600 mb-6">
+            指定されたプロジェクトは存在しないか、削除されています。
+          </p>
           <Link href="/projects">
             <Button>プロジェクト一覧に戻る</Button>
           </Link>
@@ -84,7 +86,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const handleUpdateProject = async (data: UpdateProjectData) => {
     if (!resolvedParams) return
     setIsUpdating(true)
-    
+
     try {
       updateProject({ id: resolvedParams.id, data })
       toast.success('プロジェクトが正常に更新されました')
@@ -104,7 +106,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
     }
 
     setIsDeleting(true)
-    
+
     try {
       deleteProject(resolvedParams.id)
       toast.success('プロジェクトが正常に削除されました')
@@ -119,49 +121,62 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
   const getStatusColor = (status: Project['status']) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'completed': return 'bg-blue-100 text-blue-800'
-      case 'planning': return 'bg-yellow-100 text-yellow-800'
-      case 'paused': return 'bg-gray-100 text-gray-800'
-      case 'cancelled': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'active':
+        return 'bg-green-100 text-green-800'
+      case 'completed':
+        return 'bg-blue-100 text-blue-800'
+      case 'planning':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'paused':
+        return 'bg-gray-100 text-gray-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
   const getStatusText = (status: Project['status']) => {
     switch (status) {
-      case 'active': return 'アクティブ'
-      case 'completed': return '完了'
-      case 'planning': return '計画中'
-      case 'paused': return '一時停止'
-      case 'cancelled': return 'キャンセル'
-      default: return status
+      case 'active':
+        return 'アクティブ'
+      case 'completed':
+        return '完了'
+      case 'planning':
+        return '計画中'
+      case 'paused':
+        return '一時停止'
+      case 'cancelled':
+        return 'キャンセル'
+      default:
+        return status
     }
   }
 
   // Calculate project statistics
-  const projectBigTasks = bigTasks.filter(task => task.project_id === resolvedParams.id)
-  const projectSmallTasks = smallTasks.filter(task => 
+  const projectBigTasks = bigTasks // すでにprojectIdでフィルタリングされている
+  const projectSmallTasks = smallTasks.filter(task =>
     projectBigTasks.some(bigTask => bigTask.id === task.big_task_id)
   )
-  
+
   const stats = {
     bigTasks: {
       total: projectBigTasks.length,
       completed: projectBigTasks.filter(t => t.status === 'completed').length,
       active: projectBigTasks.filter(t => t.status === 'active').length,
-      pending: projectBigTasks.filter(t => t.status === 'pending').length
+      pending: projectBigTasks.filter(t => t.status === 'pending').length,
     },
     smallTasks: {
       total: projectSmallTasks.length,
       completed: projectSmallTasks.filter(t => t.actual_minutes && t.actual_minutes > 0).length,
-      pending: projectSmallTasks.filter(t => !t.actual_minutes || t.actual_minutes === 0).length
-    }
+      pending: projectSmallTasks.filter(t => !t.actual_minutes || t.actual_minutes === 0).length,
+    },
   }
 
-  const completionPercentage = stats.bigTasks.total > 0 
-    ? Math.round((stats.bigTasks.completed / stats.bigTasks.total) * 100)
-    : 0
+  const completionPercentage =
+    stats.bigTasks.total > 0
+      ? Math.round((stats.bigTasks.completed / stats.bigTasks.total) * 100)
+      : 0
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
@@ -175,7 +190,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
             </Button>
           </Link>
         </div>
-        
+
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-50 rounded-lg">
@@ -196,7 +211,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -240,7 +255,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               <CardContent>
                 <div className="text-3xl font-bold text-blue-600">{completionPercentage}%</div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div 
+                  <div
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${completionPercentage}%` }}
                   />
@@ -253,7 +268,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                 <CardTitle className="text-sm font-medium text-gray-600">大タスク</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-gray-900">{stats.bigTasks.completed}/{stats.bigTasks.total}</div>
+                <div className="text-3xl font-bold text-gray-900">
+                  {stats.bigTasks.completed}/{stats.bigTasks.total}
+                </div>
                 <div className="text-sm text-gray-500">完了 / 総数</div>
               </CardContent>
             </Card>
@@ -263,7 +280,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                 <CardTitle className="text-sm font-medium text-gray-600">小タスク</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-gray-900">{stats.smallTasks.completed}/{stats.smallTasks.total}</div>
+                <div className="text-3xl font-bold text-gray-900">
+                  {stats.smallTasks.completed}/{stats.smallTasks.total}
+                </div>
                 <div className="text-sm text-gray-500">完了 / 総数</div>
               </CardContent>
             </Card>
@@ -318,7 +337,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                 <div className="text-center py-8">
                   <CheckCircle2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">まだタスクがありません</p>
-                  <p className="text-sm text-gray-500 mb-4">大タスクを作成してプロジェクトを開始しましょう</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    大タスクを作成してプロジェクトを開始しましょう
+                  </p>
                   <Link href={`/projects/${resolvedParams.id}/tasks`}>
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
@@ -346,7 +367,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="p-4 bg-green-50 rounded-lg">
                       <h3 className="font-medium text-green-900 mb-2">小タスク</h3>
                       <div className="space-y-1 text-sm">
@@ -363,6 +384,31 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                           <span className="font-medium">{stats.smallTasks.total}</span>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                  
+                  {/* 大タスク一覧表 */}
+                  <div className="mt-6">
+                    <h3 className="font-medium mb-2">大タスク一覧</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse border border-gray-200">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="border border-gray-200 px-4 py-2 text-left">カテゴリ</th>
+                            <th className="border border-gray-200 px-4 py-2 text-left">タスク名</th>
+                            <th className="border border-gray-200 px-4 py-2 text-right">見積時間</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {projectBigTasks.map((task) => (
+                            <tr key={task.id} className="hover:bg-gray-50">
+                              <td className="border border-gray-200 px-4 py-2">{task.category || '-'}</td>
+                              <td className="border border-gray-200 px-4 py-2">{task.name}</td>
+                              <td className="border border-gray-200 px-4 py-2 text-right">{task.estimated_hours}h</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>

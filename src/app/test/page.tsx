@@ -38,7 +38,7 @@ export default function TestPage() {
           goal: '100部完売',
           deadline: '2025-10-15',
           status: 'active',
-          version: 1
+          version: 1,
         }
 
         addLog('📝 Creating test project...')
@@ -53,7 +53,6 @@ export default function TestPage() {
         const finalCount = await db.projects.count()
         addLog(`📊 Final projects count: ${finalCount}`)
         addLog(`🎉 Test completed! Projects: ${initialCount} → ${finalCount}`)
-
       } catch (error) {
         addLog(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
         console.error('Full error:', error)

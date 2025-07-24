@@ -1,11 +1,13 @@
 // app/sitemap/page.tsx
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
 
 export default function SitemapPage() {
-  const [pages, setPages] = useState<Array<{name: string, path: string, status: 'checking' | 'ok' | 'error'}>>([]);
+  const [pages, setPages] = useState<
+    Array<{ name: string; path: string; status: 'checking' | 'ok' | 'error' }>
+  >([])
 
   // あなたのプロジェクトのページリスト
   const expectedPages = [
@@ -21,57 +23,65 @@ export default function SitemapPage() {
     { name: 'リポジトリ', path: '/test/repositories' },
     // 動的ルート（例として）
     { name: 'プロジェクト詳細 (例)', path: '/projects/1' },
-  ];
+  ]
 
   useEffect(() => {
     // 各ページの存在確認
     const checkPages = async () => {
       const pagesWithStatus = await Promise.all(
-        expectedPages.map(async (page) => {
+        expectedPages.map(async page => {
           try {
-            const response = await fetch(page.path, { method: 'HEAD' });
+            const response = await fetch(page.path, { method: 'HEAD' })
             return {
               ...page,
-              status: response.ok ? 'ok' as const : 'error' as const
-            };
+              status: response.ok ? ('ok' as const) : ('error' as const),
+            }
           } catch {
             return {
               ...page,
-              status: 'error' as const
-            };
+              status: 'error' as const,
+            }
           }
         })
-      );
-      setPages(pagesWithStatus);
-    };
+      )
+      setPages(pagesWithStatus)
+    }
 
     // 初期状態をセット
-    setPages(expectedPages.map(page => ({ ...page, status: 'checking' as const })));
+    setPages(expectedPages.map(page => ({ ...page, status: 'checking' as const })))
 
     // ページ確認を実行
-    checkPages();
-  }, []);
+    checkPages()
+  }, [])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'checking': return '🔄';
-      case 'ok': return '✅';
-      case 'error': return '❌';
-      default: return '❓';
+      case 'checking':
+        return '🔄'
+      case 'ok':
+        return '✅'
+      case 'error':
+        return '❌'
+      default:
+        return '❓'
     }
-  };
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'checking': return 'text-yellow-600 bg-yellow-50';
-      case 'ok': return 'text-green-600 bg-green-50';
-      case 'error': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'checking':
+        return 'text-yellow-600 bg-yellow-50'
+      case 'ok':
+        return 'text-green-600 bg-green-50'
+      case 'error':
+        return 'text-red-600 bg-red-50'
+      default:
+        return 'text-gray-600 bg-gray-50'
     }
-  };
+  }
 
-  const okPages = pages.filter(p => p.status === 'ok');
-  const errorPages = pages.filter(p => p.status === 'error');
+  const okPages = pages.filter(p => p.status === 'ok')
+  const errorPages = pages.filter(p => p.status === 'error')
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -112,17 +122,20 @@ export default function SitemapPage() {
                   <div className="flex items-center space-x-3">
                     <span className="text-xl">{getStatusIcon(page.status)}</span>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-900">
-                        {page.name}
-                      </h3>
+                      <h3 className="text-sm font-medium text-gray-900">{page.name}</h3>
                       <p className="text-sm text-gray-500">{page.path}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-3">
-                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(page.status)}`}>
-                      {page.status === 'checking' ? '確認中...' :
-                       page.status === 'ok' ? '正常' : 'エラー'}
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${getStatusColor(page.status)}`}
+                    >
+                      {page.status === 'checking'
+                        ? '確認中...'
+                        : page.status === 'ok'
+                          ? '正常'
+                          : 'エラー'}
                     </span>
 
                     {page.status === 'ok' && (
@@ -143,12 +156,12 @@ export default function SitemapPage() {
         {/* エラーページがある場合の注意 */}
         {errorPages.length > 0 && (
           <div className="mt-8 bg-red-50 border border-red-200 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-red-900 mb-3">
-              ⚠️ 確認が必要なページ
-            </h3>
+            <h3 className="text-lg font-semibold text-red-900 mb-3">⚠️ 確認が必要なページ</h3>
             <ul className="space-y-1 text-red-800">
               {errorPages.map(page => (
-                <li key={page.path}>• {page.name} ({page.path})</li>
+                <li key={page.path}>
+                  • {page.name} ({page.path})
+                </li>
               ))}
             </ul>
             <p className="text-sm text-red-700 mt-3">
@@ -167,5 +180,5 @@ export default function SitemapPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -17,12 +17,12 @@ interface SmallTaskListProps {
   isLoading: boolean
 }
 
-export function SmallTaskList({ 
-  smallTasks, 
-  bigTasks, 
-  onEdit, 
-  onDelete, 
-  isLoading 
+export function SmallTaskList({
+  smallTasks,
+  bigTasks,
+  onEdit,
+  onDelete,
+  isLoading,
 }: SmallTaskListProps) {
   if (isLoading) {
     return <div className="text-center py-8">読み込み中...</div>
@@ -49,16 +49,16 @@ export function SmallTaskList({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium">{task.name}</h3>
-                <Badge variant={task.actual_minutes && task.actual_minutes > 0 ? 'default' : 'outline'}>
+                <Badge
+                  variant={task.actual_minutes && task.actual_minutes > 0 ? 'default' : 'outline'}
+                >
                   {task.actual_minutes && task.actual_minutes > 0 ? '完了' : '未完了'}
                 </Badge>
-                {task.is_emergency && (
-                  <Badge variant="destructive">緊急</Badge>
-                )}
+                {task.is_emergency && <Badge variant="destructive">緊急</Badge>}
               </div>
               <p className="text-sm text-gray-500">{getBigTaskName(task.big_task_id)}</p>
               <p className="text-sm text-gray-500">
-                {format(parseISO(task.scheduled_start), 'MM/dd HH:mm', { locale: ja })} - 
+                {format(parseISO(task.scheduled_start), 'MM/dd HH:mm', { locale: ja })} -
                 {format(parseISO(task.scheduled_end), 'HH:mm', { locale: ja })}
               </p>
             </div>

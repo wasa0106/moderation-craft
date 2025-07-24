@@ -18,19 +18,20 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
-import { CreateBigTaskData, CreateSmallTaskData, UpdateBigTaskData, UpdateSmallTaskData, BigTask, SmallTask } from '@/types'
 import {
-  ArrowLeft,
-  Plus,
-  Target,
-  CheckCircle2,
-  Calendar
-} from 'lucide-react'
+  CreateBigTaskData,
+  CreateSmallTaskData,
+  UpdateBigTaskData,
+  UpdateSmallTaskData,
+  BigTask,
+  SmallTask,
+} from '@/types'
+import { ArrowLeft, Plus, Target, CheckCircle2, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -54,21 +55,23 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
     createBigTask,
     updateBigTask,
     deleteBigTask,
-    isLoading: bigTasksLoading
+    isLoading: bigTasksLoading,
   } = useBigTasks(resolvedParams?.id)
   const {
     smallTasks,
     createSmallTask,
     updateSmallTask,
     deleteSmallTask,
-    isLoading: smallTasksLoading
+    isLoading: smallTasksLoading,
   } = useSmallTasks(resolvedParams?.id)
 
   const [showBigTaskForm, setShowBigTaskForm] = useState(false)
   const [showSmallTaskForm, setShowSmallTaskForm] = useState(false)
   const [selectedBigTask, setSelectedBigTask] = useState<BigTask | null>(null)
   const [selectedSmallTask, setSelectedSmallTask] = useState<SmallTask | null>(null)
-  const [selectedBigTaskForSmallTask, setSelectedBigTaskForSmallTask] = useState<string | null>(null)
+  const [selectedBigTaskForSmallTask, setSelectedBigTaskForSmallTask] = useState<string | null>(
+    null
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const project = projects.find(p => p.id === resolvedParams?.id)
@@ -93,7 +96,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
         <div className="text-center py-12">
           <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">プロジェクトが見つかりません</h2>
-          <p className="text-gray-600 mb-6">指定されたプロジェクトは存在しないか、削除されています。</p>
+          <p className="text-gray-600 mb-6">
+            指定されたプロジェクトは存在しないか、削除されています。
+          </p>
           <Link href="/projects">
             <Button>プロジェクト一覧に戻る</Button>
           </Link>
@@ -223,14 +228,14 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
       total: projectBigTasks.length,
       completed: projectBigTasks.filter(t => t.status === 'completed').length,
       active: projectBigTasks.filter(t => t.status === 'active').length,
-      pending: projectBigTasks.filter(t => t.status === 'pending').length
+      pending: projectBigTasks.filter(t => t.status === 'pending').length,
     },
     smallTasks: {
       total: projectSmallTasks.length,
       completed: projectSmallTasks.filter(t => t.actual_minutes && t.actual_minutes > 0).length,
       pending: projectSmallTasks.filter(t => !t.actual_minutes || t.actual_minutes === 0).length,
-      emergency: projectSmallTasks.filter(t => t.is_emergency).length
-    }
+      emergency: projectSmallTasks.filter(t => t.is_emergency).length,
+    },
   }
 
   return (
@@ -275,7 +280,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
             <CardTitle className="text-sm font-medium text-gray-600">大タスク</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.bigTasks.completed}/{stats.bigTasks.total}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.bigTasks.completed}/{stats.bigTasks.total}
+            </div>
             <div className="text-sm text-gray-500">完了 / 総数</div>
           </CardContent>
         </Card>
@@ -285,7 +292,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
             <CardTitle className="text-sm font-medium text-gray-600">小タスク</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.smallTasks.completed}/{stats.smallTasks.total}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {stats.smallTasks.completed}/{stats.smallTasks.total}
+            </div>
             <div className="text-sm text-gray-500">完了 / 総数</div>
           </CardContent>
         </Card>
@@ -396,7 +405,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
                     </DialogHeader>
                     {(selectedSmallTask || selectedBigTaskForSmallTask) && (
                       <SmallTaskForm
-                        bigTaskId={selectedBigTaskForSmallTask || selectedSmallTask?.big_task_id || ''}
+                        bigTaskId={
+                          selectedBigTaskForSmallTask || selectedSmallTask?.big_task_id || ''
+                        }
                         task={selectedSmallTask || undefined}
                         onSubmit={selectedSmallTask ? handleUpdateSmallTask : handleCreateSmallTask}
                         onCancel={() => {
@@ -415,7 +426,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
               {projectBigTasks.length === 0 ? (
                 <div className="text-center py-8">
                   <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">小タスクを作成するには、まず大タスクを作成してください</p>
+                  <p className="text-gray-600">
+                    小タスクを作成するには、まず大タスクを作成してください
+                  </p>
                 </div>
               ) : (
                 <SmallTaskList

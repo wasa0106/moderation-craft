@@ -29,7 +29,7 @@ export function ProjectDeleteDialog({
   project,
   open,
   onOpenChange,
-  onConfirm
+  onConfirm,
 }: ProjectDeleteDialogProps) {
   if (!project) return null
 
@@ -42,14 +42,10 @@ export function ProjectDeleteDialog({
             プロジェクトを削除
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
-            <p>
-              以下のプロジェクトを削除しますか？この操作は取り消せません。
-            </p>
+            <p>以下のプロジェクトを削除しますか？この操作は取り消せません。</p>
             <div className="bg-gray-50 p-3 rounded-lg">
               <p className="font-medium">{project.name}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {project.goal}
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">{project.goal}</p>
             </div>
             <p className="text-sm text-red-600 font-medium">
               ⚠️ このプロジェクトに関連するすべてのタスクとセッションも削除されます。
