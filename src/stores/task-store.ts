@@ -171,19 +171,22 @@ export const useTaskStore = create<TaskState>()(
       },
 
       getActiveTasks: () => {
+        console.warn('TaskStore.getActiveTasks is deprecated. Use with WorkSessions instead.')
         const { smallTasks } = get()
-        return smallTasks.filter(t => t.actual_start && !t.actual_end)
+        return smallTasks // TODO: Filter by WorkSession status
       },
 
       getCompletedTasks: () => {
+        console.warn('TaskStore.getCompletedTasks is deprecated. Use with WorkSessions instead.')
         const { smallTasks } = get()
-        return smallTasks.filter(t => t.actual_end)
+        return smallTasks // TODO: Filter by WorkSession status
       },
 
       getOverdueTasks: () => {
+        console.warn('TaskStore.getOverdueTasks is deprecated. Use with WorkSessions instead.')
         const { smallTasks } = get()
         const now = new Date().toISOString()
-        return smallTasks.filter(t => t.scheduled_end < now && !t.actual_end)
+        return smallTasks.filter(t => t.scheduled_end < now) // TODO: Filter by WorkSession status
       },
 
       getEmergencyTasks: () => {

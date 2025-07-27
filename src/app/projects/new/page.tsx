@@ -54,10 +54,13 @@ export default function ProjectCreatePage() {
     weekendHoursPerDay,
     bufferRate,
     weeklyAvailableHours,
+    totalAvailableHours,
     tasks,
     totalTaskHours,
     projectCategories,
     weeklyAllocations,
+    dailyAllocations,
+    taskSchedules,
     isOverCapacity,
     validationErrors,
     categoryColors,
@@ -145,70 +148,39 @@ export default function ProjectCreatePage() {
       const newProject = await createProject(projectData)
       console.log('作成されたプロジェクト:', newProject)
 
-      // BigTasksを作成
-      console.log('BigTask作成開始. 週配分数:', weeklyAllocations.length)
+      // BigTasksを作成（1タスク1BigTask）
+      const validTasks = getValidTasks()
+      console.log('BigTask作成開始. タスク数:', validTasks.length)
 
-      const bigTaskPromises = weeklyAllocations.map(async (allocation, index) => {
-        const allocatedTasks = allocation.allocatedTasks
-        if (allocatedTasks.length === 0) {
-          console.log(`週${allocation.weekNumber}: タスクなしのためスキップ`)
+      const bigTaskPromises = validTasks.map(async (task) => {
+        // taskSchedulesから該当タスクの開始日・終了日を取得
+        const schedule = taskSchedules.get(task.id)
+        if (!schedule) {
+          console.log(`タスク「${task.name}」: スケジュールなしのためスキップ`)
           return null
-        }
-
-        // タスク情報を取得
-        const validTasks = getValidTasks()
-        
-        // allocatedTasksから実際のタスク名を取得して結合
-        const taskNames = allocatedTasks.map(allocTask => {
-          const task = validTasks.find(vt => vt.id === allocTask.taskId)
-          return task?.name || ''
-        }).filter(Boolean).join('・')
-        
-        // 各週の最初のタスクのカテゴリを取得（既存ロジック維持）
-        const firstTaskId = allocatedTasks[0].taskId
-        const firstTask = validTasks.find(t => t.id === firstTaskId)
-        const category = firstTask?.category || 'その他'
-
-        // 週の日付範囲を計算
-        console.log(`週${allocation.weekNumber}の日付:`, {
-          startDate: allocation.startDate,
-          endDate: allocation.endDate,
-        })
-
-        const weekStart = new Date(allocation.startDate)
-        const weekEnd = new Date(allocation.endDate)
-
-        // 日付が有効かチェック
-        if (isNaN(weekStart.getTime()) || isNaN(weekEnd.getTime())) {
-          console.error(`週${allocation.weekNumber}の日付が無効:`, {
-            startDate: allocation.startDate,
-            endDate: allocation.endDate,
-            weekStart,
-            weekEnd,
-          })
-          throw new Error(`週${allocation.weekNumber}の日付が無効です`)
         }
 
         const bigTaskData = {
           project_id: newProject.id,
           user_id: 'current-user',
-          name: taskNames || `第${allocation.weekNumber}週のタスク`,
-          category,
-          week_number: allocation.weekNumber,
-          week_start_date: weekStart.toISOString(),
-          week_end_date: weekEnd.toISOString(),
-          estimated_hours: allocation.totalAllocatedHours,
+          name: task.name,
+          category: task.category || 'その他',
+          start_date: schedule.startDate,
+          end_date: schedule.endDate,
+          estimated_hours: task.estimatedHours,
           status: 'pending' as const,
+          // 後方互換性のため週番号も設定（将来的に削除予定）
+          week_number: 1,
         }
 
-        console.log(`週${allocation.weekNumber}のBigTaskデータ:`, bigTaskData)
+        console.log(`タスク「${task.name}」のBigTaskデータ:`, bigTaskData)
 
         try {
           const result = await createBigTask(bigTaskData)
-          console.log(`週${allocation.weekNumber}のBigTask作成成功:`, result)
+          console.log(`タスク「${task.name}」のBigTask作成成功:`, result)
           return result
         } catch (taskError) {
-          console.error(`週${allocation.weekNumber}のBigTask作成エラー:`, taskError)
+          console.error(`タスク「${task.name}」のBigTask作成エラー:`, taskError)
           throw taskError
         }
       })
@@ -241,7 +213,7 @@ export default function ProjectCreatePage() {
     router.push('/projects')
   }
 
-  const totalAvailableHours = weeklyAvailableHours * totalWeeks
+  // totalAvailableHoursはstoreで計算済み
 
   return (
     <div className="h-full bg-background flex flex-col">
@@ -413,7 +385,7 @@ export default function ProjectCreatePage() {
                         min="0"
                         max="24"
                         step="0.5"
-                        value={weekdayHoursPerDay}
+                        value={weekdayHoursPerDay === 0 ? '' : weekdayHoursPerDay}
                         onChange={e => setWeekdayHoursPerDay(parseFloat(e.target.value) || 0)}
                       />
                     </div>
@@ -424,7 +396,7 @@ export default function ProjectCreatePage() {
                         min="0"
                         max="24"
                         step="0.5"
-                        value={weekendHoursPerDay}
+                        value={weekendHoursPerDay === 0 ? '' : weekendHoursPerDay}
                         onChange={e => setWeekendHoursPerDay(parseFloat(e.target.value) || 0)}
                       />
                     </div>

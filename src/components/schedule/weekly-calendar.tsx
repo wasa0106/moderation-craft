@@ -221,7 +221,12 @@ export function WeeklyCalendar({
     weekStartDate: weeklySchedule.weekStartDate,
     weekEndDate: weeklySchedule.weekEndDate,
     bigTasksCount: bigTasks.length,
-    bigTasks: bigTasks.map(t => ({ name: t.name, week_start_date: t.week_start_date, week_end_date: t.week_end_date }))
+    bigTasks: bigTasks.map(t => ({ 
+      name: t.name, 
+      start_date: t.start_date, 
+      end_date: t.end_date,
+      category: t.category 
+    }))
   })
 
   // Get project color

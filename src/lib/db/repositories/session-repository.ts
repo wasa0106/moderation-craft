@@ -7,6 +7,7 @@ import { Table } from 'dexie'
 import { db } from '../database'
 import { BaseRepository } from './base-repository'
 import { WorkSession, WorkSessionRepository as IWorkSessionRepository } from '@/types'
+import { startOfWeek, endOfWeek } from 'date-fns'
 
 export class WorkSessionRepository
   extends BaseRepository<WorkSession>
@@ -115,20 +116,20 @@ export class WorkSessionRepository
 
   async getSessionsByDuration(
     userId: string,
-    minDuration: number,
-    maxDuration?: number
+    minDurationSeconds: number,
+    maxDurationSeconds?: number
   ): Promise<WorkSession[]> {
     try {
       return await this.table
         .where('user_id')
         .equals(userId)
         .and(session => {
-          if (maxDuration !== undefined) {
+          if (maxDurationSeconds !== undefined) {
             return (
-              session.duration_minutes >= minDuration && session.duration_minutes <= maxDuration
+              session.duration_seconds >= minDurationSeconds && session.duration_seconds <= maxDurationSeconds
             )
           }
-          return session.duration_minutes >= minDuration
+          return session.duration_seconds >= minDurationSeconds
         })
         .reverse()
         .sortBy('start_time')
@@ -148,7 +149,7 @@ export class WorkSessionRepository
         user_id: userId,
         small_task_id: taskId,
         start_time: startTime || new Date().toISOString(),
-        duration_minutes: 0,
+        duration_seconds: 0,
         is_synced: false,
       }
 
@@ -170,13 +171,12 @@ export class WorkSessionRepository
       }
 
       const actualEndTime = endTime || new Date().toISOString()
-      const durationMinutes = Math.round(
-        (new Date(actualEndTime).getTime() - new Date(session.start_time).getTime()) / (1000 * 60)
-      )
+      const durationMilliseconds = new Date(actualEndTime).getTime() - new Date(session.start_time).getTime()
+      const durationSeconds = Math.floor(durationMilliseconds / 1000)
 
       const updates: Partial<WorkSession> = {
         end_time: actualEndTime,
-        duration_minutes: durationMinutes,
+        duration_seconds: durationSeconds,
         is_synced: false,
       }
 
@@ -202,12 +202,12 @@ export class WorkSessionRepository
       }
 
       const pauseTime = new Date().toISOString()
-      const currentDuration = Math.round(
-        (new Date(pauseTime).getTime() - new Date(session.start_time).getTime()) / (1000 * 60)
+      const currentDurationSeconds = Math.floor(
+        (new Date(pauseTime).getTime() - new Date(session.start_time).getTime()) / 1000
       )
 
       return await this.update(sessionId, {
-        duration_minutes: currentDuration,
+        duration_seconds: currentDurationSeconds,
         is_synced: false,
       })
     } catch (error) {
@@ -302,7 +302,7 @@ export class WorkSessionRepository
       const stats = sessions.reduce(
         (acc, session) => {
           acc.totalSessions++
-          acc.totalDuration += session.duration_minutes
+          acc.totalDuration += session.duration_seconds
 
           if (session.focus_level !== undefined) {
             acc.focusLevelSum += session.focus_level
@@ -337,8 +337,8 @@ export class WorkSessionRepository
 
       return {
         totalSessions: stats.totalSessions,
-        totalDuration: stats.totalDuration,
-        averageDuration: stats.totalSessions > 0 ? stats.totalDuration / stats.totalSessions : 0,
+        totalDuration: Math.floor(stats.totalDuration / 60), // 分単位で返す
+        averageDuration: stats.totalSessions > 0 ? Math.floor(stats.totalDuration / stats.totalSessions / 60) : 0,
         averageFocusLevel:
           stats.focusLevelCount > 0 ? stats.focusLevelSum / stats.focusLevelCount : 0,
         sessionsWithTasks: stats.sessionsWithTasks,
@@ -366,9 +366,10 @@ export class WorkSessionRepository
   async getTotalWorkTime(userId: string, startDate: string, endDate: string): Promise<number> {
     try {
       const sessions = await this.getByDateRange(userId, startDate, endDate)
-      return sessions
+      const totalSeconds = sessions
         .filter(session => session.end_time)
-        .reduce((total, session) => total + session.duration_minutes, 0)
+        .reduce((total, session) => total + session.duration_seconds, 0)
+      return Math.floor(totalSeconds / 60) // 分単位で返す
     } catch (error) {
       throw new Error(`Failed to get total work time: ${error}`)
     }
@@ -400,6 +401,43 @@ export class WorkSessionRepository
     }
   }
 
+  async getWeeklyTotalMinutes(userId: string, date: Date = new Date()): Promise<number> {
+    try {
+      const totalSeconds = await this.getWeeklyTotalSeconds(userId, date)
+      return Math.floor(totalSeconds / 60) // 分単位で返す
+    } catch (error) {
+      throw new Error(`Failed to get weekly total minutes: ${error}`)
+    }
+  }
+  
+  async getWeeklyTotalSeconds(userId: string, date: Date = new Date()): Promise<number> {
+    try {
+      // 指定日の週の開始日（月曜日）と終了日（日曜日）を取得
+      const weekStart = startOfWeek(date, { weekStartsOn: 1 }) // 1 = Monday
+      const weekEnd = endOfWeek(date, { weekStartsOn: 1 })
+      
+      const startStr = weekStart.toISOString()
+      const endStr = weekEnd.toISOString()
+      
+      // 週の範囲内のセッションを取得
+      const sessions = await this.table
+        .where('user_id')
+        .equals(userId)
+        .and(session => {
+          const sessionStart = session.start_time
+          return sessionStart >= startStr && sessionStart <= endStr
+        })
+        .toArray()
+      
+      // 完了したセッションの合計時間を計算（秒単位）
+      return sessions
+        .filter(session => session.end_time)
+        .reduce((total, session) => total + session.duration_seconds, 0)
+    } catch (error) {
+      throw new Error(`Failed to get weekly total seconds: ${error}`)
+    }
+  }
+
   async getDailySessionCount(userId: string, date: string): Promise<number> {
     try {
       const sessions = await this.getSessionsForDate(userId, date)
@@ -420,7 +458,7 @@ export class WorkSessionRepository
         .filter(session => session.end_time)
         .reduce(
           (longest, session) =>
-            !longest || session.duration_minutes > longest.duration_minutes ? session : longest,
+            !longest || session.duration_seconds > longest.duration_seconds ? session : longest,
           undefined as WorkSession | undefined
         )
     } catch (error) {

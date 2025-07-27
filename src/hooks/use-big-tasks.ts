@@ -215,3 +215,21 @@ export function useBigTasksByWeek(projectId: string, weekNumber: number) {
     refetch: bigTasksQuery.refetch,
   }
 }
+
+export function useBigTasksByDateRange(userId: string, startDate: string, endDate: string) {
+  const bigTasksQuery = useQuery({
+    queryKey: ['bigTasks', 'dateRange', userId, startDate, endDate],
+    queryFn: async () => {
+      return await bigTaskRepository.getByDateRange(userId, startDate, endDate)
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId && !!startDate && !!endDate,
+  })
+
+  return {
+    bigTasks: bigTasksQuery.data || [],
+    isLoading: bigTasksQuery.isLoading,
+    error: bigTasksQuery.error,
+    refetch: bigTasksQuery.refetch,
+  }
+}

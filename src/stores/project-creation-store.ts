@@ -4,6 +4,7 @@
 
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import { startOfWeek, differenceInWeeks } from 'date-fns'
 import {
   getDefaultColorForCategory,
   getNextColor,
@@ -41,6 +42,20 @@ export interface Task {
   week_end?: number
 }
 
+export interface DailyAllocation {
+  date: string           // YYYY-MM-DD形式
+  dayOfWeek: number      // 0-6（日-土）
+  isWorkday: boolean     // 作業日かどうか
+  availableHours: number // その日の作業可能時間
+  allocatedTasks: Array<{
+    taskId: string
+    taskName: string
+    allocatedHours: number
+  }>
+  totalAllocatedHours: number
+  utilizationRate: number
+}
+
 export interface WeeklyAllocation {
   weekNumber: number
   startDate: Date
@@ -76,13 +91,16 @@ interface ProjectCreationState {
   // タスク一覧
   tasks: Task[]
   totalTaskHours: number
+  totalAvailableHours: number
 
   // カテゴリ管理
   projectCategories: string[]
   categoryColors: Map<string, string>
 
-  // 週別タスク配分
-  weeklyAllocations: WeeklyAllocation[]
+  // タスク配分
+  dailyAllocations: DailyAllocation[]
+  taskSchedules: Map<string, { startDate: string; endDate: string }>
+  weeklyAllocations: WeeklyAllocation[]  // 後方互換性のため残す
   isOverCapacity: boolean
 
   // UI状態
@@ -150,6 +168,7 @@ const initialState: ProjectCreationState = {
 
   tasks: [],
   totalTaskHours: 0,
+  totalAvailableHours: 0,
 
   projectCategories: ['企画・設計', 'デザイン', '実装', 'テスト', 'デプロイ'],
   categoryColors: new Map([
@@ -160,6 +179,8 @@ const initialState: ProjectCreationState = {
     ['デプロイ', COMPLETE_COLOR_PALETTE[4]], // #4A90E2
   ]),
 
+  dailyAllocations: [],
+  taskSchedules: new Map(),
   weeklyAllocations: [],
   isOverCapacity: false,
 
@@ -397,14 +418,17 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       },
 
       calculateTaskAllocation: () => {
-        const { weeklyAvailableHours, totalWeeks } = get()
         const validTasks = get().getValidTasks()
+        const { startDate, endDate } = get()
 
-        if (validTasks.length === 0 || weeklyAvailableHours === 0 || totalWeeks === 0) {
+        if (validTasks.length === 0 || endDate <= startDate) {
           set({
+            dailyAllocations: [],
+            taskSchedules: new Map(),
             weeklyAllocations: [],
             isOverCapacity: false,
             totalTaskHours: 0,
+            totalAvailableHours: 0,
           })
           return
         }
@@ -413,7 +437,7 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           validTasks.reduce((sum, task) => sum + task.estimatedHours, 0).toFixed(1)
         )
 
-        // 週別配分を先に計算して、実際の利用可能時間を算出
+        // 日別配分を計算
         const workSettings = {
           weekdayWorkDays: get().weekdayWorkDays,
           weekendWorkDays: get().weekendWorkDays,
@@ -421,32 +445,48 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           weekendHoursPerDay: get().weekendHoursPerDay,
           bufferRate: get().bufferRate,
         }
-        const weeklyAllocations = allocateTasksToWeeks(
+        
+        const { dailyAllocations, taskSchedules } = allocateTasksToDays(
           validTasks,
-          weeklyAvailableHours,
-          totalWeeks,
-          get().startDate,
-          get().endDate,
+          startDate,
+          endDate,
           workSettings
         )
 
-        // 実際の合計利用可能時間を計算
+        // 実際の合計利用可能時間を計算（日単位で正確に）
         const totalAvailableHours = Number(
-          weeklyAllocations.reduce((sum, week) => sum + week.availableHours, 0).toFixed(1)
+          dailyAllocations.reduce((sum, day) => sum + day.availableHours, 0).toFixed(1)
         )
         const isOverCapacity = totalTaskHours > totalAvailableHours
 
+        // 後方互換性のため週別配分も計算（将来的に削除予定）
+        const weeklyAllocations = allocateTasksToWeeks(
+          validTasks,
+          get().weeklyAvailableHours,
+          get().totalWeeks,
+          startDate,
+          endDate,
+          workSettings
+        )
+
         set({
+          dailyAllocations,
+          taskSchedules,
           weeklyAllocations,
           isOverCapacity,
           totalTaskHours,
+          totalAvailableHours,
         })
       },
 
       calculateTotalWeeks: () => {
         const { startDate, endDate } = get()
-        const diffTime = endDate.getTime() - startDate.getTime()
-        const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+        // 開始日を含む週の月曜日を取得
+        const startWeek = startOfWeek(startDate, { weekStartsOn: 1 })
+        // 終了日を含む週の月曜日を取得
+        const endWeek = startOfWeek(endDate, { weekStartsOn: 1 })
+        // 週の差を計算し、+1で両端を含める
+        const diffWeeks = differenceInWeeks(endWeek, startWeek) + 1
         set({ totalWeeks: Math.max(1, diffWeeks) })
       },
 
@@ -516,6 +556,145 @@ interface WorkSettings {
   weekdayHoursPerDay: number
   weekendHoursPerDay: number
   bufferRate: number
+}
+
+// 日付をYYYY-MM-DD形式にフォーマット
+function formatDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function allocateTasksToDays(
+  tasks: Task[],
+  startDate: Date,
+  endDate: Date,
+  workSettings: WorkSettings
+): {
+  dailyAllocations: DailyAllocation[]
+  taskSchedules: Map<string, { startDate: string; endDate: string }>
+} {
+  // 1. 日付範囲の全日程を生成
+  const dailyAllocations: DailyAllocation[] = []
+  const currentDate = new Date(startDate)
+  currentDate.setHours(0, 0, 0, 0)
+  
+  const endDateTime = new Date(endDate)
+  endDateTime.setHours(23, 59, 59, 999)
+  
+  // 週ごとの作業日数を追跡
+  const weekWorkdays = new Map<number, { weekday: number; weekend: number }>()
+  
+  // 週番号を取得する関数（月曜日始まり）
+  const getWeekNumber = (date: Date): number => {
+    const startWeek = startOfWeek(startDate, { weekStartsOn: 1 })
+    const targetWeek = startOfWeek(date, { weekStartsOn: 1 })
+    return Math.floor(differenceInWeeks(targetWeek, startWeek))
+  }
+  
+  while (currentDate <= endDateTime) {
+    const dayOfWeek = currentDate.getDay()
+    const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
+    const weekNumber = getWeekNumber(currentDate)
+    
+    // 現在の週の作業日数を取得（なければ初期化）
+    if (!weekWorkdays.has(weekNumber)) {
+      weekWorkdays.set(weekNumber, { weekday: 0, weekend: 0 })
+    }
+    const weekCount = weekWorkdays.get(weekNumber)!
+    
+    // その日の作業可能時間を計算
+    let availableHours = 0
+    if (isWeekday && weekCount.weekday < workSettings.weekdayWorkDays) {
+      // 平日の作業日数制限内
+      availableHours = workSettings.weekdayHoursPerDay * (workSettings.bufferRate / 100)
+      weekCount.weekday++
+    } else if (!isWeekday && weekCount.weekend < workSettings.weekendWorkDays) {
+      // 週末の作業日数制限内
+      availableHours = workSettings.weekendHoursPerDay * (workSettings.bufferRate / 100)
+      weekCount.weekend++
+    }
+    
+    dailyAllocations.push({
+      date: formatDate(currentDate),
+      dayOfWeek,
+      isWorkday: availableHours > 0,
+      availableHours: Number(availableHours.toFixed(1)),
+      allocatedTasks: [],
+      totalAllocatedHours: 0,
+      utilizationRate: 0
+    })
+    
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  // 2. タスクの配分
+  const taskSchedules = new Map<string, { startDate: string; endDate: string }>()
+  let dayIndex = 0
+  
+  for (const task of tasks) {
+    if (task.estimatedHours === 0) continue
+    
+    let remainingHours = task.estimatedHours
+    let taskStartDate: string | null = null
+    let taskEndDate: string | null = null
+    
+    // 作業日を探して配分
+    while (remainingHours > 0 && dayIndex < dailyAllocations.length) {
+      const day = dailyAllocations[dayIndex]
+      
+      if (day.availableHours === 0) {
+        dayIndex++
+        continue // 作業できない日はスキップ
+      }
+      
+      // この日の残り時間を計算
+      const dayRemainingHours = day.availableHours - day.totalAllocatedHours
+      
+      if (dayRemainingHours > 0) {
+        // 配分する時間を決定
+        const hoursToAllocate = Math.min(remainingHours, dayRemainingHours)
+        
+        // タスクを日に配分
+        day.allocatedTasks.push({
+          taskId: task.id,
+          taskName: task.name,
+          allocatedHours: Number(hoursToAllocate.toFixed(1))
+        })
+        
+        // 合計時間と稼働率を更新
+        day.totalAllocatedHours = Number((day.totalAllocatedHours + hoursToAllocate).toFixed(1))
+        day.utilizationRate = Number(((day.totalAllocatedHours / day.availableHours) * 100).toFixed(1))
+        
+        // タスクの開始日・終了日を記録
+        if (!taskStartDate) {
+          taskStartDate = day.date
+        }
+        taskEndDate = day.date
+        
+        remainingHours -= hoursToAllocate
+        
+        // この日が満杯になったら次の日へ
+        if (remainingHours > 0 && dayRemainingHours <= hoursToAllocate) {
+          dayIndex++
+        }
+      } else {
+        // この日に配分できない場合も次の日へ
+        dayIndex++
+      }
+    }
+    
+    // タスクのスケジュールを記録
+    if (taskStartDate && taskEndDate) {
+      taskSchedules.set(task.id, {
+        startDate: taskStartDate,
+        endDate: taskEndDate
+      })
+    }
+  }
+  
+  return { dailyAllocations, taskSchedules }
 }
 
 function allocateTasksToWeeks(

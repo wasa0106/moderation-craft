@@ -4,7 +4,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +19,7 @@ import { useTimer } from '@/hooks/use-timer'
 import { useTimerStore } from '@/stores/timer-store'
 import { useSmallTasksByDateRange } from '@/hooks/use-small-tasks'
 import { useProjects } from '@/hooks/use-projects'
+import { useWeeklyTotal } from '@/hooks/use-weekly-total'
 import { SmallTask, Project, WorkSession } from '@/types'
 import { workSessionRepository } from '@/lib/db/repositories'
 import { MoodDialog } from '@/components/timer/mood-dialog'
@@ -26,6 +27,7 @@ import { DopamineDialog } from '@/components/timer/dopamine-dialog'
 import { FocusDialog } from '@/components/timer/focus-dialog'
 import { UnplannedTaskDialog } from '@/components/timer/unplanned-task-dialog'
 import { CombinedScheduleView } from '@/components/timer/combined-schedule-view'
+import { WorkProgressCard } from '@/components/timer/work-progress-card'
 import {
   Play,
   Pause,
@@ -65,16 +67,33 @@ export default function TimerPage() {
   const [showUnplannedDialog, setShowUnplannedDialog] = useState(false)
   const [unplannedTaskName, setUnplannedTaskName] = useState('')
   
+  // useWeeklyTotalフックは選択日の後に呼び出す
+  const { weeklyTotalFormatted, refresh: refreshWeeklyTotal } = useWeeklyTotal('current-user', selectedDate)
+  
   // 日付範囲を計算（選択日の前後7日間のタスクを取得）
   const startDate = subDays(selectedDate, 7)
   const endDate = addDays(selectedDate, 7)
   
   // 日付範囲でタスクを取得
-  const { smallTasks } = useSmallTasksByDateRange(
+  const { smallTasks, loadTasks } = useSmallTasksByDateRange(
     'current-user',
     startDate.toISOString(),
     endDate.toISOString()
   )
+  
+  // loadSessions関数を定義
+  const loadSessions = useCallback(async () => {
+    try {
+      const dateString = format(selectedDate, 'yyyy-MM-dd')
+      const sessions = await workSessionRepository.getSessionsForDate(
+        'current-user',
+        dateString
+      )
+      setTodaySessions(sessions)
+    } catch (error) {
+      console.error('Failed to load sessions:', error)
+    }
+  }, [selectedDate])
 
   // タイマーの更新
   useEffect(() => {
@@ -93,26 +112,13 @@ export default function TimerPage() {
 
   // 選択日のセッションを取得
   useEffect(() => {
-    const loadDaySessions = async () => {
-      try {
-        const dateString = format(selectedDate, 'yyyy-MM-dd')
-        const sessions = await workSessionRepository.getSessionsForDate(
-          'current-user',
-          dateString
-        )
-        setTodaySessions(sessions)
-      } catch (error) {
-        console.error('Failed to load sessions:', error)
-      }
-    }
-
-    loadDaySessions()
+    loadSessions()
     
     // セッション終了時にリロード
     if (!isRunning && activeSession) {
-      loadDaySessions()
+      loadSessions()
     }
-  }, [isRunning, activeSession, selectedDate])
+  }, [isRunning, activeSession, loadSessions])
 
   // タイマー開始時にもセッションを更新
   useEffect(() => {
@@ -123,22 +129,9 @@ export default function TimerPage() {
     })
     
     if (isRunning && activeSession) {
-      const loadDaySessions = async () => {
-        try {
-          const dateString = format(selectedDate, 'yyyy-MM-dd')
-          const sessions = await workSessionRepository.getSessionsForDate(
-            'current-user',
-            dateString
-          )
-          console.log('Loaded sessions:', sessions)
-          setTodaySessions(sessions)
-        } catch (error) {
-          console.error('Failed to load sessions:', error)
-        }
-      }
-      loadDaySessions()
+      loadSessions()
     }
-  }, [isRunning, activeSession?.id, selectedDate])
+  }, [isRunning, activeSession?.id, loadSessions])
 
   // アクティブセッションのタスクを復元
   useEffect(() => {
@@ -252,6 +245,9 @@ export default function TimerPage() {
       dateString
     )
     setTodaySessions(sessions)
+    
+    // 週間合計も更新
+    refreshWeeklyTotal()
   }
 
 
@@ -445,6 +441,14 @@ export default function TimerPage() {
         </CardContent>
       </Card>
 
+      {/* 作業進捗カード */}
+      <WorkProgressCard 
+        dayTasks={dayTasks} 
+        todaySessions={todaySessions} 
+        weeklyTotal={weeklyTotalFormatted}
+        selectedDate={selectedDate}
+      />
+
       {/* メインコンテンツ */}
       <Card className="overflow-hidden">
         <CardHeader>
@@ -490,6 +494,11 @@ export default function TimerPage() {
                 setSelectedTask(task)
                 handleStartTimer(task)
               }
+            }}
+            onTaskStatusChange={() => {
+              // タスクの状態が変更されたら再読み込み
+              loadTasks()
+              loadSessions()
             }}
             date={selectedDate}
           />

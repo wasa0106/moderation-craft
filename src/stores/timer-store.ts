@@ -126,9 +126,8 @@ export const useTimerStore = create<TimerState>()(
       },
 
       getSessionDuration: () => {
-        const { startTime, elapsedTime, pausedTime } = get()
-        if (!startTime) return 0
-        return Math.floor(elapsedTime / 60) || Math.floor(pausedTime / 60)
+        const { elapsedTime, pausedTime } = get()
+        return elapsedTime || pausedTime
       },
 
       isSessionActive: () => {

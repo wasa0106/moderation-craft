@@ -112,9 +112,6 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
             if (!task.tags) {
               task.tags = []
             }
-            if (!task.task_no) {
-              task.task_no = ''
-            }
             if (!task.project_id) {
               task.project_id = ''
             }
@@ -152,6 +149,64 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       sync_queue:
         'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
     })
+
+    // Version 7: Add status field to small_tasks for task state management
+    this.version(7)
+      .stores({
+        users: 'id, email, created_at, updated_at',
+        projects: 'id, user_id, status, updated_at, deadline',
+        big_tasks: 'id, project_id, user_id, category, week_number, status, updated_at',
+        small_tasks:
+          'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
+        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at',
+        mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+        dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+        daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+        category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+        sync_queue:
+          'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+      })
+      .upgrade(tx => {
+        // Set default status 'pending' for all existing small_tasks
+        return tx.table('small_tasks')
+          .toCollection()
+          .modify(task => {
+            if (!task.status) {
+              task.status = 'pending'
+            }
+          })
+      })
+    
+    // Version 8: Migrate to duration_seconds only
+    this.version(8)
+      .stores({
+        users: 'id, email, created_at, updated_at',
+        projects: 'id, user_id, status, updated_at, deadline',
+        big_tasks: 'id, project_id, user_id, category, week_number, status, updated_at',
+        small_tasks:
+          'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
+        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+        mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+        dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+        daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+        category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+        sync_queue:
+          'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+      })
+      .upgrade(tx => {
+        // 既存のwork_sessionsをduration_secondsに移行
+        return tx.table('work_sessions')
+          .toCollection()
+          .modify(session => {
+            // duration_secondsが存在しない場合のみ移行
+            if (session.duration_seconds === undefined) {
+              // duration_minutesがある場合は変換、なければ0
+              session.duration_seconds = session.duration_minutes ? session.duration_minutes * 60 : 0
+            }
+            // duration_minutesフィールドを削除
+            delete session.duration_minutes
+          })
+      })
 
     this.users.hook('creating', (primKey, obj) => {
       const timestamps = this.createTimestamps()
@@ -217,9 +272,6 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       if (!obj.tags) {
         obj.tags = []
       }
-      if (!obj.task_no) {
-        obj.task_no = ''
-      }
       if (!obj.project_id) {
         obj.project_id = ''
       }
@@ -229,18 +281,13 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       if (!obj.scheduled_end) {
         obj.scheduled_end = ''
       }
+      if (!obj.status) {
+        obj.status = 'pending'
+      }
     })
 
     this.small_tasks.hook('updating', modifications => {
       ;(modifications as any).updated_at = this.getCurrentTimestamp()
-
-      if (
-        (modifications as any).actual_minutes !== undefined &&
-        (modifications as any).estimated_minutes !== undefined
-      ) {
-        ;(modifications as any).variance_ratio =
-          (modifications as any).actual_minutes / (modifications as any).estimated_minutes
-      }
     })
 
     this.work_sessions.hook('creating', (primKey, obj) => {

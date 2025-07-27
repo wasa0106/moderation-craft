@@ -6,9 +6,11 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Task, WeeklyAllocation } from '@/stores/project-creation-store'
+import { BigTask } from '@/types'
 import { format, startOfWeek, addWeeks, differenceInWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { dateUtils } from '@/lib/utils/date-utils'
 import { AlertTriangle } from 'lucide-react'
 
 export interface GanttTask extends Task {
@@ -19,19 +21,26 @@ export interface GanttTask extends Task {
 
 
 interface GanttChartProps {
-  tasks: Task[]
+  // 既存のprops（後方互換性）
+  tasks?: Task[]
+  weeklyAvailableHours?: number  // 非推奨、後方互換性のためオプショナルに
+  weeklyAllocations?: WeeklyAllocation[]  // 非推奨、後方互換性のためオプショナルに
+  onTaskUpdate?: (taskId: string, weekStart: number, weekEnd: number) => void
+  
+  // 新しいprops（BigTasksベース）
+  bigTasks?: BigTask[]
+  
+  // 共通props
   startDate: Date
   endDate: Date
-  weeklyAvailableHours?: number  // 非推奨、後方互換性のためオプショナルに
-  weeklyAllocations?: WeeklyAllocation[]  // 新規追加
   categoryColors: Map<string, string>
-  onTaskUpdate: (taskId: string, weekStart: number, weekEnd: number) => void
   totalTaskHours: number
   totalAvailableHours: number
 }
 
 export function GanttChart({
   tasks,
+  bigTasks,
   startDate,
   endDate,
   weeklyAvailableHours,
@@ -46,20 +55,23 @@ export function GanttChart({
 
   // プロジェクト終了日を含む週のインデックスを計算
   const projectEndWeekIndex = useMemo(() => {
-    const projectEndWeek = startOfWeek(endDate, { weekStartsOn: 1 })
-    return Math.floor(
-      differenceInWeeks(projectEndWeek, startOfWeek(startDate, { weekStartsOn: 1 }))
-    )
+    return dateUtils.getWeekNumber(endDate, startDate)
   }, [endDate, startDate])
 
   // 実際に必要な週数を計算（タスクが完了するまで）
   const actualTotalWeeks = useMemo(() => {
+    // 開始日を含む週の月曜日と終了日を含む週の月曜日を取得
+    const startWeek = startOfWeek(startDate, { weekStartsOn: 1 })
+    const endWeek = startOfWeek(endDate, { weekStartsOn: 1 })
+    // 週の差を計算し、+1で両端を含める
+    const projectWeeks = differenceInWeeks(endWeek, startWeek) + 1
+    
     if (ganttTasks.length === 0) {
-      return Math.max(1, Math.ceil(differenceInWeeks(endDate, startDate)) + 1)
+      return Math.max(1, projectWeeks)
     }
     // 最後のタスクの終了週を取得
     const maxWeekEnd = Math.max(...ganttTasks.map(task => task.week_end))
-    return Math.max(maxWeekEnd + 1, Math.ceil(differenceInWeeks(endDate, startDate)) + 1)
+    return Math.max(maxWeekEnd + 1, projectWeeks)
   }, [ganttTasks, endDate, startDate])
 
   // 週の計算
@@ -98,7 +110,43 @@ export function GanttChart({
 
   // タスクの自動配置
   useEffect(() => {
-    if (tasks.length === 0) {
+    // BigTasksベースの新しい実装
+    if (bigTasks && bigTasks.length > 0) {
+      const ganttTasksFromBigTasks: GanttTask[] = bigTasks.map((bigTask, index) => {
+        // 開始日と終了日から週番号を計算
+        const taskStartDate = dateUtils.toJSTDate(bigTask.start_date)
+        const taskEndDate = dateUtils.toJSTDate(bigTask.end_date)
+        
+        const weekStart = dateUtils.getWeekNumber(taskStartDate, startDate)
+        const weekEnd = dateUtils.getWeekNumber(taskEndDate, startDate)
+        
+        // 週ごとの時間配分を計算（均等配分）
+        const weekCount = weekEnd - weekStart + 1
+        const hoursPerWeek = bigTask.estimated_hours / weekCount
+        const weeklyHours = new Map<number, number>()
+        
+        for (let w = weekStart; w <= weekEnd; w++) {
+          weeklyHours.set(w, hoursPerWeek)
+        }
+        
+        return {
+          id: bigTask.id,
+          name: bigTask.name,
+          category: bigTask.category || 'その他',
+          estimatedHours: bigTask.estimated_hours,
+          order: index,
+          week_start: weekStart,
+          week_end: weekEnd,
+          weeklyHours
+        }
+      })
+      
+      setGanttTasks(ganttTasksFromBigTasks)
+      return
+    }
+    
+    // 既存のtasksベースの実装（後方互換性）
+    if (!tasks || tasks.length === 0) {
       setGanttTasks([])
       return
     }
@@ -218,7 +266,7 @@ export function GanttChart({
     })
 
     setGanttTasks(allocated)
-  }, [tasks, weeklyAllocations, weeklyAvailableHours, actualTotalWeeks])
+  }, [tasks, bigTasks, weeklyAllocations, weeklyAvailableHours, actualTotalWeeks, startDate])
 
   // 週ごとの作業時間を計算（実際の配分に基づく）
   const weeklyWorkload = useMemo(() => {
@@ -236,7 +284,7 @@ export function GanttChart({
     return workload
   }, [ganttTasks, actualTotalWeeks])
 
-  if (tasks.length === 0) {
+  if (!tasks && !bigTasks || (tasks?.length === 0 && bigTasks?.length === 0)) {
     return null
   }
 

@@ -8,7 +8,9 @@ import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Clock, Brain, CheckCircle2, Play, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { secondsToMinutes } from '@/lib/utils/time-utils'
 import { Badge } from '@/components/ui/badge'
+import { TaskCard } from '@/components/timer/task-card'
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +28,7 @@ interface CombinedScheduleViewProps {
   projects: Project[]
   currentTaskId?: string | null
   onTaskClick?: (task: SmallTask) => void
+  onTaskStatusChange?: () => void
   date?: Date
 }
 
@@ -35,6 +38,7 @@ export function CombinedScheduleView({
   projects,
   currentTaskId,
   onTaskClick,
+  onTaskStatusChange,
   date = new Date(),
 }: CombinedScheduleViewProps) {
   const { toast } = useToast()
@@ -104,7 +108,7 @@ export function CombinedScheduleView({
       const start = parseISO(session.start_time)
       return Math.floor((now.getTime() - start.getTime()) / (1000 * 60))
     }
-    return session.duration_minutes || 0
+    return secondsToMinutes(session.duration_seconds)
   }
   
   // セッションの更新
@@ -224,52 +228,28 @@ export function CombinedScheduleView({
             {/* タスク */}
             {tasks.map((task, index) => {
               const isActive = task.id === currentTaskId
-              const isCompleted = task.actual_minutes && task.actual_minutes > 0
               const project = projects.find(p => p.id === task.project_id)
+              const taskSessions = sessions.filter(s => s.small_task_id === task.id)
 
               return (
                 <div
                   key={task.id}
-                  className={cn(
-                    'absolute left-2 right-2 rounded-lg p-2 cursor-pointer transition-all',
-                    'hover:shadow-md hover:scale-[1.02]',
-                    isActive && 'ring-2 ring-primary ring-offset-1',
-                    isCompleted && 'opacity-60'
-                  )}
+                  className="absolute left-2 right-2"
                   style={{
                     top: `${getItemTop(task.scheduled_start)}px`,
                     height: `${getItemHeight(task.estimated_minutes)}px`,
                     zIndex: isActive ? 10 : index + 1,
                   }}
-                  onClick={() => onTaskClick?.(task)}
                 >
-                  <div
-                    className={cn(
-                      'h-full rounded-md p-2 text-white overflow-hidden shadow-sm',
-                      'bg-gradient-to-r',
-                      getProjectColor(task.project_id)
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-1">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-[10px] leading-tight truncate">{task.name}</h4>
-                        {project && task.estimated_minutes >= 30 && (
-                          <p className="text-[10px] opacity-80 truncate">{project.name}</p>
-                        )}
-                      </div>
-                      {task.is_emergency && (
-                        <Badge variant="destructive" className="text-[9px] px-1 py-0 h-3">
-                          緊急
-                        </Badge>
-                      )}
-                    </div>
-                    {task.estimated_minutes >= 30 && (
-                      <div className="flex items-center gap-1 mt-0.5 text-[10px] opacity-80">
-                        <Clock className="h-2.5 w-2.5" />
-                        <span>{task.estimated_minutes}分</span>
-                      </div>
-                    )}
-                  </div>
+                  <TaskCard
+                    task={task}
+                    project={project}
+                    sessions={taskSessions}
+                    isActive={isActive}
+                    onClick={() => onTaskClick?.(task)}
+                    onStatusChange={onTaskStatusChange}
+                    showButtons={task.estimated_minutes >= 60} // 60分以上のタスクのみボタン表示
+                  />
                 </div>
               )
             })}

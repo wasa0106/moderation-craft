@@ -54,7 +54,7 @@ export const useSyncStore = create<SyncState>()(
       syncQueue: [],
       lastSyncTime: null,
       syncErrors: [],
-      autoSyncEnabled: true,
+      autoSyncEnabled: false,
       lastPullTime: null,
       isPulling: false,
 

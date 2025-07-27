@@ -235,12 +235,6 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     })
   }
 
-  // Generate task number
-  const generateTaskNo = (projectIndex: number, taskCount: number): string => {
-    const projectLetter = String.fromCharCode(65 + projectIndex) // A, B, C...
-    return `${projectLetter}${taskCount + 1}`
-  }
-
   const weeklySchedule: WeeklySchedule = {
     weekStartDate: weekStartStr,
     weekEndDate: weekEndStr,
@@ -275,7 +269,6 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     deleteSmallTask,
     scheduleTask,
     unscheduleTask,
-    generateTaskNo,
   }
 }
 

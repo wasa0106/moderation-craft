@@ -24,14 +24,21 @@ export interface BigTask extends DatabaseEntity {
   project_id: string
   user_id: string
   name: string
-  category: string
-  week_number: number
-  week_start_date?: string // 週の開始日（ISO 8601形式）
-  week_end_date?: string // 週の終了日（ISO 8601形式）
   estimated_hours: number
-  actual_hours?: number
+  actual_hours: number
   status: 'pending' | 'active' | 'completed' | 'cancelled'
   priority?: 'low' | 'medium' | 'high' | 'urgent'
+  
+  // 新規追加フィールド
+  category: string        // 開発、設計、テスト、その他
+  start_date: string      // YYYY-MM-DD形式
+  end_date: string        // YYYY-MM-DD形式
+  
+  // 後方互換性のため残す（段階的に廃止予定）
+  week_number?: number
+  week_start_date?: string
+  week_end_date?: string
+  
   description?: string
 }
 
@@ -42,16 +49,10 @@ export interface SmallTask extends DatabaseEntity {
   estimated_minutes: number
   scheduled_start: string
   scheduled_end: string
-  actual_start?: string
-  actual_end?: string
-  actual_minutes?: number
-  focus_level?: number
-  notes?: string
+  status?: SmallTaskStatus
   is_emergency?: boolean
-  variance_ratio?: number
   description?: string
   tags?: string[]
-  task_no?: string
   project_id?: string
 }
 
@@ -60,7 +61,7 @@ export interface WorkSession extends DatabaseEntity {
   user_id: string
   start_time: string
   end_time?: string
-  duration_minutes: number
+  duration_seconds: number
   focus_level?: number
   mood_notes?: string
   is_synced: boolean
@@ -163,7 +164,6 @@ export interface SmallTaskFormData {
   name: string
   estimated_minutes: number
   tags: string[]
-  task_no?: string
   description?: string
 }
 
@@ -187,6 +187,8 @@ export type CreateSyncOperationData = Omit<
   'id' | 'retry_count' | 'status' | 'created_at' | 'updated_at'
 >
 export type CreateSyncQueueData = Omit<SyncQueueItem, 'id' | 'created_at' | 'updated_at'>
+
+export type SmallTaskStatus = 'pending' | 'completed' | 'cancelled'
 
 export interface DatabaseEntity {
   id: string

@@ -8,7 +8,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useWeeklySchedule } from '@/hooks/use-weekly-schedule'
 import { useProjects } from '@/hooks/use-projects'
-import { useBigTasks } from '@/hooks/use-big-tasks'
+import { useBigTasksByDateRange } from '@/hooks/use-big-tasks'
+import { dateUtils } from '@/lib/utils/date-utils'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -48,11 +49,17 @@ export default function WeeklySchedulePage() {
 
   // Task Overview Table用のデータ
   const { projects } = useProjects(userId)
-  const { bigTasks: allBigTasks } = useBigTasks(userId)
 
   // 週の開始日と終了日を計算
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
+
+  // 日付をYYYY-MM-DD形式に変換
+  const weekStartStr = dateUtils.toDateString(weekStart)
+  const weekEndStr = dateUtils.toDateString(weekEnd)
+
+  // 日付範囲でBigTasksを取得
+  const { bigTasks: weekBigTasks } = useBigTasksByDateRange(userId, weekStartStr, weekEndStr)
 
   // Weekly Calendar用のデータ
   const calendarData = useWeeklySchedule(userId, currentWeek)
@@ -66,71 +73,37 @@ export default function WeeklySchedulePage() {
     })
   }, [currentWeek, weekStart, weekEnd])
 
-  // 現在の週に対応するBigTasksをフィルタリング
+  // プロジェクトが存在するBigTasksのみをフィルタリング
   const currentWeekBigTasks = useMemo(() => {
     // 存在するプロジェクトIDのセットを作成
     const existingProjectIds = new Set(projects.map(p => p.id))
     
-    // weekStartとweekEndは既に上で計算済み
-    
-    console.log('ページ側: カレンダー週の変更', {
-      currentWeek: format(currentWeek, 'yyyy-MM-dd'),
-      weekStart: format(weekStart, 'yyyy-MM-dd'),
-      weekEnd: format(weekEnd, 'yyyy-MM-dd'),
-      全BigTasks数: allBigTasks.length,
+    console.log('日付範囲でBigTasksを取得:', {
+      weekStartStr,
+      weekEndStr,
+      取得件数: weekBigTasks.length,
       プロジェクト数: projects.length
     })
     
-    // 全てのBigTaskをデバッグ出力
-    console.log('BigTasksの詳細:', allBigTasks.map(task => ({
-      name: task.name,
-      project_id: task.project_id,
-      week_start_date: task.week_start_date,
-      week_end_date: task.week_end_date,
-      week_number: task.week_number
-    })))
-    
-    const filtered = allBigTasks.filter(task => {
-      // 存在しないプロジェクトのタスクを除外
+    // プロジェクトが存在するタスクのみをフィルタリング
+    const filtered = weekBigTasks.filter(task => {
       if (!existingProjectIds.has(task.project_id)) {
         console.log('プロジェクトが存在しないタスク:', task.name, task.project_id)
         return false
       }
-      
-      // week_start_dateとweek_end_dateがある場合
-      if (task.week_start_date && task.week_end_date) {
-        const taskStart = new Date(task.week_start_date)
-        const taskEnd = new Date(task.week_end_date)
-        
-        // タスクの期間が選択された週と重なっているかチェック
-        const isInWeek = (
-          (taskStart >= weekStart && taskStart <= weekEnd) ||
-          (taskEnd >= weekStart && taskEnd <= weekEnd) ||
-          (taskStart <= weekStart && taskEnd >= weekEnd)
-        )
-        
-        if (isInWeek) {
-          console.log('週に含まれるタスク:', task.name)
-        }
-        
-        return isInWeek
-      }
-      
-      console.log('日付情報がないタスク:', task.name)
-      return false
+      return true
     })
     
-    console.log('フィルタリング結果:', filtered.length, '件')
+    console.log('フィルタリング後:', filtered.length, '件')
     return filtered
-  }, [allBigTasks, weekStart, weekEnd, projects, currentWeek])
+  }, [weekBigTasks, projects, weekStartStr, weekEndStr])
   
   // デバッグ用：週が変更されたときのログ
   console.log('Week changed:', {
     currentWeek: format(currentWeek, 'yyyy-MM-dd'),
     weekStartDate: calendarData.weeklySchedule.weekStartDate,
     weekEndDate: calendarData.weeklySchedule.weekEndDate,
-    allBigTasksCount: allBigTasks.length,
-    filteredBigTasksCount: currentWeekBigTasks.length
+    bigTasksCount: currentWeekBigTasks.length
   })
 
   // 統一された週切り替え関数

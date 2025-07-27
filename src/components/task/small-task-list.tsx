@@ -3,15 +3,17 @@
  * Displays list of small tasks with actions
  */
 
-import { SmallTask, BigTask } from '@/types'
+import { SmallTask, BigTask, WorkSession } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { isTaskCompleted, getTaskTotalMinutes } from '@/lib/utils/task-session-utils'
 
 interface SmallTaskListProps {
   smallTasks: SmallTask[]
   bigTasks: BigTask[]
+  sessions: WorkSession[]
   onEdit: (task: SmallTask) => void
   onDelete: (taskId: string) => void
   isLoading: boolean
@@ -20,6 +22,7 @@ interface SmallTaskListProps {
 export function SmallTaskList({
   smallTasks,
   bigTasks,
+  sessions,
   onEdit,
   onDelete,
   isLoading,
@@ -50,11 +53,16 @@ export function SmallTaskList({
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium">{task.name}</h3>
                 <Badge
-                  variant={task.actual_minutes && task.actual_minutes > 0 ? 'default' : 'outline'}
+                  variant={isTaskCompleted(task.id, sessions) ? 'default' : 'outline'}
                 >
-                  {task.actual_minutes && task.actual_minutes > 0 ? '完了' : '未完了'}
+                  {isTaskCompleted(task.id, sessions) ? '完了' : '未完了'}
                 </Badge>
                 {task.is_emergency && <Badge variant="destructive">緊急</Badge>}
+                {getTaskTotalMinutes(task.id, sessions) > 0 && (
+                  <span className="text-sm text-gray-500">
+                    {getTaskTotalMinutes(task.id, sessions)}分
+                  </span>
+                )}
               </div>
               <p className="text-sm text-gray-500">{getBigTaskName(task.big_task_id)}</p>
               <p className="text-sm text-gray-500">

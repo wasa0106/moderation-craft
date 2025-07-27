@@ -266,6 +266,7 @@ export function useSmallTasksByDateRange(userId: string, startDate: string, endD
     isLoading: smallTasksQuery.isLoading,
     error: smallTasksQuery.error,
     refetch: smallTasksQuery.refetch,
+    loadTasks: smallTasksQuery.refetch, // alias for consistency
   }
 }
 

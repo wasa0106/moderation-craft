@@ -21,6 +21,8 @@ import {
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
+import { useWorkSessions } from '@/hooks/use-work-sessions'
+import { isTaskCompleted, getTaskTotalMinutes } from '@/lib/utils/task-session-utils'
 import {
   BarChart3,
   Target,
@@ -39,6 +41,7 @@ export default function ReportsPage() {
   
   const { bigTasks } = useBigTasks(selectedProject === 'all' ? '' : selectedProject)
   const { smallTasks } = useSmallTasks(selectedProject === 'all' ? '' : selectedProject)
+  const { sessions } = useWorkSessions('current-user')
 
   // Get period date range
   const getPeriodRange = (period: string) => {
@@ -98,17 +101,52 @@ export default function ReportsPage() {
     totalActualHours: filteredBigTasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0),
   }
 
+  // 状態別のタスク数を集計
+  const tasksByStatus = {
+    pending: filteredSmallTasks.filter(t => (t.status || 'pending') === 'pending'),
+    completed: filteredSmallTasks.filter(t => t.status === 'completed'),
+    cancelled: filteredSmallTasks.filter(t => t.status === 'cancelled'),
+  }
+  
+  // pendingタスクの詳細分析
+  const pendingDetails = {
+    notStarted: tasksByStatus.pending.filter(t => getTaskTotalMinutes(t.id, sessions) === 0),
+    inProgress: tasksByStatus.pending.filter(t => isTaskActive(t.id, sessions)),
+    paused: tasksByStatus.pending.filter(t => 
+      getTaskTotalMinutes(t.id, sessions) > 0 && !isTaskActive(t.id, sessions)
+    ),
+  }
+  
+  // キャンセルされたタスクの作業時間
+  const cancelledTaskMinutes = tasksByStatus.cancelled.reduce(
+    (sum, t) => sum + getTaskTotalMinutes(t.id, sessions), 
+    0
+  )
+
   const smallTaskStats = {
     total: filteredSmallTasks.length,
-    completed: filteredSmallTasks.filter(t => t.actual_minutes && t.actual_minutes > 0).length,
-    pending: filteredSmallTasks.filter(t => !t.actual_minutes || t.actual_minutes === 0).length,
+    completed: tasksByStatus.completed.length,
+    pending: tasksByStatus.pending.length,
+    cancelled: tasksByStatus.cancelled.length,
     emergency: filteredSmallTasks.filter(t => t.is_emergency).length,
     totalEstimatedMinutes: filteredSmallTasks.reduce((sum, t) => sum + t.estimated_minutes, 0),
-    totalActualMinutes: filteredSmallTasks.reduce((sum, t) => sum + (t.actual_minutes || 0), 0),
+    totalActualMinutes: filteredSmallTasks.reduce((sum, t) => sum + getTaskTotalMinutes(t.id, sessions), 0),
     overdue: filteredSmallTasks.filter(t => {
       const taskEnd = parseISO(t.scheduled_end)
-      return taskEnd < new Date() && (!t.actual_minutes || t.actual_minutes === 0)
+      return taskEnd < new Date() && (t.status || 'pending') === 'pending'
     }).length,
+    // 新しい指標
+    completionRate: tasksByStatus.pending.length + tasksByStatus.completed.length > 0
+      ? Math.round((tasksByStatus.completed.length / (tasksByStatus.pending.length + tasksByStatus.completed.length)) * 100)
+      : 0,
+    cancellationRate: filteredSmallTasks.length > 0
+      ? Math.round((tasksByStatus.cancelled.length / filteredSmallTasks.length) * 100)
+      : 0,
+    wastedMinutes: cancelledTaskMinutes,
+    // pendingの内訳
+    pendingNotStarted: pendingDetails.notStarted.length,
+    pendingInProgress: pendingDetails.inProgress.length,
+    pendingPaused: pendingDetails.paused.length,
   }
 
   // Calculate performance metrics
@@ -153,7 +191,7 @@ export default function ReportsPage() {
       const smallTaskCompletion =
         projectSmallTasks.length > 0
           ? Math.round(
-              (projectSmallTasks.filter(t => t.actual_minutes && t.actual_minutes > 0).length /
+              (projectSmallTasks.filter(t => t.status === 'completed').length /
                 projectSmallTasks.length) *
                 100
             )
@@ -170,15 +208,17 @@ export default function ReportsPage() {
     })
     .sort((a, b) => b.overallCompletion - a.overallCompletion)
 
-  // Time variance analysis
+  // Time variance analysis (完了タスクのみ)
   const timeVarianceAnalysis = filteredSmallTasks
-    .filter(task => task.actual_minutes && task.actual_minutes > 0)
+    .filter(task => task.status === 'completed')
     .map(task => {
-      const variance = (task.actual_minutes || 0) - task.estimated_minutes
+      const actualMinutes = getTaskTotalMinutes(task.id, sessions)
+      const variance = actualMinutes - task.estimated_minutes
       const variancePercent =
         task.estimated_minutes > 0 ? Math.round((variance / task.estimated_minutes) * 100) : 0
       return {
         task,
+        actualMinutes,
         variance,
         variancePercent,
         isAccurate: Math.abs(variancePercent) <= 20,
@@ -368,6 +408,63 @@ export default function ReportsPage() {
                     <span className="text-sm">期限超過タスク</span>
                     <span className="font-bold text-orange-600">{smallTaskStats.overdue}</span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Task Status Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5" />
+                  タスク状態サマリー
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">完了タスク</span>
+                    <Badge variant="default" className="font-bold">
+                      {smallTaskStats.completed}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">進行中タスク</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        未着手 {smallTaskStats.pendingNotStarted}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        作業中 {smallTaskStats.pendingInProgress}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        中断 {smallTaskStats.pendingPaused}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">不要タスク</span>
+                    <Badge variant="outline" className="font-bold">
+                      {smallTaskStats.cancelled}
+                    </Badge>
+                  </div>
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">完了率</span>
+                      <span className="font-bold text-green-600">
+                        {smallTaskStats.completionRate}%
+                      </span>
+                    </div>
+                    <Progress value={smallTaskStats.completionRate} className="h-2" />
+                  </div>
+                  {smallTaskStats.wastedMinutes > 0 && (
+                    <div className="flex justify-between items-center text-orange-600">
+                      <span className="text-sm">不要タスクの作業時間</span>
+                      <span className="font-bold">
+                        {Math.round(smallTaskStats.wastedMinutes / 60)}h {smallTaskStats.wastedMinutes % 60}m
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
