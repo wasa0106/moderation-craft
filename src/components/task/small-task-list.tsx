@@ -64,7 +64,7 @@ export function SmallTaskList({
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">{getBigTaskName(task.big_task_id)}</p>
+              <p className="text-sm text-muted-foreground">{getBigTaskName(task.big_task_id || '')}</p>
               <p className="text-sm text-muted-foreground">
                 {format(parseISO(task.scheduled_start), 'MM/dd HH:mm', { locale: ja })} -
                 {format(parseISO(task.scheduled_end), 'HH:mm', { locale: ja })}

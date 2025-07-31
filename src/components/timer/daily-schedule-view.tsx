@@ -166,7 +166,7 @@ export function DailyScheduleView({
                     className={cn(
                       'h-full rounded-md p-2 overflow-hidden',
                       'border',
-                      project?.color ? 'text-white border-white/20' : getProjectColor(task.project_id)
+                      project?.color ? 'text-white border-white/20' : getProjectColor(task.project_id || '')
                     )}
                     style={{
                       ...(project?.color ? { backgroundColor: project.color } : {})

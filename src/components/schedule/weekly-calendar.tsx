@@ -880,7 +880,7 @@ export function WeeklyCalendar({
           <div className="opacity-90">
             <DraggableTask
               task={activeTask}
-              color={getProjectColor(activeTask.project_id)}
+              color={getProjectColor(activeTask.project_id || '')}
               project={activeTask.task_type !== 'routine' ? projects.find(p => p.id === activeTask.project_id) : undefined}
             />
           </div>

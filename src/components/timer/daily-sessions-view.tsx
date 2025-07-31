@@ -183,7 +183,7 @@ export function DailySessionsView({
                     'h-full rounded-md p-2 overflow-hidden',
                     'border',
                     taskInfo 
-                      ? (taskInfo.project?.color ? 'text-white border-white/20' : getProjectColor(taskInfo.project?.id))
+                      ? (taskInfo.project?.color ? 'text-white border-white/20' : getProjectColor(taskInfo.project?.id || ''))
                       : 'bg-muted text-muted-foreground border-muted-foreground/20'
                   )}
                   style={{
