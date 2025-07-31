@@ -74,16 +74,16 @@ export default function RepositoriesTestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Repository 動作確認</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-6">Repository 動作確認</h1>
 
         <Card>
           <CardHeader>
             <CardTitle>データベース Repository テスト</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               プロジェクト作成・取得・一覧表示の基本機能をテストします。
             </p>
 
@@ -94,7 +94,7 @@ export default function RepositoriesTestPage() {
             {results && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-2">テスト結果:</h3>
-                <pre className="bg-gray-100 p-4 rounded-lg text-sm overflow-auto max-h-96">
+                <pre className="bg-muted p-4 rounded-lg text-sm overflow-auto max-h-96">
                   {JSON.stringify(results, null, 2)}
                 </pre>
               </div>
@@ -109,8 +109,8 @@ export default function RepositoriesTestPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="font-semibold text-gray-800 mb-2">ProjectRepository</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <h4 className="font-semibold text-foreground mb-2">ProjectRepository</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• create() - プロジェクト作成</li>
                   <li>• getById() - ID取得</li>
                   <li>• getActiveProjects() - アクティブ取得</li>
@@ -118,8 +118,8 @@ export default function RepositoriesTestPage() {
                 </ul>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800 mb-2">SmallTaskRepository</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <h4 className="font-semibold text-foreground mb-2">SmallTaskRepository</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• getScheduledForDate() - 日付別取得</li>
                   <li>• getByBigTaskId() - 大タスク別取得</li>
                   <li>• getEmergencyTasks() - 緊急タスク取得</li>
@@ -127,8 +127,8 @@ export default function RepositoriesTestPage() {
                 </ul>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800 mb-2">BigTaskRepository</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <h4 className="font-semibold text-foreground mb-2">BigTaskRepository</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• getByProjectId() - プロジェクト別取得</li>
                   <li>• getByWeekNumber() - 週番号別取得</li>
                   <li>• getScheduledForDate() - 委譲メソッド</li>
@@ -136,8 +136,8 @@ export default function RepositoriesTestPage() {
                 </ul>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800 mb-2">SessionRepository</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <h4 className="font-semibold text-foreground mb-2">SessionRepository</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• startSession() - セッション開始</li>
                   <li>• endSession() - セッション終了</li>
                   <li>• getActiveSession() - アクティブセッション</li>

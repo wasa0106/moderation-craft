@@ -61,11 +61,11 @@ export function SyncStatusIndicator() {
   }
 
   const getStatusColor = () => {
-    if (!isOnline) return 'text-red-600'
-    if (isSyncing) return 'text-blue-600'
-    if (failedCount > 0) return 'text-orange-600'
-    if (pendingCount > 0) return 'text-yellow-600'
-    return 'text-green-600'
+    if (!isOnline) return 'text-destructive'
+    if (isSyncing) return 'text-primary'
+    if (failedCount > 0) return 'text-destructive'
+    if (pendingCount > 0) return 'text-muted-foreground'
+    return 'text-primary'
   }
 
   return (

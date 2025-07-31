@@ -1,5 +1,5 @@
 /**
- * UnplannedTaskDialog - 計画外タスク名入力ダイアログ
+ * UnplannedTaskDialog - 計画外タスク作成ダイアログ
  */
 
 import { useState, useEffect } from 'react'
@@ -14,39 +14,53 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Zap } from 'lucide-react'
+import { Project } from '@/types'
+
+export interface UnplannedTaskData {
+  name: string
+  projectId?: string
+}
 
 interface UnplannedTaskDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (taskName: string) => void
-  defaultValue?: string
+  onConfirm: (taskData: UnplannedTaskData) => void
+  projects: Project[]
 }
 
 export function UnplannedTaskDialog({
   open,
   onOpenChange,
   onConfirm,
-  defaultValue = '',
+  projects,
 }: UnplannedTaskDialogProps) {
-  const [taskName, setTaskName] = useState(defaultValue)
+  const [taskName, setTaskName] = useState('')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('none')
 
   // ダイアログが開いた時に値をリセット
   useEffect(() => {
     if (open) {
-      setTaskName(defaultValue)
+      setTaskName('')
+      setSelectedProjectId('none')
     }
-  }, [open, defaultValue])
+  }, [open])
 
   const handleSubmit = () => {
     if (!taskName.trim()) return
-    onConfirm(taskName.trim())
-    setTaskName('')
+    
+    onConfirm({
+      name: taskName.trim(),
+      projectId: selectedProjectId === 'none' ? undefined : selectedProjectId,
+    })
+    
     onOpenChange(false)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && taskName.trim()) {
+    if (e.key === 'Enter' && taskName.trim() && e.target instanceof HTMLInputElement) {
       handleSubmit()
     }
   }
@@ -57,25 +71,43 @@ export function UnplannedTaskDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-orange-500" />
-            計画外の作業
+            緊急タスクの作成
           </DialogTitle>
           <DialogDescription>
-            どのような作業を行いますか？
+            急遽発生した作業を登録します
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="task-name">作業内容</Label>
+            <Label htmlFor="task-name">タスク名</Label>
             <Input
               id="task-name"
-              placeholder="例: 緊急バグ修正、メール対応"
+              placeholder="例: 緊急バグ修正、急な会議対応"
               value={taskName}
               onChange={(e) => setTaskName(e.target.value)}
               onKeyDown={handleKeyDown}
               autoFocus
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="project">プロジェクト（任意）</Label>
+            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <SelectTrigger id="project">
+                <SelectValue placeholder="プロジェクトを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">プロジェクトなし</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
         </div>
 
         <DialogFooter>
@@ -86,7 +118,7 @@ export function UnplannedTaskDialog({
             onClick={handleSubmit} 
             disabled={!taskName.trim()}
           >
-            開始
+            作成して開始
           </Button>
         </DialogFooter>
       </DialogContent>

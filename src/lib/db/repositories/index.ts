@@ -24,6 +24,8 @@ export {
   conditionRepository,
 } from './condition-repository'
 export { SyncQueueRepository, syncQueueRepository, syncRepository } from './sync-repository'
+export { ScheduleMemoRepositoryImpl, scheduleMemoRepository } from './schedule-memo-repository'
+export { SleepScheduleRepositoryImpl, sleepScheduleRepository } from './sleep-schedule-repository'
 export { BaseRepository } from './base-repository'
 
 import { projectRepository } from './project-repository'
@@ -33,6 +35,8 @@ import { moodEntryRepository } from './mood-repository'
 import { dopamineEntryRepository } from './dopamine-repository'
 import { dailyConditionRepository } from './condition-repository'
 import { syncQueueRepository } from './sync-repository'
+import { scheduleMemoRepository } from './schedule-memo-repository'
+import { sleepScheduleRepository } from './sleep-schedule-repository'
 
 export const repositories = {
   project: projectRepository,
@@ -43,6 +47,8 @@ export const repositories = {
   dopamineEntry: dopamineEntryRepository,
   dailyCondition: dailyConditionRepository,
   syncQueue: syncQueueRepository,
+  scheduleMemo: scheduleMemoRepository,
+  sleepSchedule: sleepScheduleRepository,
 }
 
 export default repositories

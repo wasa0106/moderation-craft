@@ -1,0 +1,79 @@
+# Claude Code Sub-agents Configuration for ModerationCraft
+
+agents:
+  - name: shadcn-ui-migrator
+    description: "shadcn/ui v4パターンへの移行を専門的に行うエージェント。UIコンポーネントの統一とdashboard-01パターンの適用を担当"
+    tools:
+      - "mcp__shadcn-ui__*"
+      - Read
+      - Edit
+      - MultiEdit
+      - Grep
+      - Write
+    triggers:
+      - "shadcn"
+      - "UI更新"
+      - "コンポーネント移行"
+      - "dashboard-01"
+      - "UIパターン"
+    
+  - name: project-analyzer
+    description: "プロジェクト構造を分析し、タスクの依存関係や進捗を可視化するエージェント"
+    tools:
+      - Read
+      - Grep
+      - LS
+      - Glob
+      - Task
+    triggers:
+      - "プロジェクト分析"
+      - "タスク依存関係"
+      - "進捗確認"
+      - "構造分析"
+      - "影響範囲"
+    
+  - name: db-optimizer
+    description: "IndexedDBとDynamoDBの同期処理を最適化し、オフラインファースト機能を改善するエージェント"
+    tools:
+      - Read
+      - Edit
+      - Grep
+      - Task
+      - Bash
+    triggers:
+      - "データベース"
+      - "同期処理"
+      - "パフォーマンス"
+      - "IndexedDB"
+      - "DynamoDB"
+      - "オフライン"
+    
+  - name: test-guardian
+    description: "テストコードの作成と保守を行い、品質を保証するエージェント"
+    tools:
+      - Read
+      - Write
+      - Edit
+      - Bash
+      - Grep
+    triggers:
+      - "テスト作成"
+      - "テストカバレッジ"
+      - "品質保証"
+      - "単体テスト"
+      - "統合テスト"
+    
+  - name: color-harmonizer
+    description: "カラーシステムとテーマの一貫性を保ち、セマンティックカラーへの移行を行うエージェント"
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Grep
+      - Task
+    triggers:
+      - "色統一"
+      - "テーマ"
+      - "ダークモード"
+      - "カラーシステム"
+      - "セマンティックカラー"

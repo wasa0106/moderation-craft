@@ -34,7 +34,7 @@ export function SmallTaskList({
   if (smallTasks.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">小タスクがありません</p>
+        <p className="text-muted-foreground">小タスクがありません</p>
       </div>
     )
   }
@@ -59,13 +59,13 @@ export function SmallTaskList({
                 </Badge>
                 {task.is_emergency && <Badge variant="destructive">緊急</Badge>}
                 {getTaskTotalMinutes(task.id, sessions) > 0 && (
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-muted-foreground">
                     {getTaskTotalMinutes(task.id, sessions)}分
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500">{getBigTaskName(task.big_task_id)}</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">{getBigTaskName(task.big_task_id)}</p>
+              <p className="text-sm text-muted-foreground">
                 {format(parseISO(task.scheduled_start), 'MM/dd HH:mm', { locale: ja })} -
                 {format(parseISO(task.scheduled_end), 'HH:mm', { locale: ja })}
               </p>

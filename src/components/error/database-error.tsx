@@ -63,16 +63,16 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
         <CardContent className="pt-6">
           <div className="text-center">
             <div className="mb-4">
-              <Database className="h-12 w-12 text-green-500 mx-auto" />
+              <Database className="h-12 w-12 text-primary mx-auto" />
             </div>
-            <h3 className="text-lg font-semibold text-green-700 mb-2">復旧完了</h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-2">復旧完了</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               データベースが正常に復旧されました。
               <br />
               まもなくページがリロードされます。
             </p>
             <div className="flex justify-center">
-              <RefreshCw className="h-5 w-5 animate-spin text-gray-400" />
+              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground/50" />
             </div>
           </div>
         </CardContent>
@@ -83,21 +83,21 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
   return (
     <Card className="max-w-2xl mx-auto mt-8">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-red-600">
+        <CardTitle className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
           データベースエラー
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-            <span className="text-red-800 font-medium">エラー詳細</span>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <span className="text-destructive font-medium">エラー詳細</span>
           </div>
-          <p className="text-red-700 text-sm">
+          <p className="text-destructive text-sm">
             データベースにアクセスできません。以下のエラーが発生しました：
             <br />
-            <code className="text-sm bg-red-100 px-1 py-0.5 rounded mt-1 inline-block">
+            <code className="text-sm bg-destructive/10 px-1 py-0.5 rounded mt-1 inline-block">
               {error.message}
             </code>
           </p>
@@ -106,7 +106,7 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
         {isSchemaError && (
           <div className="space-y-3">
             <h4 className="font-medium">推奨される解決方法</h4>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               データベースのスキーマ変更により発生したエラーです。
               自動復旧機能を使用してデータベースを修復できます。
             </p>
@@ -139,7 +139,7 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
 
             <div className="pt-4 border-t">
               <h5 className="font-medium text-sm mb-2">手動での解決方法</h5>
-              <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                 <li>ブラウザの開発者ツールを開く（F12）</li>
                 <li>「Application」タブを選択</li>
                 <li>「Storage」→「IndexedDB」→「ModerationCraftDB」</li>
@@ -156,7 +156,7 @@ export function DatabaseError({ error, onRetry }: DatabaseErrorProps) {
 
         {!isSchemaError && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               予期しないデータベースエラーが発生しました。
               再試行するか、問題が続く場合は開発者にお問い合わせください。
             </p>

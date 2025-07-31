@@ -17,6 +17,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { Project } from '@/types'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -41,11 +48,11 @@ export function ProjectCard({
   const getStatusColor = (status: Project['status']) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-primary text-primary-foreground'
       case 'completed':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
+        return 'bg-muted text-muted-foreground'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-secondary text-secondary-foreground'
     }
   }
 
@@ -79,19 +86,21 @@ export function ProjectCard({
     daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0
 
   return (
-    <Card
-      className={cn(
-        'hover:shadow-md transition-shadow duration-200',
-        isOverdue() && 'border-red-200 bg-red-50',
-        isDeadlineClose && 'border-yellow-200 bg-yellow-50',
-        className
-      )}
-    >
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Card
+          className={cn(
+            'hover:shadow-sm transition-shadow duration-200',
+            isOverdue() && 'border-destructive/50',
+            isDeadlineClose && 'border-warning/50',
+            className
+          )}
+        >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg font-semibold line-clamp-1">{project.name}</CardTitle>
-            <Badge variant="secondary" className={cn('mt-2', getStatusColor(project.status))}>
+            <Badge className={cn('mt-2', getStatusColor(project.status))}>
               {getStatusLabel(project.status)}
             </Badge>
           </div>
@@ -125,7 +134,7 @@ export function ProjectCard({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onDelete(project)}
-                    className="text-red-600 focus:text-red-600"
+                    className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     削除
@@ -151,8 +160,8 @@ export function ProjectCard({
             <span
               className={cn(
                 'text-sm',
-                isOverdue() && 'text-red-600 font-medium',
-                isDeadlineClose && 'text-yellow-600 font-medium'
+                isOverdue() && 'text-destructive font-medium',
+                isDeadlineClose && '[color:hsl(var(--warning))] font-medium'
               )}
             >
               {format(new Date(project.deadline), 'yyyy/MM/dd')}
@@ -192,6 +201,40 @@ export function ProjectCard({
           </Button>
         )}
       </CardContent>
-    </Card>
+        </Card>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        {onViewTasks && (
+          <ContextMenuItem onClick={() => onViewTasks(project)}>
+            <Play className="h-4 w-4 mr-2" />
+            詳細を見る
+          </ContextMenuItem>
+        )}
+        {onEdit && (
+          <ContextMenuItem onClick={() => onEdit(project)}>
+            <Edit className="h-4 w-4 mr-2" />
+            編集
+          </ContextMenuItem>
+        )}
+        {onDuplicate && (
+          <ContextMenuItem onClick={() => onDuplicate(project)}>
+            <Copy className="h-4 w-4 mr-2" />
+            複製
+          </ContextMenuItem>
+        )}
+        {onDelete && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={() => onDelete(project)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              削除
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }

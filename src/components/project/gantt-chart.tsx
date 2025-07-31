@@ -33,7 +33,6 @@ interface GanttChartProps {
   // 共通props
   startDate: Date
   endDate: Date
-  categoryColors: Map<string, string>
   totalTaskHours: number
   totalAvailableHours: number
 }
@@ -45,7 +44,6 @@ export function GanttChart({
   endDate,
   weeklyAvailableHours,
   weeklyAllocations,
-  categoryColors,
   onTaskUpdate,
   totalTaskHours,
   totalAvailableHours,
@@ -294,11 +292,11 @@ export function GanttChart({
         <div className="overflow-x-auto" ref={containerRef}>
           <table className="border-collapse" style={{ minWidth: `${336 + weeks.length * 80}px` }}>
             <thead>
-              <tr className="bg-gray-50">
-                <th className="sticky left-0 z-20 bg-gray-50 border-r border-b px-3 py-2 text-left text-sm font-medium w-64">
+              <tr className="bg-muted">
+                <th className="sticky left-0 z-20 bg-muted border-r border-b px-3 py-2 text-left text-sm font-medium w-64">
                   タスク名
                 </th>
-                <th className="sticky left-64 z-20 bg-gray-50 border-r border-b px-3 py-2 text-center text-sm font-medium w-20">
+                <th className="sticky left-64 z-20 bg-muted border-r border-b px-3 py-2 text-center text-sm font-medium w-20">
                   時間
                 </th>
                 {weeks.map((week, i) => {
@@ -322,17 +320,17 @@ export function GanttChart({
               {tasksByCategory.map(([category, categoryTasks]) => (
                 <React.Fragment key={`category-group-${category}`}>
                   {/* カテゴリ行 */}
-                  <tr key={`category-${category}`} className="bg-[#E3E892]">
-                    <td className="sticky left-0 z-10 bg-[#E3E892] border-r px-3 py-1 text-sm font-medium text-[#464A02] w-64">
+                  <tr key={`category-${category}`} className="bg-muted">
+                    <td className="sticky left-0 z-10 bg-muted border-r px-3 py-1 text-sm font-medium text-muted-foreground w-64">
                       {category}
                     </td>
-                    <td className="sticky left-64 z-10 bg-[#E3E892] border-r px-3 py-1 text-center text-sm w-20">
+                    <td className="sticky left-64 z-10 bg-muted border-r px-3 py-1 text-center text-sm w-20">
                       {/* 時間列は空欄 */}
                     </td>
                     {weeks.map((_, weekIndex) => (
                       <td
                         key={`category-${category}-week-${weekIndex}`}
-                        className="bg-[#E3E892] border-r h-8"
+                        className="bg-muted border-r h-8"
                         style={{ minWidth: '80px', width: '80px' }}
                       >
                         {/* ガントバーは表示しない */}
@@ -341,7 +339,7 @@ export function GanttChart({
                   </tr>
                   {/* タスク行 */}
                   {categoryTasks.map(task => (
-                    <tr key={`task-${task.id}`} className="border-b hover:bg-gray-50">
+                    <tr key={`task-${task.id}`} className="border-b hover:bg-accent">
                       <td className="sticky left-0 z-10 bg-white border-r px-3 py-2 text-sm w-64">
                         <span className="pl-4">{task.name}</span>
                       </td>
@@ -361,8 +359,8 @@ export function GanttChart({
                             key={`task-${task.id}-week-${weekIndex}`}
                             className={cn(
                               'relative border-r h-10',
-                              isOverCapacity && 'bg-red-50',
-                              isAfterProjectEnd && isInRange && 'bg-orange-50'
+                              isOverCapacity && 'bg-destructive/10',
+                              isAfterProjectEnd && isInRange && 'bg-warning/10'
                             )}
                             style={{ minWidth: '80px', width: '80px' }}
                           >
@@ -370,10 +368,10 @@ export function GanttChart({
                               <div
                                 className={cn(
                                   'absolute inset-y-1',
-                                  // タスク合計時間が超過している場合、プロジェクト終了日後は赤色
+                                  // タスク合計時間が超過している場合、プロジェクト終了日後は警告色
                                   totalTaskHours > totalAvailableHours && isAfterProjectEnd
-                                    ? 'bg-[#BA1A1A]'
-                                    : 'bg-[#5E621B]',
+                                    ? 'bg-destructive'
+                                    : 'bg-primary',
                                   isStart && 'rounded-l',
                                   isEnd && 'rounded-r'
                                 )}
@@ -388,8 +386,8 @@ export function GanttChart({
                                 className="absolute top-0 right-0 m-1 group"
                                 title={`超過: ${(weeklyWorkload[weekIndex] - (weeklyAllocations?.[weekIndex]?.availableHours || weeklyAvailableHours || 40)).toFixed(1)}時間`}
                               >
-                                <AlertTriangle className="h-3 w-3 text-red-600" />
-                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50">
+                                <AlertTriangle className="h-3 w-3 text-destructive" />
+                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-popover text-popover-foreground text-xs rounded px-2 py-1 whitespace-nowrap z-50 border">
                                   超過:{' '}
                                   {(weeklyWorkload[weekIndex] - (weeklyAllocations?.[weekIndex]?.availableHours || weeklyAvailableHours || 40)).toFixed(1)}
                                   時間
@@ -401,8 +399,8 @@ export function GanttChart({
                                 className="absolute bottom-0 right-0 m-1 group"
                                 title="プロジェクト期間外"
                               >
-                                <AlertTriangle className="h-3 w-3 text-white" />
-                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50">
+                                <AlertTriangle className="h-3 w-3 text-warning" />
+                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-popover text-popover-foreground text-xs rounded px-2 py-1 whitespace-nowrap z-50 border">
                                   プロジェクト期間外
                                 </div>
                               </div>

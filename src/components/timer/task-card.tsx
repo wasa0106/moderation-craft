@@ -2,15 +2,23 @@
  * TaskCard - タスクカードコンポーネント（状態管理ボタン付き）
  */
 
+import React from 'react'
 import { SmallTask, Project, WorkSession } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Clock, Check, X } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Check, X, Play, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getTaskDisplayInfo } from '@/lib/utils/task-session-utils'
 import { smallTaskRepository } from '@/lib/db/repositories'
 import { useToast } from '@/hooks/use-toast'
 import { useState } from 'react'
+import { format } from 'date-fns'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 
 interface TaskCardProps {
   task: SmallTask
@@ -19,50 +27,92 @@ interface TaskCardProps {
   isActive?: boolean
   onClick?: () => void
   onStatusChange?: () => void
+  onStartTask?: () => void
   showButtons?: boolean
+  compact?: boolean
+  style?: React.CSSProperties
 }
 
-export function TaskCard({
+function TaskCardComponent({
   task,
   project,
   sessions,
   isActive = false,
   onClick,
   onStatusChange,
+  onStartTask,
   showButtons = true,
+  compact = false,
+  style,
 }: TaskCardProps) {
   const { toast } = useToast()
   const [isUpdating, setIsUpdating] = useState(false)
+  const [popoverOpen, setPopoverOpen] = useState(false)
   
   const displayInfo = getTaskDisplayInfo(task, sessions)
   const status = task.status || 'pending'
   
-  // プロジェクトの色を取得
-  const getProjectGradient = (): string => {
-    if (status === 'completed') return 'from-blue-900 to-blue-950'
-    if (status === 'cancelled') return 'from-gray-400 to-gray-500'
+  // HSLカラーを調整する関数（彩度18%、明度82%に設定）
+  const adjustHSLForBackground = (hslColor: string): string => {
+    const match = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
+    if (!match) return hslColor
     
-    // pending状態の色分け
-    if (!project?.id) return 'from-gray-400 to-gray-500'
+    const [, hue] = match
+    return `hsl(${hue}, 18%, 82%)`
+  }
+  
+  // タスクのカードスタイルを取得
+  const getCardStyle = (): { className: string; style?: React.CSSProperties } => {
+    // キャンセルの場合
+    if (status === 'cancelled') return { className: 'bg-muted/10 text-muted-foreground border-0 border-l-4 border-l-muted-foreground/20' }
     
-    const colors = [
-      'from-blue-500 to-blue-600',
-      'from-green-500 to-green-600',
-      'from-purple-500 to-purple-600',
-      'from-orange-500 to-orange-600',
-    ]
-    const index = Math.abs(project.id.charCodeAt(0)) % colors.length
-    return colors[index]
+    // 作業中の場合
+    if (displayInfo.hasActiveSession) return { className: 'bg-primary text-primary-foreground border-0 border-l-4 border-l-primary-foreground' }
+    
+    // プロジェクトカラーがある場合
+    if (project?.color) {
+      // 完了状態の場合は元の色を使用
+      if (status === 'completed') {
+        return {
+          className: 'text-white border-0 border-l-4',
+          style: { 
+            backgroundColor: project.color,
+            borderLeftColor: project.color
+          }
+        }
+      }
+      // 通常状態の場合は調整した色を使用
+      return {
+        className: 'text-foreground border-0 border-l-4',
+        style: { 
+          backgroundColor: adjustHSLForBackground(project.color),
+          borderLeftColor: project.color
+        }
+      }
+    }
+    
+    // 完了状態でプロジェクトがない場合
+    if (status === 'completed') {
+      return { 
+        className: 'text-foreground border-0 border-l-4',
+        style: { 
+          backgroundColor: 'hsl(137, 2%, 96%)',
+          borderLeftColor: 'hsl(137, 8%, 15%)'
+        }
+      }
+    }
+    
+    // デフォルト（通常状態でプロジェクトがない）
+    return { 
+      className: 'border-0 border-l-4',
+      style: { 
+        backgroundColor: 'hsl(137, 2%, 96%)',
+        borderLeftColor: 'hsl(137, 8%, 15%)'
+      }
+    }
   }
   
   const handleStatusChange = async (newStatus: 'completed' | 'cancelled') => {
-    const confirmMessages = {
-      completed: `「${task.name}」を完了にしますか？`,
-      cancelled: `「${task.name}」を不要にしますか？\n作業履歴は保持されます。`,
-    }
-    
-    if (!confirm(confirmMessages[newStatus])) return
-    
     setIsUpdating(true)
     try {
       await smallTaskRepository.updateTaskStatus(
@@ -76,6 +126,7 @@ export function TaskCard({
         description: task.name,
       })
       
+      setPopoverOpen(false)
       onStatusChange?.()
     } catch (error) {
       console.error('Failed to update task status:', error)
@@ -90,8 +141,6 @@ export function TaskCard({
   }
   
   const handleRevertStatus = async () => {
-    if (!confirm(`「${task.name}」を未完了に戻しますか？`)) return
-    
     setIsUpdating(true)
     try {
       await smallTaskRepository.updateTaskStatus(task.id, 'pending')
@@ -101,6 +150,7 @@ export function TaskCard({
         description: task.name,
       })
       
+      setPopoverOpen(false)
       onStatusChange?.()
     } catch (error) {
       console.error('Failed to revert task status:', error)
@@ -114,100 +164,183 @@ export function TaskCard({
     }
   }
   
+  const handleStartTask = () => {
+    setPopoverOpen(false)
+    onStartTask?.()
+  }
+  
+  // タスクの長さに基づいてパディングとフォントサイズを調整
+  // タスクの長さに基づいてパディングとフォントサイズを調整
+  const getDynamicStyles = () => {
+    if (compact || task.estimated_minutes <= 30) {
+      return {
+        padding: 'p-0.5',
+        titleSize: 'text-xs',
+        badgeSize: 'text-[10px]',
+        timeSize: 'text-[10px]',
+        buttonSize: 'h-5 px-1 text-[10px]',
+        iconSize: 'h-2.5 w-2.5',
+      }
+    } else if (task.estimated_minutes <= 60) {
+      return {
+        padding: 'p-1',
+        titleSize: 'text-xs',
+        badgeSize: 'text-[11px]',
+        timeSize: 'text-[11px]',
+        buttonSize: 'h-5 px-1.5 text-[11px]',
+        iconSize: 'h-3 w-3',
+      }
+    } else {
+      return {
+        padding: 'p-1.5',
+        titleSize: 'text-sm',
+        badgeSize: 'text-xs',
+        timeSize: 'text-xs',
+        buttonSize: 'h-6 px-2 text-xs',
+        iconSize: 'h-3 w-3',
+      }
+    }
+  }
+  
+  // 時刻表示をフォーマット
+  const formatTimeRange = (short = false) => {
+    const start = new Date(task.scheduled_start)
+    const end = new Date(task.scheduled_end)
+    if (short) {
+      return `${format(start, 'HH:mm')}-${format(end, 'HH:mm')}`
+    }
+    return `${format(start, 'HH:mm')} ~ ${format(end, 'HH:mm')}`
+  }
+  
+  const styles = getDynamicStyles()
+  const cardStyle = getCardStyle()
+  
+  // レイアウトを決定（タスクの長さとタスク名の長さに基づく）
+  const shouldShowTimeOnSecondLine = task.estimated_minutes > 45
+  const shouldShowTime = task.name.length <= 20 || shouldShowTimeOnSecondLine
+  
   return (
-    <div
-      className={cn(
-        'relative rounded-lg transition-all',
-        'hover:shadow-md',
-        isActive && 'ring-2 ring-primary ring-offset-1',
-        status === 'completed' && 'opacity-80',
-        status === 'cancelled' && 'opacity-60',
-        onClick && 'cursor-pointer'
-      )}
-      onClick={onClick}
-    >
-      <div
-        className={cn(
-          'h-full rounded-md p-3 text-white overflow-hidden shadow-sm',
-          'bg-gradient-to-r',
-          getProjectGradient()
-        )}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{task.name}</h4>
-            {project && (
-              <p className="text-xs opacity-80 truncate">{project.name}</p>
-            )}
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <PopoverTrigger asChild>
+        <Card
+          className={cn(
+            'relative transition-all rounded-sm box-border',
+            styles.padding,
+            'hover:shadow-sm hover:bg-surface-2',
+            isActive && 'ring-2 ring-primary ring-offset-1',
+            status === 'completed' && 'opacity-80',
+            status === 'cancelled' && 'opacity-60',
+            'cursor-pointer',
+            cardStyle.className
+          )}
+          style={{ ...cardStyle.style, ...style }}
+          onClick={(e) => {
+            if (!showButtons) {
+              e.stopPropagation()
+              onClick?.()
+            }
+          }}
+        >
+        {shouldShowTimeOnSecondLine ? (
+          // 2行表示パターン（高さが十分な場合）
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-start justify-between gap-1">
+              <div className="flex-1 min-w-0">
+                <h4 className={cn("font-medium truncate", styles.titleSize)}>{task.name}</h4>
+              </div>
+              <div className="flex items-center gap-0.5">
+                {task.is_emergency && (
+                  <Badge variant="destructive" className={styles.badgeSize}>
+                    緊急
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div className={cn(
+              status === 'completed' && project?.color ? "text-white" : "text-muted-foreground",
+              styles.timeSize
+            )}>
+              {formatTimeRange()}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            {task.is_emergency && (
-              <Badge variant="destructive" className="text-xs">
-                緊急
-              </Badge>
-            )}
-            <Badge 
-              variant="secondary" 
-              className={cn(
-                "text-xs",
-                displayInfo.hasActiveSession && "bg-blue-200 text-blue-800"
+        ) : (
+          // 1行表示パターン（高さが不足の場合）
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex-1 min-w-0 flex items-center gap-1">
+              <h4 className={cn("font-medium truncate", styles.titleSize)}>{task.name}</h4>
+              {shouldShowTime && (
+                <span className={cn(
+                  status === 'completed' && project?.color ? "text-white" : "text-muted-foreground",
+                  "whitespace-nowrap",
+                  styles.timeSize
+                )}>
+                  {formatTimeRange(true)}
+                </span>
               )}
-            >
-              {displayInfo.statusText}
-            </Badge>
+            </div>
+            <div className="flex items-center gap-0.5">
+              {task.is_emergency && (
+                <Badge variant="destructive" className={styles.badgeSize}>
+                  緊急
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-2 text-xs opacity-80">
-            <Clock className="h-3 w-3" />
-            <span>{task.estimated_minutes}分</span>
-            {displayInfo.progressText && (
+        )}
+        </Card>
+      </PopoverTrigger>
+      {showButtons && (
+        <PopoverContent className="w-56" align="start" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-col gap-2">
+            {status === 'pending' && (
               <>
-                <span>•</span>
-                <span>{displayInfo.progressText}</span>
+                {onStartTask && !displayInfo.hasActiveSession && (
+                  <Button
+                    variant="default"
+                    className="w-full justify-start"
+                    onClick={handleStartTask}
+                    disabled={isUpdating}
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    タスクを開始
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => handleStatusChange('completed')}
+                  disabled={isUpdating}
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  完了にする
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => handleStatusChange('cancelled')}
+                  disabled={isUpdating}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  不要にする
+                </Button>
               </>
             )}
+            {(status === 'completed' || status === 'cancelled') && (
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleRevertStatus}
+                disabled={isUpdating}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                元に戻す
+              </Button>
+            )}
           </div>
-          
-          {showButtons && status === 'pending' && (
-            <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs bg-white/20 hover:bg-white/30 text-white"
-                onClick={() => handleStatusChange('completed')}
-                disabled={isUpdating}
-              >
-                <Check className="h-3 w-3 mr-1" />
-                完了
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs bg-white/20 hover:bg-white/30 text-white"
-                onClick={() => handleStatusChange('cancelled')}
-                disabled={isUpdating}
-              >
-                <X className="h-3 w-3 mr-1" />
-                不要
-              </Button>
-            </div>
-          )}
-          
-          {showButtons && (status === 'completed' || status === 'cancelled') && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-xs bg-white/20 hover:bg-white/30 text-white"
-              onClick={handleRevertStatus}
-              disabled={isUpdating}
-            >
-              元に戻す
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+        </PopoverContent>
+      )}
+    </Popover>
   )
 }
+
+export const TaskCard = React.memo(TaskCardComponent)

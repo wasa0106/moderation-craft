@@ -251,9 +251,9 @@ export function WorkSessionEditDialog({
               </div>
             </div>
             
-            {session.duration_minutes > 0 && (
+            {session.duration_seconds && session.duration_seconds > 0 && (
               <div className="text-sm text-muted-foreground text-center">
-                現在の記録時間: {session.duration_minutes}分
+                現在の記録時間: {Math.floor(session.duration_seconds / 60)}分
               </div>
             )}
           </div>

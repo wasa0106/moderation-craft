@@ -76,14 +76,14 @@ export default function TestPage() {
           ) : (
             <div className="space-y-2">
               <p className="font-semibold">テスト結果:</p>
-              <div className="bg-gray-100 p-4 rounded max-h-96 overflow-y-auto">
+              <div className="bg-muted p-4 rounded max-h-96 overflow-y-auto">
                 {testResults.map((result, index) => (
                   <div key={index} className="text-sm font-mono">
                     {result}
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-gray-600 mt-4">
+              <p className="text-sm text-muted-foreground mt-4">
                 詳細はブラウザの開発者ツール（Console）でも確認できます
               </p>
             </div>

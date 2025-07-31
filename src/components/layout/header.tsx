@@ -59,7 +59,7 @@ export function Header({
   const isWeeklySchedule = pathname === '/schedule' && !title // titleが指定されていない場合のみ週次スケジュール用の表示
 
   return (
-    <header className="bg-[#E5E3D2] border-b border-[#C9C7B6]">
+    <header className="bg-card border-b border-border">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* 左側: カスタムコンテンツまたはページタイトル */}
@@ -68,13 +68,13 @@ export function Header({
               leftContent
             ) : (
               <>
-                <h1 className="text-2xl font-bold text-[#1C1C14]">{pageTitle}</h1>
+                <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
 
                 {/* サブタイトルまたは週次スケジュール画面のデフォルトサブタイトル */}
                 {subtitle ? (
-                  <span className="text-[#47473B]">{subtitle}</span>
+                  <span className="text-muted-foreground">{subtitle}</span>
                 ) : isWeeklySchedule ? (
-                  <div className="flex items-center gap-2 text-[#47473B]">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <CalendarDays className="w-5 h-5" />
                     <span>来週の計画を立てましょう</span>
                   </div>
@@ -89,7 +89,7 @@ export function Header({
           ) : isWeeklySchedule && weekStart && weekEnd ? (
             <div className="flex items-center gap-4">
               {/* 日付範囲表示 */}
-              <div className="text-[#47473B] bg-[#F5F5E8] px-4 py-2 rounded-lg">
+              <div className="text-muted-foreground bg-muted px-4 py-2 rounded-lg">
                 <span className="text-sm">{format(weekStart, 'yyyy年MM月', { locale: ja })}</span>
                 <div className="font-semibold">
                   {format(weekStart, 'd', { locale: ja })} - {format(weekEnd, 'd', { locale: ja })}
@@ -102,18 +102,18 @@ export function Header({
                   onClick={onPreviousWeek}
                   variant="ghost"
                   size="icon"
-                  className="text-[#47473B] hover:bg-[#D4D5C0]"
+                  className="text-muted-foreground hover:bg-accent"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </Button>
 
-                <span className="text-[#47473B] px-2">今週</span>
+                <span className="text-muted-foreground px-2">今週</span>
 
                 <Button
                   onClick={onNextWeek}
                   variant="ghost"
                   size="icon"
-                  className="text-[#47473B] hover:bg-[#D4D5C0]"
+                  className="text-muted-foreground hover:bg-accent"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </Button>
@@ -122,7 +122,7 @@ export function Header({
               {/* 前週コピーボタン */}
               <Button
                 onClick={onCopyPreviousWeek}
-                className="bg-[#5E621B] hover:bg-[#464A02] text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Copy className="w-4 h-4 mr-2" />
                 前週コピー

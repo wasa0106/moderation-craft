@@ -35,11 +35,11 @@ export function WorkSessionList({ sessions, tasks, projects }: WorkSessionListPr
 
   // 集中力レベルの色を取得
   const getFocusColor = (level?: number): string => {
-    if (!level) return 'text-gray-400'
-    if (level >= 8) return 'text-purple-600'
-    if (level >= 6) return 'text-blue-600'
-    if (level >= 4) return 'text-green-600'
-    return 'text-orange-600'
+    if (!level) return 'text-muted-foreground'
+    if (level >= 8) return 'text-foreground'
+    if (level >= 6) return 'text-foreground'
+    if (level >= 4) return 'text-muted-foreground'
+    return 'text-muted-foreground'
   }
 
   if (sessions.length === 0) {
@@ -77,7 +77,7 @@ export function WorkSessionList({ sessions, tasks, projects }: WorkSessionListPr
                     )}
                   </div>
                   {isCompleted && (
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
                   )}
                 </div>
               </div>

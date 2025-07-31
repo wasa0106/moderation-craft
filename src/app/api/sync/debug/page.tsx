@@ -108,7 +108,7 @@ export default function SyncDebugPage() {
                       <summary className="text-xs text-blue-600 cursor-pointer">
                         データを表示
                       </summary>
-                      <pre className="mt-1 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                      <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-auto">
                         {item.data ? JSON.stringify(JSON.parse(item.data), null, 2) : 'データなし'}
                       </pre>
                     </details>

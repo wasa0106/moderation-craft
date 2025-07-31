@@ -22,7 +22,8 @@ import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
 import { useWorkSessions } from '@/hooks/use-work-sessions'
-import { isTaskCompleted, getTaskTotalMinutes } from '@/lib/utils/task-session-utils'
+import { isTaskCompleted, getTaskTotalMinutes, isTaskActive } from '@/lib/utils/task-session-utils'
+import { getEfficiencyColorClass, getCompletionColorClass } from '@/lib/theme/color-utils'
 import {
   BarChart3,
   Target,
@@ -73,6 +74,9 @@ export default function ReportsPage() {
   })
 
   const filteredSmallTasks = smallTasks.filter(task => {
+    // ルーチンタスクはレポートから除外
+    if (task.task_type === 'routine' || task.is_reportable === false) return false
+    
     const bigTask = bigTasks.find(bt => bt.id === task.big_task_id)
     if (!bigTask) return false
 
@@ -233,30 +237,19 @@ export default function ReportsPage() {
       ? Math.round((accurateEstimates / timeVarianceAnalysis.length) * 100)
       : 0
 
-  const getEfficiencyColor = (efficiency: number) => {
-    if (efficiency >= 90) return 'text-green-600'
-    if (efficiency >= 70) return 'text-yellow-600'
-    return 'text-red-600'
-  }
-
-  const getCompletionColor = (rate: number) => {
-    if (rate >= 80) return 'text-green-600'
-    if (rate >= 60) return 'text-yellow-600'
-    return 'text-red-600'
-  }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <BarChart3 className="h-8 w-8 text-blue-600" />
+            <div className="p-3 bg-muted rounded-lg">
+              <BarChart3 className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">レポート・分析</h1>
-              <p className="text-gray-600">プロジェクトとタスクの総合的な分析結果</p>
+              <h1 className="text-3xl font-bold text-foreground">レポート・分析</h1>
+              <p className="text-muted-foreground">プロジェクトとタスクの総合的な分析結果</p>
             </div>
           </div>
 
@@ -307,13 +300,13 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">プロジェクト完了率</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">プロジェクト完了率</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${getCompletionColor(projectCompletionRate)}`}>
+            <div className={`text-3xl font-bold ${getCompletionColorClass(projectCompletionRate)}`}>
               {projectCompletionRate}%
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               {projectStats.completed}/{projectStats.total} 完了
             </div>
             <Progress value={projectCompletionRate} className="mt-2" />
@@ -322,13 +315,13 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">大タスク完了率</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">大タスク完了率</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${getCompletionColor(bigTaskCompletionRate)}`}>
+            <div className={`text-3xl font-bold ${getCompletionColorClass(bigTaskCompletionRate)}`}>
               {bigTaskCompletionRate}%
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               {bigTaskStats.completed}/{bigTaskStats.total} 完了
             </div>
             <Progress value={bigTaskCompletionRate} className="mt-2" />
@@ -337,28 +330,28 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">小タスク完了率</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">小タスク完了率</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${getCompletionColor(smallTaskCompletionRate)}`}>
+            <div className={`text-3xl font-bold ${getCompletionColorClass(smallTaskCompletionRate)}`}>
               {smallTaskCompletionRate}%
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               {smallTaskStats.completed}/{smallTaskStats.total} 完了
             </div>
             <Progress value={smallTaskCompletionRate} className="mt-2" />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">見積精度</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">見積精度</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${getEfficiencyColor(estimateAccuracy)}`}>
+            <div className={`text-3xl font-bold ${getEfficiencyColorClass(estimateAccuracy)}`}>
               {estimateAccuracy}%
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               {accurateEstimates}/{timeVarianceAnalysis.length} 正確
             </div>
             <Progress value={estimateAccuracy} className="mt-2" />
@@ -377,11 +370,11 @@ export default function ReportsPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid gap-4 lg:grid-cols-2">
             {/* Key Metrics */}
-            <Card>
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <Award className="h-5 w-5" />
                   主要指標
                 </CardTitle>
@@ -402,20 +395,20 @@ export default function ReportsPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">緊急タスク数</span>
-                    <span className="font-bold text-red-600">{smallTaskStats.emergency}</span>
+                    <span className="font-bold text-destructive">{smallTaskStats.emergency}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">期限超過タスク</span>
-                    <span className="font-bold text-orange-600">{smallTaskStats.overdue}</span>
+                    <span className="font-bold text-warning">{smallTaskStats.overdue}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Task Status Summary */}
-            <Card>
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <CheckCircle2 className="h-5 w-5" />
                   タスク状態サマリー
                 </CardTitle>
@@ -451,14 +444,14 @@ export default function ReportsPage() {
                   <div className="border-t pt-3">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm font-medium">完了率</span>
-                      <span className="font-bold text-green-600">
+                      <span className="font-bold text-primary">
                         {smallTaskStats.completionRate}%
                       </span>
                     </div>
                     <Progress value={smallTaskStats.completionRate} className="h-2" />
                   </div>
                   {smallTaskStats.wastedMinutes > 0 && (
-                    <div className="flex justify-between items-center text-orange-600">
+                    <div className="flex justify-between items-center text-warning">
                       <span className="text-sm">不要タスクの作業時間</span>
                       <span className="font-bold">
                         {Math.round(smallTaskStats.wastedMinutes / 60)}h {smallTaskStats.wastedMinutes % 60}m
@@ -470,9 +463,9 @@ export default function ReportsPage() {
             </Card>
 
             {/* Time Summary */}
-            <Card>
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <Clock className="h-5 w-5" />
                   時間サマリー
                 </CardTitle>
@@ -482,11 +475,11 @@ export default function ReportsPage() {
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm">大タスク時間効率</span>
-                      <span className={`font-bold ${getEfficiencyColor(bigTaskTimeEfficiency)}`}>
+                      <span className={`font-bold ${getEfficiencyColorClass(bigTaskTimeEfficiency)}`}>
                         {bigTaskTimeEfficiency}%
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       予定: {Math.round(bigTaskStats.totalEstimatedHours)}h / 実績:{' '}
                       {Math.round(bigTaskStats.totalActualHours)}h
                     </div>
@@ -495,11 +488,11 @@ export default function ReportsPage() {
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm">小タスク時間効率</span>
-                      <span className={`font-bold ${getEfficiencyColor(smallTaskTimeEfficiency)}`}>
+                      <span className={`font-bold ${getEfficiencyColorClass(smallTaskTimeEfficiency)}`}>
                         {smallTaskTimeEfficiency}%
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       予定: {Math.round(smallTaskStats.totalEstimatedMinutes / 60)}h / 実績:{' '}
                       {Math.round(smallTaskStats.totalActualMinutes / 60)}h
                     </div>
@@ -516,7 +509,7 @@ export default function ReportsPage() {
                         h
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500">大タスク + 小タスク</div>
+                    <div className="text-xs text-muted-foreground">大タスク + 小タスク</div>
                   </div>
                 </div>
               </CardContent>
@@ -551,20 +544,20 @@ export default function ReportsPage() {
                         </Badge>
                       </div>
                       <div
-                        className={`text-lg font-bold ${getCompletionColor(item.overallCompletion)}`}
+                        className={`text-lg font-bold ${getCompletionColorClass(item.overallCompletion)}`}
                       >
                         {item.overallCompletion}%
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid gap-4 grid-cols-2 text-sm">
                       <div>
                         <div className="flex justify-between mb-1">
                           <span>大タスク:</span>
                           <span>{item.bigTaskCompletion}%</span>
                         </div>
                         <Progress value={item.bigTaskCompletion} className="mb-1" />
-                        <div className="text-xs text-gray-500">{item.bigTaskCount}件</div>
+                        <div className="text-xs text-muted-foreground">{item.bigTaskCount}件</div>
                       </div>
                       <div>
                         <div className="flex justify-between mb-1">
@@ -572,7 +565,7 @@ export default function ReportsPage() {
                           <span>{item.smallTaskCompletion}%</span>
                         </div>
                         <Progress value={item.smallTaskCompletion} className="mb-1" />
-                        <div className="text-xs text-gray-500">{item.smallTaskCount}件</div>
+                        <div className="text-xs text-muted-foreground">{item.smallTaskCount}件</div>
                       </div>
                     </div>
                   </div>
@@ -584,11 +577,11 @@ export default function ReportsPage() {
 
         {/* Tasks Tab */}
         <TabsContent value="tasks" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid gap-4 lg:grid-cols-2">
             {/* Task Distribution */}
-            <Card>
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <CheckCircle2 className="h-5 w-5" />
                   タスク分布
                 </CardTitle>
@@ -600,15 +593,15 @@ export default function ReportsPage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>完了:</span>
-                        <span className="font-medium text-green-600">{bigTaskStats.completed}</span>
+                        <span className="font-medium text-primary">{bigTaskStats.completed}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>実行中:</span>
-                        <span className="font-medium text-blue-600">{bigTaskStats.active}</span>
+                        <span className="font-medium text-primary">{bigTaskStats.active}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>待機中:</span>
-                        <span className="font-medium text-gray-600">{bigTaskStats.pending}</span>
+                        <span className="font-medium text-muted-foreground">{bigTaskStats.pending}</span>
                       </div>
                     </div>
                   </div>
@@ -618,21 +611,21 @@ export default function ReportsPage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>完了:</span>
-                        <span className="font-medium text-green-600">
+                        <span className="font-medium text-primary">
                           {smallTaskStats.completed}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>未完了:</span>
-                        <span className="font-medium text-gray-600">{smallTaskStats.pending}</span>
+                        <span className="font-medium text-muted-foreground">{smallTaskStats.pending}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>緊急:</span>
-                        <span className="font-medium text-red-600">{smallTaskStats.emergency}</span>
+                        <span className="font-medium text-destructive">{smallTaskStats.emergency}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>期限超過:</span>
-                        <span className="font-medium text-orange-600">
+                        <span className="font-medium text-muted-foreground">
                           {smallTaskStats.overdue}
                         </span>
                       </div>
@@ -643,9 +636,9 @@ export default function ReportsPage() {
             </Card>
 
             {/* Issues and Alerts */}
-            <Card>
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <AlertTriangle className="h-5 w-5" />
                   課題と警告
                 </CardTitle>
@@ -653,36 +646,36 @@ export default function ReportsPage() {
               <CardContent>
                 <div className="space-y-3">
                   {smallTaskStats.overdue > 0 && (
-                    <div className="p-3 bg-orange-50 border border-orange-200 rounded">
+                    <div className="p-3 bg-muted border border-border rounded">
                       <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle className="h-4 w-4 text-orange-600" />
-                        <span className="font-medium text-orange-800">期限超過</span>
+                        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground">期限超過</span>
                       </div>
-                      <p className="text-sm text-orange-700">
+                      <p className="text-sm text-muted-foreground">
                         {smallTaskStats.overdue}件のタスクが期限を超過しています
                       </p>
                     </div>
                   )}
 
                   {smallTaskStats.emergency > 0 && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded">
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded">
                       <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle className="h-4 w-4 text-red-600" />
-                        <span className="font-medium text-red-800">緊急タスク</span>
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                        <span className="font-medium text-destructive">緊急タスク</span>
                       </div>
-                      <p className="text-sm text-red-700">
+                      <p className="text-sm text-destructive/90">
                         {smallTaskStats.emergency}件の緊急タスクがあります
                       </p>
                     </div>
                   )}
 
                   {projectStats.overdue > 0 && (
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <div className="p-3 bg-warning/10 border border-warning/20 rounded">
                       <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                        <span className="font-medium text-yellow-800">期限超過プロジェクト</span>
+                        <AlertTriangle className="h-4 w-4 text-warning" />
+                        <span className="font-medium text-warning">期限超過プロジェクト</span>
                       </div>
-                      <p className="text-sm text-yellow-700">
+                      <p className="text-sm text-warning/90">
                         {projectStats.overdue}件のプロジェクトが期限を超過しています
                       </p>
                     </div>
@@ -691,12 +684,12 @@ export default function ReportsPage() {
                   {smallTaskStats.overdue === 0 &&
                     smallTaskStats.emergency === 0 &&
                     projectStats.overdue === 0 && (
-                      <div className="p-3 bg-green-50 border border-green-200 rounded">
+                      <div className="p-3 bg-primary/10 border border-primary/20 rounded">
                         <div className="flex items-center gap-2 mb-1">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <span className="font-medium text-green-800">問題なし</span>
+                          <CheckCircle2 className="h-4 w-4 text-primary" />
+                          <span className="font-medium text-primary">問題なし</span>
                         </div>
-                        <p className="text-sm text-green-700">現在、緊急の課題はありません</p>
+                        <p className="text-sm text-muted-foreground">現在、緊急の課題はありません</p>
                       </div>
                     )}
                 </div>
@@ -717,21 +710,21 @@ export default function ReportsPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
+                  <div className="p-4 bg-primary/10 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">
                       {timeVarianceAnalysis.filter(t => t.isUnder).length}
                     </div>
-                    <div className="text-sm text-green-700">予定より短縮</div>
+                    <div className="text-sm text-muted-foreground">予定より短縮</div>
                   </div>
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{accurateEstimates}</div>
-                    <div className="text-sm text-blue-700">正確な見積り</div>
+                  <div className="p-4 bg-primary/10 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">{accurateEstimates}</div>
+                    <div className="text-sm text-primary/80">正確な見積り</div>
                   </div>
-                  <div className="p-4 bg-red-50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">
+                  <div className="p-4 bg-destructive/10 rounded-lg">
+                    <div className="text-2xl font-bold text-destructive">
                       {timeVarianceAnalysis.filter(t => t.isOver).length}
                     </div>
-                    <div className="text-sm text-red-700">予定より超過</div>
+                    <div className="text-sm text-destructive/90">予定より超過</div>
                   </div>
                 </div>
 

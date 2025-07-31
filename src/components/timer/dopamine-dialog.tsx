@@ -62,7 +62,7 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" />
+            <Sparkles className="h-5 w-5 text-primary" />
             ドーパミンイベントを記録
           </DialogTitle>
           <DialogDescription>

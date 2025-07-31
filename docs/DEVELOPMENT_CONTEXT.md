@@ -6,7 +6,6 @@
 - **プロジェクト名**: moderation-craft
 - **目的**: 個人創作者向けセルフケア統合型プロジェクト管理アプリ
 - **コンセプト**: 有能な仮想上司があなたをマネジメントし、燃え尽きを防ぐ
-- **開発期限**: 2025/7/15（20日間）
 - **ターゲット**: 個人開発者、同人作家、副業クリエイター
 - **利用形態**: MVP時点では単一ユーザー、将来的にマルチユーザー対応
 
@@ -386,7 +385,7 @@
 - **SK (user_time_sk)**: `BIGTASK#${taskId}` / `SMALLTASK#${taskId}` / `SESSION#${sessionId}` など
 - **例**: 「ユーザーAの今週のタスク一覧」「ユーザーBの今月の感情記録」
 
-##### entity-type-index  
+##### entity-type-index
 - **用途**: 全ユーザーの特定タイプのデータを更新順に取得
 - **PK (entity_type)**: `project` / `big_task` / `small_task` / `mood_entry` など
 - **SK (updated_at)**: ISO8601形式の更新日時
@@ -599,49 +598,6 @@
 - 期間比較分析
 - 予測シミュレーション
 - カスタムレポート作成
-
-### デザインシステム
-
-#### カラースキーム（Material Theme）
-css
-:root {
-  /* Primary Colors */
-  --primary: #5E621B;
-  --on-primary: #FFFFFF;
-  --primary-container: #E3E892;
-  --on-primary-container: #464A02;
-
-  /* Secondary Colors */
-  --secondary: #5F6044;
-  --on-secondary: #FFFFFF;
-  --secondary-container: #E4E5C0;
-  --on-secondary-container: #47492E;
-
-  /* Tertiary Colors */
-  --tertiary: #3C6659;
-  --on-tertiary: #FFFFFF;
-  --tertiary-container: #BEECDB;
-  --on-tertiary-container: #244E42;
-
-  /* Error Colors */
-  --error: #BA1A1A;
-  --on-error: #FFFFFF;
-  --error-container: #FFDAD6;
-  --on-error-container: #93000A;
-
-  /* Background & Surface */
-  --background: #FCFAEC;
-  --on-background: #1C1C14;
-  --surface: #FCFAEC;
-  --on-surface: #1C1C14;
-  --surface-variant: #E5E3D2;
-  --on-surface-variant: #47473B;
-
-  /* Other Colors */
-  --outline: #787869;
-  --outline-variant: #C9C7B6;
-  }
-
 
 ## 技術仕様
 
@@ -1146,7 +1102,7 @@ const retryDelay = Math.min(30000 * Math.pow(1.5, attemptCount - 1), 600000)
 #### 1. データ整合性
 - **問題**: 削除操作の同期順序
   - 親エンティティ（Project）を削除する前に子エンティティ（Task）が同期されると外部キー制約エラー
-- **対策案**: 
+- **対策案**:
   - 同期キューの処理順序を制御（DELETE操作は最後に）
   - カスケード削除の実装
 
@@ -1160,7 +1116,7 @@ const retryDelay = Math.min(30000 * Math.pow(1.5, attemptCount - 1), 600000)
 
 #### 3. 競合解決
 - **現状**: Last-Write-Wins（最新のタイムスタンプが勝つ）
-- **課題**: 
+- **課題**:
   - 同時編集時にデータが失われる可能性
   - オフライン期間が長いとローカル変更が上書きされる
 - **改善案**:

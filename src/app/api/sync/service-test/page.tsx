@@ -266,7 +266,7 @@ export default function SyncServiceTestPage() {
                     <p className={`font-medium ${
                       item.status === 'failed' ? 'text-red-600' :
                       item.status === 'processing' ? 'text-blue-600' :
-                      'text-gray-600'
+                      'text-muted-foreground'
                     }`}>
                       {item.status === 'pending' ? '保留中' :
                        item.status === 'processing' ? '処理中' :

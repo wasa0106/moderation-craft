@@ -7,7 +7,7 @@ import { workSessionRepository } from '@/lib/db/repositories'
 import { useTimerStore } from '@/stores/timer-store'
 import { format } from 'date-fns'
 import { WorkSession } from '@/types'
-import { formatSecondsToTime } from '@/lib/utils/time-utils'
+import { formatSecondsToHoursMinutes } from '@/lib/utils/time-utils'
 
 export function useTodayTotal(userId: string, sessions: WorkSession[]) {
   const [todayTotalSeconds, setTodayTotalSeconds] = useState(0)
@@ -53,6 +53,6 @@ export function useTodayTotal(userId: string, sessions: WorkSession[]) {
   
   return {
     todayTotalSeconds,
-    todayTotalFormatted: formatSecondsToTime(todayTotalSeconds),
+    todayTotalFormatted: formatSecondsToHoursMinutes(todayTotalSeconds),
   }
 }

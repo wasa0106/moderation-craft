@@ -3,13 +3,12 @@
  * ドラッグ&ドロップで小タスクをスケジューリング
  */
 
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { format, eachDayOfInterval, setHours, setMinutes, parseISO, isWeekend } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Clock, Calendar as CalendarIcon, Plus } from 'lucide-react'
+import { Clock, ChevronLeft, ChevronRight, Moon } from 'lucide-react'
 import {
   DndContext,
   DragEndEvent,
@@ -21,21 +20,26 @@ import {
 } from '@dnd-kit/core'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { WeeklySchedule, SmallTask, Project, BigTask, CreateSmallTaskData, UpdateSmallTaskData } from '@/types'
+import { WeeklySchedule, SmallTask, Project, BigTask, CreateSmallTaskData, UpdateSmallTaskData, SleepSchedule } from '@/types'
 import { cn } from '@/lib/utils'
 import { TaskCreateDialog } from './task-create-dialog'
 import { TaskDetailDialog } from './task-detail-dialog'
+import { WeeklySleepScheduleDialog } from './weekly-sleep-schedule-dialog'
+import { useWeeklySleepSchedules, generateSleepBlocks } from '@/hooks/use-sleep-schedule'
 
 interface WeeklyCalendarProps {
   weeklySchedule: WeeklySchedule
   onScheduleTask: (taskId: string, startTime: string, endTime: string) => Promise<void>
-  onUnscheduleTask: (taskId: string) => Promise<void>
   onCreateTask: (data: CreateSmallTaskData) => Promise<void>
   onUpdateTask: (data: { id: string; data: UpdateSmallTaskData }) => Promise<void>
   onDeleteTask: (taskId: string) => Promise<void>
   projects: Project[]
   bigTasks: BigTask[]
+  smallTasks?: SmallTask[]
   userId: string
+  weekStart: Date
+  onPreviousWeek: () => void
+  onNextWeek: () => void
 }
 
 interface TimeSlot {
@@ -54,10 +58,12 @@ interface DragSelection {
 function DraggableTask({
   task,
   color,
+  project,
   isDragging = false,
 }: {
   task: SmallTask
   color: string
+  project?: Project
   isDragging?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -76,13 +82,19 @@ function DraggableTask({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        ...(project?.color ? {
+          backgroundColor: project.color,
+          '--custom-color': project.color,
+        } : {})
+      }}
       {...listeners}
       {...attributes}
       className={cn(
-        'p-2 rounded-lg cursor-move transition-all hover:scale-105 hover:shadow-lg',
-        'bg-gradient-to-r text-white text-xs shadow-sm',
-        color,
+        'p-2 rounded-lg cursor-move transition-all hover:scale-105 hover:shadow-sm',
+        'text-xs shadow-sm border',
+        project?.color ? 'text-primary-foreground border-border' : color,
         isDragging && 'opacity-50'
       )}
     >
@@ -97,7 +109,7 @@ function DraggableTask({
             <Badge
               key={tag}
               variant="secondary"
-              className="text-xs px-1 py-0 bg-white/20 text-white border-white/30"
+              className="text-xs px-1 py-0 bg-muted/50 text-muted-foreground border-border"
             >
               {tag}
             </Badge>
@@ -150,13 +162,14 @@ function DroppableTimeSlot({
       onMouseDown={hasTask ? undefined : onMouseDown}
       onMouseEnter={onMouseEnter}
       className={cn(
-        'border-b border-r border-[#C9C7B6] p-1 min-h-[15px] transition-colors relative',
+        'border-r border-border p-1 min-h-[12px] transition-colors relative',
         hasTask ? '' : 'cursor-pointer',
-        isWeekendDay ? 'bg-[#E4E5C0]/50' : 'bg-[#FCFAEC]',
-        isOver && 'bg-[#E3E892]/30 ring-2 ring-[#5E621B]/50',
-        isSelected && 'bg-[#5E621B]/20 ring-1 ring-[#5E621B]',
-        isInSelection && 'bg-[#5E621B]/10',
-        !hasTask && 'hover:bg-[#E3E892]/20'
+        'bg-surface-1',
+        isWeekendDay && 'opacity-95',
+        isOver && 'bg-primary/10 ring-2 ring-primary/50',
+        isSelected && 'bg-primary/20 ring-1 ring-primary',
+        isInSelection && 'bg-primary/10',
+        !hasTask && 'hover:bg-surface-2'
       )}
     >
       {children}
@@ -167,13 +180,16 @@ function DroppableTimeSlot({
 export function WeeklyCalendar({
   weeklySchedule,
   onScheduleTask,
-  onUnscheduleTask,
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
   projects,
   bigTasks,
+  smallTasks = [],
   userId,
+  weekStart,
+  onPreviousWeek,
+  onNextWeek,
 }: WeeklyCalendarProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -186,19 +202,36 @@ export function WeeklyCalendar({
   const [selectedEndTime, setSelectedEndTime] = useState<Date | null>(null)
   const [selectedTask, setSelectedTask] = useState<SmallTask | null>(null)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
-  
+  const [showWeeklySleepDialog, setShowWeeklySleepDialog] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
   // scheduleBlocksの内容をデバッグ表示
   useEffect(() => {
-    console.log('WeeklyCalendar - scheduleBlocks:', {
-      count: weeklySchedule.scheduleBlocks.length,
-      blocks: weeklySchedule.scheduleBlocks.map(block => ({
-        taskName: block.taskName,
-        startTime: block.startTime,
-        endTime: block.endTime,
-        projectName: block.projectName
-      }))
-    })
+    if (process.env.NODE_ENV === 'development') {
+      console.log('WeeklyCalendar - scheduleBlocks:', {
+        count: weeklySchedule.scheduleBlocks.length,
+        blocks: weeklySchedule.scheduleBlocks.map(block => ({
+          taskName: block.taskName,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          projectName: block.projectName
+        }))
+      })
+    }
   }, [weeklySchedule.scheduleBlocks])
+
+  // コンポーネントマウント時に5:00の位置から開始
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      // 1時間 = 48px (12px × 4スロット)
+      const hourHeight = 48
+      // 5時間分のオフセット
+      const scrollPosition = 5 * hourHeight
+
+      // 即座にスクロール位置を設定（アニメーションなし）
+      scrollContainerRef.current.scrollTop = scrollPosition
+    }
+  }, []) // 空の依存配列で初回マウント時のみ実行
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -216,48 +249,128 @@ export function WeeklyCalendar({
     })
   }, [weeklySchedule])
 
-  // BigTasksは既に親コンポーネントでフィルタリング済み
-  console.log('WeeklyCalendar received BigTasks:', {
-    weekStartDate: weeklySchedule.weekStartDate,
-    weekEndDate: weeklySchedule.weekEndDate,
-    bigTasksCount: bigTasks.length,
-    bigTasks: bigTasks.map(t => ({ 
-      name: t.name, 
-      start_date: t.start_date, 
-      end_date: t.end_date,
-      category: t.category 
-    }))
-  })
+  // Get sleep schedules for the week
+  const { data: weeklySleepData } = useWeeklySleepSchedules(userId, weekStart)
+  
+  // Generate sleep blocks for all days
+  const sleepBlocks = useMemo(() => {
+    if (!weeklySleepData) return []
+    
+    interface SleepBlock {
+      date: string
+      type: 'sleep-single' | 'sleep-start' | 'sleep-end'
+      startHour: number
+      startMinute: number
+      endHour: number
+      endMinute: number
+      schedule: SleepSchedule
+    }
+    const blocks: SleepBlock[] = []
+    weeklySleepData.forEach(({ schedule, dateOfSleep }) => {
+      if (schedule) {
+        const dayBlocks = generateSleepBlocks(schedule)
+        blocks.push(...dayBlocks)
+        
+        // デバッグ: 日曜日の睡眠ブロックの生成を確認
+        if (process.env.NODE_ENV === 'development' && dateOfSleep.includes('月')) {
+          console.log('月曜日の睡眠データ:', {
+            dateOfSleep,
+            scheduledStart: schedule.scheduled_start_time,
+            scheduledEnd: schedule.scheduled_end_time,
+            generatedBlocks: dayBlocks
+          })
+        }
+      }
+    })
+    
+    // デバッグ: 生成された全睡眠ブロックを確認
+    if (process.env.NODE_ENV === 'development') {
+      console.log('生成された睡眠ブロック:', {
+        totalBlocks: blocks.length,
+        blocks: blocks.map(b => ({
+          date: b.date,
+          type: b.type,
+          startHour: b.startHour,
+          endHour: b.endHour
+        }))
+      })
+    }
+    
+    return blocks
+  }, [weeklySleepData])
 
-  // Get project color
-  const getProjectColor = (projectId: string): string => {
-    const colors = [
-      'from-[#3C6659] to-[#244E42]', // Material Green
-      'from-[#5E621B] to-[#464A02]', // Material Olive
-      'from-[#8C4332] to-[#68342A]', // Material Brown
-      'from-[#5F6044] to-[#47492E]', // Material Gray-Green
-    ]
-    const index = projects.findIndex(p => p.id === projectId)
-    return colors[index % colors.length] || colors[0]
+  // BigTasksは既に親コンポーネントでフィルタリング済み
+  if (process.env.NODE_ENV === 'development') {
+    console.log('WeeklyCalendar received BigTasks:', {
+      weekStartDate: weeklySchedule.weekStartDate,
+      weekEndDate: weeklySchedule.weekEndDate,
+      bigTasksCount: bigTasks.length,
+      bigTasks: bigTasks.map(t => ({
+        name: t.name,
+        start_date: t.start_date,
+        end_date: t.end_date,
+        category: t.category
+      }))
+    })
   }
+
+  // Get project color - メモ化してパフォーマンスを最適化
+  const getProjectColor = useCallback((projectId: string): string => {
+    const project = projects.find(p => p.id === projectId)
+
+    // プロジェクトにカラーが設定されている場合
+    if (project?.color) {
+      // HSLカラーをインラインスタイルで適用するためのクラスを返す
+      // Note: 実際の色はstyle属性で設定するため、ここではベースクラスのみ返す
+      return 'text-primary-foreground border'
+    }
+
+    // フォールバック: インデックスベースの色
+    const index = projects.findIndex(p => p.id === projectId)
+    const colorClasses = [
+      'bg-accent text-accent-foreground border-border',
+      'bg-info text-info-foreground border-border',
+      'bg-secondary text-secondary-foreground border-border',
+      'bg-muted text-muted-foreground border-border',
+    ]
+    return colorClasses[index % colorClasses.length] || colorClasses[0]
+  }, [projects])
+
+  // Calculate BigTask progress from SmallTasks
+  const bigTaskProgress = useMemo(() => {
+    const progressMap = new Map<string, number>()
+    
+    // SmallTaskをBigTaskごとに集計
+    smallTasks.forEach(task => {
+      if (task.big_task_id) {
+        const current = progressMap.get(task.big_task_id) || 0
+        progressMap.set(task.big_task_id, current + task.estimated_minutes)
+      }
+    })
+    
+    return progressMap
+  }, [smallTasks])
 
   // Handle time slot click for task creation
   const handleTimeSlotClick = useCallback((date: Date, hour: number, minute: number) => {
     if (dragSelection.isDragging) return
-    
-    console.log('handleTimeSlotClick called', { date, hour, minute })
-    
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('handleTimeSlotClick called', { date, hour, minute })
+    }
+
     const clickedTime = new Date(date)
     clickedTime.setHours(hour, minute, 0, 0)
-    
+
     // デフォルトで30分のタスクを作成
     const endTime = new Date(clickedTime)
     endTime.setMinutes(endTime.getMinutes() + 30)
-    
+
     setSelectedStartTime(clickedTime)
     setSelectedEndTime(endTime)
     setShowCreateDialog(true)
   }, [dragSelection.isDragging])
+
 
   // Handle drag selection start
   const handleSelectionStart = useCallback((date: Date, hour: number, minute: number) => {
@@ -272,7 +385,7 @@ export function WeeklyCalendar({
   // Handle drag selection move
   const handleSelectionMove = useCallback((date: Date, hour: number, minute: number) => {
     if (!dragSelection.isDragging || !dragSelection.startSlot) return
-    
+
     setDragSelection(prev => ({
       ...prev,
       endSlot: { date, hour, minute },
@@ -289,10 +402,10 @@ export function WeeklyCalendar({
     // 開始時刻と終了時刻を計算
     const startTime = new Date(dragSelection.startSlot.date)
     startTime.setHours(dragSelection.startSlot.hour, dragSelection.startSlot.minute || 0, 0, 0)
-    
+
     const endTime = new Date(dragSelection.endSlot.date)
     endTime.setHours(dragSelection.endSlot.hour, dragSelection.endSlot.minute || 0, 0, 0)
-    
+
     // 終了時刻が開始時刻より前の場合は入れ替える
     if (endTime < startTime) {
       setSelectedStartTime(endTime)
@@ -305,7 +418,7 @@ export function WeeklyCalendar({
       setSelectedStartTime(startTime)
       setSelectedEndTime(endTime)
     }
-    
+
     setShowCreateDialog(true)
     setDragSelection({ startSlot: null, endSlot: null, isDragging: false })
   }, [dragSelection])
@@ -324,8 +437,10 @@ export function WeeklyCalendar({
 
   // Handle task click to show details
   const handleTaskClick = useCallback((taskId: string) => {
-    console.log('handleTaskClick called', { taskId })
-    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('handleTaskClick called', { taskId })
+    }
+
     // unscheduledTasksとscheduleBlocksからタスクを探す
     const unscheduledTask = weeklySchedule.unscheduledTasks.find(t => t.id === taskId)
     if (unscheduledTask) {
@@ -333,7 +448,7 @@ export function WeeklyCalendar({
       setShowDetailDialog(true)
       return
     }
-    
+
     // scheduleBlocksからタスク情報を構築
     const block = weeklySchedule.scheduleBlocks.find(b => b.taskId === taskId)
     if (block) {
@@ -436,9 +551,9 @@ export function WeeklyCalendar({
         taskEnd > slotStart &&
         format(taskStart, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
       )
-      
+
       // デバッグ: 最初のスロットでのみログ出力
-      if (hour === 0 && minute === 0) {
+      if (process.env.NODE_ENV === 'development' && hour === 0 && minute === 0) {
         console.log('タスクスロットチェック:', {
           date: format(date, 'yyyy-MM-dd'),
           taskName: block.taskName,
@@ -449,11 +564,27 @@ export function WeeklyCalendar({
           overlaps
         })
       }
-      
+
       return overlaps
     })
-    
+
     return tasks
+  }
+
+  // Get sleep blocks for a specific time slot
+  const getSleepBlocksForSlot = (date: Date, hour: number, minute: number) => {
+    const dateStr = format(date, 'yyyy-MM-dd')
+    
+    return sleepBlocks.filter(block => {
+      if (block.date !== dateStr) return false
+      
+      const slotTime = hour * 60 + minute
+      const blockStart = block.startHour * 60 + block.startMinute
+      const blockEnd = block.endHour * 60 + block.endMinute
+      
+      // Check if this slot is within the sleep block
+      return slotTime >= blockStart && slotTime < blockEnd
+    })
   }
 
   // Get active task for drag overlay
@@ -462,132 +593,48 @@ export function WeeklyCalendar({
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex h-full">
-        {/* BigTasks Sidebar */}
-        <div className="w-64 border-r border-[#C9C7B6] bg-[#E5E3D2]">
-          <div className="p-3 border-b border-[#C9C7B6]">
-            <h3 className="text-sm font-semibold text-[#47473B] flex items-center gap-2">
-              今週のタスク
-              <Badge
-                variant="secondary"
-                className="text-xs bg-[#E4E5C0] text-[#47492E] border-[#D4D5B0]"
-              >
-                {bigTasks.length}
-              </Badge>
-            </h3>
-          </div>
-
-          <ScrollArea className="h-[calc(100vh-300px)]">
-            <div className="p-3 space-y-3">
-              {bigTasks.length === 0 ? (
-                <p className="text-xs text-[#7B7D5F] text-center py-4">
-                  今週のタスクはありません
-                </p>
-              ) : (
-                // プロジェクトごとにグループ化
-                projects.map(project => {
-                  const projectBigTasks = bigTasks.filter(task => task.project_id === project.id)
-                  if (projectBigTasks.length === 0) return null
-
-                  return (
-                    <div key={project.id} className="space-y-2">
-                      {/* プロジェクトカード */}
-                      <div className="bg-[#FCFAEC] rounded-lg border border-[#D4D2C1] overflow-hidden">
-                        {/* プロジェクトヘッダー */}
-                        <div className="px-3 py-2 bg-gradient-to-r from-[#E4E5C0] to-[#DDD9C8] border-b border-[#D4D2C1]">
-                          <h4 className="text-xs font-semibold text-[#1C1C14] flex items-center gap-2">
-                            <div 
-                              className={cn(
-                                "w-2 h-2 rounded-full",
-                                "bg-gradient-to-r",
-                                getProjectColor(project.id)
-                              )}
-                            />
-                            {project.name}
-                          </h4>
-                        </div>
-                        
-                        {/* タスクリスト */}
-                        <div className="divide-y divide-[#E5E3D2]">
-                          {projectBigTasks.map(task => (
-                            <div key={task.id} className="px-3 py-2 hover:bg-[#F5F3E4] transition-colors">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Badge 
-                                    variant="outline" 
-                                    className="text-xs px-1.5 py-0 h-5 bg-[#E5E3D2] border-[#C9C7B6] text-[#47473B]"
-                                  >
-                                    {task.category}
-                                  </Badge>
-                                  <span className="text-xs text-[#5E621B] font-medium">
-                                    {task.estimated_hours}h
-                                  </span>
-                                </div>
-                                <p className="text-xs text-[#1C1C14] line-clamp-2">
-                                  {task.name}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* 合計時間 */}
-                        <div className="px-3 py-2 bg-[#E5E3D2] border-t border-[#D4D2C1]">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-[#47473B]">合計</span>
-                            <span className="font-semibold text-[#1C1C14]">
-                              {projectBigTasks.reduce((sum, task) => sum + task.estimated_hours, 0)}時間
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
         {/* Calendar Grid */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" ref={scrollContainerRef}>
           <div className="min-w-[800px]">
             {/* Days Header */}
-            <div className="grid grid-cols-8 border-b border-[#C9C7B6] sticky top-0 bg-[#E5E3D2] z-20">
-              <div className="p-3 border-r border-[#C9C7B6]">
-                <CalendarIcon className="h-4 w-4 text-[#5F6044] mx-auto" />
+            <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-muted z-20">
+              <div className="py-1.5 px-2">
+                {/* 空欄 */}
               </div>
               {weekDates.map(date => (
                 <div
                   key={date.toISOString()}
                   className={cn(
-                    'p-3 border-r border-[#C9C7B6] text-center',
-                    isWeekend(date) && 'bg-[#E4E5C0]/50'
+                    'py-1.5 px-2 text-center flex flex-col justify-end relative',
+                    isWeekend(date) && 'opacity-90'
                   )}
                 >
-                  <div className="text-sm font-medium text-[#1C1C14]">
+                  <div className="text-xs font-medium text-muted-foreground mb-1">
                     {format(date, 'E', { locale: ja })}
                   </div>
-                  <div className="text-xs text-[#47473B]">{format(date, 'M/d')}</div>
+                  <div className="text-2xl text-foreground">{format(date, 'd')}</div>
                 </div>
               ))}
             </div>
 
             {/* Time Slots */}
-            <div className="grid grid-cols-8">
+            <div className="grid grid-cols-[60px_repeat(7,1fr)]">
               {/* Hours Column - showing every hour with 15-minute slots */}
               <div>
                 {Array.from({ length: 24 }, (_, hour) => (
-                  <div key={hour} className="border-b border-r border-[#C9C7B6] bg-[#E5E3D2]">
-                    {/* 毎時間0分のところにのみ時刻を表示 */}
+                  <div key={hour} className="border-r border-border bg-muted relative">
+                    {/* 時刻表示を絶対配置で時間の境界に配置 */}
+                    {hour !== 0 && (
+                      <div className="absolute -top-[10px] right-2 bg-muted px-1">
+                        <span className="text-xs font-medium text-muted-foreground">{hour}:00</span>
+                      </div>
+                    )}
+                    {/* 15分スロット */}
                     {[0, 15, 30, 45].map((minute) => (
                       <div
                         key={`${hour}-${minute}`}
-                        className="h-[15px] text-xs text-[#47473B] px-2 flex items-center"
-                      >
-                        {minute === 0 && (
-                          <span className="font-medium">{hour}:00</span>
-                        )}
-                      </div>
+                        className="h-[12px]"
+                      />
                     ))}
                   </div>
                 ))}
@@ -597,10 +644,11 @@ export function WeeklyCalendar({
               {weekDates.map(date => (
                 <div key={date.toISOString()}>
                   {Array.from({ length: 24 }, (_, hour) => (
-                    <div key={hour} className="border-b border-[#C9C7B6]">
+                    <div key={hour} className="border-b border-border">
                       {[0, 15, 30, 45].map((minute) => {
                         const scheduledTasks = getScheduledTasksForSlot(date, hour, minute)
-                        const isSelected = !!(selectedStartTime && selectedEndTime && 
+                        const sleepBlocks = getSleepBlocksForSlot(date, hour, minute)
+                        const isSelected = !!(selectedStartTime && selectedEndTime &&
                           isSlotInSelection(date, hour, minute))
 
                         return (
@@ -617,25 +665,38 @@ export function WeeklyCalendar({
                             isInSelection={isSlotInSelection(date, hour, minute)}
                             hasTask={scheduledTasks.length > 0}
                           >
+                            {/* 睡眠ブロックを表示（背景として） */}
+                            {sleepBlocks.length > 0 && (
+                              <div 
+                                className="absolute inset-0 bg-slate-800 opacity-30 pointer-events-none"
+                                style={{ zIndex: 0 }}
+                              />
+                            )}
+                            
                             {/* タスクを表示 */}
                             {scheduledTasks.map(block => {
                               const taskStart = parseISO(block.startTime)
                               const taskEnd = parseISO(block.endTime)
                               const taskHour = taskStart.getHours()
                               const taskMinute = taskStart.getMinutes()
-                              
+
                               // タスクがこの時間帯に開始する場合のみ表示
                               if (taskHour === hour && taskMinute >= minute && taskMinute < minute + 15) {
                                 const durationMinutes = Math.ceil(
                                   (taskEnd.getTime() - taskStart.getTime()) / (1000 * 60)
                                 )
                                 const slots = Math.ceil(durationMinutes / 15)
-                                
+
+                                const blockProject = projects.find(p => p.id === block.projectId)
+                                const colorClass = getProjectColor(block.projectId)
+
                                 return (
                                   <div
                                     key={block.id}
                                     onClick={(e) => {
-                                      console.log('Task clicked', { taskId: block.taskId })
+                                      if (process.env.NODE_ENV === 'development') {
+                                        console.log('Task clicked', { taskId: block.taskId })
+                                      }
                                       e.stopPropagation()
                                       e.preventDefault()
                                       handleTaskClick(block.taskId)
@@ -645,19 +706,43 @@ export function WeeklyCalendar({
                                       e.stopPropagation()
                                     }}
                                     className={cn(
-                                      'absolute inset-x-0 mx-1 p-1 rounded text-white text-xs cursor-pointer shadow-sm z-[1]',
-                                      'bg-gradient-to-r hover:opacity-80 transition-opacity',
-                                      getProjectColor(block.projectId)
+                                      'absolute inset-x-0 mx-1 rounded text-xs cursor-pointer shadow-sm z-[1]',
+                                      'border hover:opacity-80 transition-opacity overflow-hidden',
+                                      slots <= 2 ? 'p-0.5' : 'p-1', // 短いタスクはパディングを減らす
+                                      blockProject?.color ? 'text-primary-foreground border-border' : colorClass
                                     )}
                                     style={{
                                       top: `${(taskMinute % 15) * (100 / 15)}%`,
-                                      height: `${slots * 15}px`,
+                                      height: `${slots * 12}px`,
+                                      ...(blockProject?.color ? { backgroundColor: blockProject.color } : {})
                                     }}
                                   >
-                                    <div className="font-medium truncate">{block.taskName}</div>
-                                    <div className="text-xs opacity-75">
-                                      {format(taskStart, 'HH:mm')} - {format(taskEnd, 'HH:mm')}
-                                    </div>
+                                    {/* タスクの長さに応じて表示内容を調整 */}
+                                    {slots === 1 ? (
+                                      // 15分: タスク名のみ（1行）
+                                      <div className="font-medium truncate leading-[10px]">{block.taskName}</div>
+                                    ) : slots === 2 ? (
+                                      // 30分: タスク名のみ（中央配置）
+                                      <div className="flex items-center h-full">
+                                        <div className="font-medium truncate w-full">{block.taskName}</div>
+                                      </div>
+                                    ) : slots === 3 ? (
+                                      // 45分: タスク名 + 短縮時刻
+                                      <>
+                                        <div className="font-medium truncate">{block.taskName}</div>
+                                        <div className="text-[10px] opacity-75 truncate">
+                                          {format(taskStart, 'H:mm')}-{format(taskEnd, 'H:mm')}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      // 60分以上: フル表示
+                                      <>
+                                        <div className="font-medium truncate">{block.taskName}</div>
+                                        <div className="text-xs opacity-75">
+                                          {format(taskStart, 'HH:mm')} - {format(taskEnd, 'HH:mm')}
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 )
                               }
@@ -673,13 +758,131 @@ export function WeeklyCalendar({
             </div>
           </div>
         </div>
+
+        {/* BigTasks Sidebar */}
+        <div className="w-72 border-l border-border bg-card flex flex-col">
+          {/* 週送りセクション */}
+          <div className="p-3 border-b border-border">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Button
+                  onClick={onPreviousWeek}
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:bg-surface-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+
+                <div className="text-center flex-1">
+                  <div className="text-sm font-medium text-foreground">
+                    {format(weekStart, 'yyyy年M月', { locale: ja })}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={onNextWeek}
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:bg-surface-2"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {/* 週間睡眠設定ボタン */}
+              <Button
+                onClick={() => setShowWeeklySleepDialog(true)}
+                variant="outline"
+                size="sm"
+                className="w-full flex items-center gap-2"
+              >
+                <Moon className="w-4 h-4" />
+                週間睡眠設定
+              </Button>
+            </div>
+          </div>
+
+          {/* 今週のタスクセクション */}
+          <div className="p-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              今週のタスク
+              <Badge
+                variant="secondary"
+                className="text-xs bg-secondary text-secondary-foreground"
+              >
+                {bigTasks.filter(task => task.category !== 'その他').length}
+              </Badge>
+            </h3>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="py-2">
+              {bigTasks.filter(task => task.category !== 'その他').length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  今週のタスクはありません
+                </p>
+              ) : (
+                // プロジェクトごとにグループ化（シンプルなリスト形式）
+                projects.map(project => {
+                  const projectBigTasks = bigTasks.filter(task => 
+                    task.project_id === project.id && task.category !== 'その他'
+                  )
+                  if (projectBigTasks.length === 0) return null
+
+                  return (
+                    <div key={project.id} className="mb-3">
+                      {/* プロジェクトヘッダー（軽量化） */}
+                      <div className="flex items-center gap-2 px-3 py-1 border-b border-border/50">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={project.color ? { backgroundColor: project.color } : {}}
+                        />
+                        <span className="text-sm font-semibold text-foreground">
+                          {project.name}
+                        </span>
+                      </div>
+
+                      {/* タスクリスト（シンプル化） */}
+                      <div className="space-y-0.5">
+                        {projectBigTasks.map(task => (
+                          <div
+                            key={task.id}
+                            className="pl-9 pr-3 py-1 hover:bg-surface-1 rounded-sm cursor-pointer transition-colors group"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm text-foreground flex-1 truncate min-w-0">
+                                {task.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {(() => {
+                                  const completedMinutes = bigTaskProgress.get(task.id) || 0
+                                  const completedHours = (completedMinutes / 60).toFixed(1)
+                                  return `${completedHours}h/${task.estimated_hours}h`
+                                })()}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Drag Overlay */}
       <DragOverlay>
         {activeId && activeTask && (
           <div className="opacity-90">
-            <DraggableTask task={activeTask} color={getProjectColor(activeTask.project_id || '')} />
+            <DraggableTask
+              task={activeTask}
+              color={getProjectColor(activeTask.project_id)}
+              project={activeTask.task_type !== 'routine' ? projects.find(p => p.id === activeTask.project_id) : undefined}
+            />
           </div>
         )}
       </DragOverlay>
@@ -698,7 +901,7 @@ export function WeeklyCalendar({
         }}
         userId={userId}
       />
-      
+
       {/* Task Detail Dialog */}
       <TaskDetailDialog
         open={showDetailDialog}
@@ -716,6 +919,14 @@ export function WeeklyCalendar({
           setShowDetailDialog(false)
           setSelectedTask(null)
         }}
+      />
+
+      {/* Weekly Sleep Schedule Dialog */}
+      <WeeklySleepScheduleDialog
+        open={showWeeklySleepDialog}
+        onOpenChange={setShowWeeklySleepDialog}
+        weekStart={weekStart}
+        userId={userId}
       />
     </DndContext>
   )

@@ -51,7 +51,7 @@ export default function DebugProjectsPage() {
           ) : (
             <ul className="space-y-2">
               {projects.map(project => (
-                <li key={project.id} className="p-2 bg-gray-100 rounded">
+                <li key={project.id} className="p-2 bg-muted rounded">
                   {project.name} - {project.status}
                 </li>
               ))}

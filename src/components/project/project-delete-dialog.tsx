@@ -38,16 +38,16 @@ export function ProjectDeleteDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <AlertTriangle className="h-5 w-5 text-destructive" />
             プロジェクトを削除
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
             <p>以下のプロジェクトを削除しますか？この操作は取り消せません。</p>
-            <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="bg-muted p-3 rounded-lg">
               <p className="font-medium">{project.name}</p>
               <p className="text-sm text-muted-foreground mt-1">{project.goal}</p>
             </div>
-            <p className="text-sm text-red-600 font-medium">
+            <p className="text-sm text-destructive font-medium">
               ⚠️ このプロジェクトに関連するすべてのタスクとセッションも削除されます。
             </p>
           </AlertDialogDescription>
@@ -56,7 +56,7 @@ export function ProjectDeleteDialog({
           <AlertDialogCancel>キャンセル</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            className="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
           >
             削除する
           </AlertDialogAction>

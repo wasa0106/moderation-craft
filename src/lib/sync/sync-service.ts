@@ -14,7 +14,9 @@ import {
   smallTaskRepository,
   moodEntryRepository,
   dopamineEntryRepository,
-  dailyConditionRepository
+  dailyConditionRepository,
+  scheduleMemoRepository,
+  sleepScheduleRepository
 } from '@/lib/db/repositories'
 import { SyncQueueItem, DatabaseEntity } from '@/types'
 import { syncLogger } from '@/lib/utils/logger'
@@ -282,6 +284,12 @@ export class SyncService {
         case 'daily_condition':
           entityData = await dailyConditionRepository.getById(item.entity_id)
           break
+        case 'schedule_memo':
+          entityData = await scheduleMemoRepository.getById(item.entity_id)
+          break
+        case 'sleep_schedule':
+          entityData = await sleepScheduleRepository.getById(item.entity_id)
+          break
       }
       
       if (!entityData) {
@@ -358,6 +366,12 @@ export class SyncService {
             break
           case 'daily_condition':
             entityData = await dailyConditionRepository.getById(item.entity_id)
+            break
+          case 'schedule_memo':
+            entityData = await scheduleMemoRepository.getById(item.entity_id)
+            break
+          case 'sleep_schedule':
+            entityData = await sleepScheduleRepository.getById(item.entity_id)
             break
         }
         
@@ -485,6 +499,13 @@ export class SyncService {
           // TODO: daily_conditionsテーブルにis_syncedフィールドを追加する必要がある
           syncLogger.debug(`TODO: Mark daily_condition ${entityId} as synced`)
           entityExists = true
+          break
+        case 'schedule_memo':
+          // ScheduleMemoにもis_syncedフィールドがないため、存在確認のみ
+          entityExists = !!(await scheduleMemoRepository.getById(entityId))
+          if (entityExists) {
+            syncLogger.debug(`ScheduleMemo ${entityId} synced successfully`)
+          }
           break
         default:
           syncLogger.warn(`Unknown entity type for marking as synced: ${entityType}`)

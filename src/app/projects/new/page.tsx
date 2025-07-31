@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,27 +19,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Progress } from '@/components/ui/progress'
-import { ArrowLeft, Calendar, Clock, AlertTriangle, Plus } from 'lucide-react'
-import Link from 'next/link'
+import { Calendar, Clock, AlertTriangle, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useProjectCreationStore } from '@/stores/project-creation-store'
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { format, differenceInDays } from 'date-fns'
-import { ja } from 'date-fns/locale'
 import { EditableTaskTable } from '@/components/project/editable-task-table'
 import { GanttChart } from '@/components/project/gantt-chart'
+import { ProjectColorPicker } from '@/components/project/project-color-picker'
 import { cn } from '@/lib/utils'
-import { Header } from '@/components/layout/header'
+
+// 定数
+const CURRENT_USER_ID = 'current-user'
 
 export default function ProjectCreatePage() {
   const router = useRouter()
-  const { createProject } = useProjects('current-user')
-  const { createBigTask } = useBigTasks('current-user')
+  const { createProject, deleteProject } = useProjects(CURRENT_USER_ID)
+  const { createBigTask, deleteBigTask } = useBigTasks(CURRENT_USER_ID)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [hoveredTask, setHoveredTask] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const isMountedRef = useRef(true)
 
   const {
     // State
@@ -48,33 +48,30 @@ export default function ProjectCreatePage() {
     startDate,
     endDate,
     totalWeeks,
+    projectColor,
     weekdayWorkDays,
     weekendWorkDays,
     weekdayHoursPerDay,
     weekendHoursPerDay,
-    bufferRate,
     weeklyAvailableHours,
     totalAvailableHours,
     tasks,
     totalTaskHours,
     projectCategories,
     weeklyAllocations,
-    dailyAllocations,
     taskSchedules,
-    isOverCapacity,
     validationErrors,
-    categoryColors,
 
     // Actions
     setProjectName,
     setGoal,
     setStartDate,
     setEndDate,
+    setProjectColor,
     setWeekdayWorkDays,
     setWeekendWorkDays,
     setWeekdayHoursPerDay,
     setWeekendHoursPerDay,
-    setBufferRate,
     addTask,
     updateTask,
     deleteTask,
@@ -88,23 +85,32 @@ export default function ProjectCreatePage() {
     validateForm,
     getValidTasks,
     reset,
-    getCategoryColor,
   } = useProjectCreationStore()
 
   // 初期計算
   useEffect(() => {
     calculateTotalWeeks()
     calculateWeeklyHours()
+  }, [calculateTotalWeeks, calculateWeeklyHours])
 
-    // 初期状態で空のタスクを1つ追加
+  // 初期タスクの追加（初回マウント時のみ）
+  useEffect(() => {
     if (tasks.length === 0) {
       addTask()
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // タスク配分の計算
   useEffect(() => {
     calculateTaskAllocation()
-  }, [tasks, weeklyAvailableHours, totalWeeks])
+  }, [tasks, weeklyAvailableHours, totalWeeks, calculateTaskAllocation])
+
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {
@@ -114,18 +120,22 @@ export default function ProjectCreatePage() {
     // エラーをクリア
     setSubmitError(null)
 
-    console.log('=== プロジェクト作成開始 ===')
-    console.log('フォームデータ:', {
-      projectName,
-      goal,
-      startDate: format(startDate, 'yyyy-MM-dd'),
-      endDate: format(endDate, 'yyyy-MM-dd'),
-      tasksCount: tasks.length,
-      validTasksCount: getValidTasks().length,
-    })
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== プロジェクト作成開始 ===')
+      console.log('フォームデータ:', {
+        projectName,
+        goal,
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        tasksCount: tasks.length,
+        validTasksCount: getValidTasks().length,
+      })
+    }
 
     if (!validateForm()) {
-      console.log('バリデーションエラー:', validationErrors)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('バリデーションエラー:', validationErrors)
+      }
       toast.error('入力内容に不備があります')
       return
     }
@@ -135,76 +145,160 @@ export default function ProjectCreatePage() {
     try {
       // プロジェクトデータを作成
       const projectData = {
-        user_id: 'current-user',
+        user_id: CURRENT_USER_ID,
         name: projectName,
         goal,
-        deadline: endDate.toISOString().split('T')[0],
+        deadline: format(endDate, 'yyyy-MM-dd'),
         status: 'active' as const,
         version: 1,
         estimated_total_hours: totalTaskHours,
+        color: projectColor,
       }
 
-      console.log('作成するプロジェクトデータ:', projectData)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('作成するプロジェクトデータ:', projectData)
+      }
       const newProject = await createProject(projectData)
-      console.log('作成されたプロジェクト:', newProject)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('作成されたプロジェクト:', newProject)
+      }
 
       // BigTasksを作成（1タスク1BigTask）
       const validTasks = getValidTasks()
-      console.log('BigTask作成開始. タスク数:', validTasks.length)
+      const createdBigTasks: Array<{ id: string }> = [] // 作成済みBigTaskのリスト（ロールバック用）
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('BigTask作成開始. タスク数:', validTasks.length)
+      }
 
-      const bigTaskPromises = validTasks.map(async (task) => {
-        // taskSchedulesから該当タスクの開始日・終了日を取得
-        const schedule = taskSchedules.get(task.id)
-        if (!schedule) {
-          console.log(`タスク「${task.name}」: スケジュールなしのためスキップ`)
-          return null
-        }
+      try {
+        // BigTaskを順次作成（エラー時のロールバックを容易にするため）
+        for (const task of validTasks) {
+          // taskSchedulesから該当タスクの開始日・終了日を取得
+          const schedule = taskSchedules.get(task.id)
+          if (!schedule) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`タスク「${task.name}」: スケジュールなしのためスキップ`)
+            }
+            continue
+          }
 
-        const bigTaskData = {
-          project_id: newProject.id,
-          user_id: 'current-user',
-          name: task.name,
-          category: task.category || 'その他',
-          start_date: schedule.startDate,
-          end_date: schedule.endDate,
-          estimated_hours: task.estimatedHours,
-          status: 'pending' as const,
-          // 後方互換性のため週番号も設定（将来的に削除予定）
-          week_number: 1,
-        }
+          const bigTaskData = {
+            project_id: newProject.id,
+            user_id: CURRENT_USER_ID,
+            name: task.name,
+            category: task.category || 'その他',
+            start_date: schedule.startDate,
+            end_date: schedule.endDate,
+            estimated_hours: task.estimatedHours,
+            status: 'pending' as const,
+          }
 
-        console.log(`タスク「${task.name}」のBigTaskデータ:`, bigTaskData)
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`タスク「${task.name}」のBigTaskデータ:`, bigTaskData)
+          }
 
-        try {
           const result = await createBigTask(bigTaskData)
-          console.log(`タスク「${task.name}」のBigTask作成成功:`, result)
-          return result
-        } catch (taskError) {
-          console.error(`タスク「${task.name}」のBigTask作成エラー:`, taskError)
-          throw taskError
+          createdBigTasks.push(result)
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`タスク「${task.name}」のBigTask作成成功:`, result)
+          }
         }
-      })
 
-      const results = await Promise.all(bigTaskPromises.filter(Boolean))
-      console.log('作成されたBigTask数:', results.length)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('作成されたBigTask数:', createdBigTasks.length)
+        }
 
-      toast.success('プロジェクトが正常に作成されました')
-      reset()
-      router.push('/projects')
+        // 「その他」タスクを自動作成
+        try {
+          const otherTaskData = {
+            project_id: newProject.id,
+            user_id: CURRENT_USER_ID,
+            name: 'その他',
+            category: 'その他',
+            start_date: format(startDate, 'yyyy-MM-dd'),
+            end_date: format(endDate, 'yyyy-MM-dd'),
+            estimated_hours: 1,
+            status: 'pending' as const,
+          }
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('「その他」タスクのBigTaskデータ:', otherTaskData)
+          }
+
+          const otherTask = await createBigTask(otherTaskData)
+          createdBigTasks.push(otherTask)
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('「その他」タスクのBigTask作成成功:', otherTask)
+          }
+        } catch (otherTaskError) {
+          // 「その他」タスク作成失敗はログに記録するが、プロジェクト作成は続行
+          console.error('「その他」タスクの作成に失敗しました:', otherTaskError)
+        }
+      } catch (taskError) {
+        // BigTask作成失敗時のロールバック
+        if (process.env.NODE_ENV === 'development') {
+          console.error('BigTask作成中にエラーが発生しました。ロールバックを実行します。', taskError)
+        }
+        
+        // ロールバック処理
+        try {
+          // 作成済みBigTaskを削除
+          if (createdBigTasks.length > 0) {
+            for (const bigTask of createdBigTasks) {
+              await deleteBigTask(bigTask.id)
+            }
+          }
+          
+          // プロジェクトを削除
+          await deleteProject(newProject.id)
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('ロールバック完了')
+          }
+        } catch (rollbackError) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('ロールバック中にエラー:', rollbackError)
+          }
+          // ロールバック自体が失敗した場合は、ユーザーに通知
+          toast.error('データの整合性に問題が発生しました。管理者にお問い合わせください。')
+        }
+        
+        // 元のエラーを再スロー
+        throw taskError
+      }
+
+      // マウントされている場合のみ実行
+      if (isMountedRef.current) {
+        toast.success('プロジェクトが正常に作成されました')
+        reset()
+        router.push('/projects')
+      }
     } catch (error) {
-      console.error('=== プロジェクト作成エラー ===')
-      console.error('エラー詳細:', error)
-      if (error instanceof Error) {
-        console.error('エラーメッセージ:', error.message)
-        console.error('スタックトレース:', error.stack)
-        setSubmitError(error.message)
-        toast.error(`エラー: ${error.message}`)
-      } else {
-        setSubmitError('プロジェクトの作成に失敗しました')
-        toast.error('プロジェクトの作成に失敗しました')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('=== プロジェクト作成エラー ===')
+        console.error('エラー詳細:', error)
+      }
+      
+      if (isMountedRef.current) {
+        if (error instanceof Error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('エラーメッセージ:', error.message)
+            console.error('スタックトレース:', error.stack)
+          }
+          setSubmitError(error.message)
+          toast.error(`エラー: ${error.message}`)
+        } else {
+          setSubmitError('プロジェクトの作成に失敗しました')
+          toast.error('プロジェクトの作成に失敗しました')
+        }
       }
     } finally {
-      setIsSubmitting(false)
+      if (isMountedRef.current) {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -213,35 +307,10 @@ export default function ProjectCreatePage() {
     router.push('/projects')
   }
 
-  // totalAvailableHoursはstoreで計算済み
-
   return (
-    <div className="h-full bg-background flex flex-col">
-      <Header
-        leftContent={
-          <div className="flex items-center gap-4">
-            <Link href="/projects">
-              <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                戻る
-              </Button>
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Calendar className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-[#1C1C14]">新しいプロジェクト</h1>
-                <p className="text-sm text-[#47473B]">目標設定から週別タスク配分まで一括で計画</p>
-              </div>
-            </div>
-          </div>
-        }
-      />
-      <form onSubmit={handleSubmit} className="flex-1 overflow-hidden">
-        {/* Content */}
-        <div className="overflow-auto h-full">
-          <div className="container mx-auto max-w-6xl px-6 py-6">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+      <form onSubmit={handleSubmit} className="flex-1">
+        <div className="space-y-6">
             {/* エラー表示 */}
             {submitError && (
               <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -252,9 +321,8 @@ export default function ProjectCreatePage() {
               </div>
             )}
 
-            <div className="space-y-6">
-              {/* 1. プロジェクト基本情報 */}
-              <Card className="form-section">
+            {/* 1. プロジェクト基本情報 */}
+              <Card className="border border-border bg-surface-1">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5" />
@@ -270,7 +338,6 @@ export default function ProjectCreatePage() {
                       value={projectName}
                       onChange={e => setProjectName(e.target.value)}
                       className={`focus-visible ${validationErrors.projectName ? 'border-destructive' : ''}`}
-                      tabIndex={1}
                     />
                     {validationErrors.projectName && (
                       <p className="text-sm text-destructive">{validationErrors.projectName}</p>
@@ -286,53 +353,58 @@ export default function ProjectCreatePage() {
                       onChange={e => setGoal(e.target.value)}
                       className={`focus-visible ${validationErrors.goal ? 'border-destructive' : ''}`}
                       rows={3}
-                      tabIndex={2}
                     />
                     {validationErrors.goal && (
                       <p className="text-sm text-destructive">{validationErrors.goal}</p>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="startDate">開始日</Label>
                       <Input
                         id="startDate"
                         type="date"
-                        value={startDate.toISOString().split('T')[0]}
+                        value={format(startDate, 'yyyy-MM-dd')}
                         onChange={e => setStartDate(new Date(e.target.value))}
                         className="focus-visible"
-                        tabIndex={3}
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="endDate">期限 *</Label>
                       <Input
                         id="endDate"
                         type="date"
-                        value={endDate.toISOString().split('T')[0]}
+                        value={format(endDate, 'yyyy-MM-dd')}
                         onChange={e => setEndDate(new Date(e.target.value))}
                         className={`focus-visible ${validationErrors.endDate ? 'border-destructive' : ''}`}
-                        tabIndex={4}
                       />
                       {validationErrors.endDate && (
                         <p className="text-sm text-destructive">{validationErrors.endDate}</p>
                       )}
                     </div>
+                    <div className="flex items-end md:col-span-1">
+                      <div className="w-full h-10 bg-muted/30 rounded-md flex items-center">
+                        <p className="text-sm text-muted-foreground">
+                          期間: {differenceInDays(endDate, startDate)}日間 ({totalWeeks}週間)
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      期間: {differenceInDays(endDate, startDate)}日間 ({totalWeeks}週間)
-                    </p>
+                  <div className="pt-4">
+                    <ProjectColorPicker
+                      value={projectColor}
+                      onChange={setProjectColor}
+                    />
                   </div>
                 </CardContent>
               </Card>
 
               {/* 2. 投下可能時間の計算 */}
-              <Card>
+              <Card className="border border-border bg-surface-1">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <Clock className="h-5 w-5" />
                     投下可能時間の計算
                   </CardTitle>
@@ -402,41 +474,22 @@ export default function ProjectCreatePage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>バッファ率（%）</Label>
-                    <Select
-                      value={bufferRate.toString()}
-                      onValueChange={value => setBufferRate(parseInt(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(rate => (
-                          <SelectItem key={rate} value={rate.toString()}>
-                            {rate}%
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
 
-                  <div className="p-3 bg-primary/5 rounded-lg">
-                    <p className="text-sm font-medium text-primary">
+                  <div className="p-3 bg-accent/10 rounded-lg border border-accent/20">
+                    <p className="text-sm font-medium text-accent-foreground">
                       週間作業可能時間: {weeklyAvailableHours}時間
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      ({weekdayWorkDays}日 × {weekdayHoursPerDay}h + {weekendWorkDays}日 ×{' '}
-                      {weekendHoursPerDay}h) × {bufferRate}%
+                      {weekdayWorkDays}日 × {weekdayHoursPerDay}h + {weekendWorkDays}日 × {weekendHoursPerDay}h
                     </p>
                   </div>
                 </CardContent>
               </Card>
 
               {/* 3. タスク一覧 */}
-              <Card>
+              <Card className="border border-border bg-surface-1">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <Plus className="h-5 w-5" />
                     タスク一覧
                   </CardTitle>
@@ -456,8 +509,8 @@ export default function ProjectCreatePage() {
 
                   {/* タスクバリデーションエラー */}
                   {validationErrors.tasks && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm text-red-800">{validationErrors.tasks}</p>
+                    <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <p className="text-sm text-destructive">{validationErrors.tasks}</p>
                     </div>
                   )}
 
@@ -467,8 +520,8 @@ export default function ProjectCreatePage() {
                       className={cn(
                         'mt-6 p-4 rounded-lg',
                         totalTaskHours > totalAvailableHours
-                          ? 'bg-red-50 border border-red-200'
-                          : 'bg-muted'
+                          ? 'bg-destructive/10 border border-destructive/20'
+                          : 'bg-surface-1'
                       )}
                     >
                       <div className="flex justify-between items-center">
@@ -483,8 +536,8 @@ export default function ProjectCreatePage() {
                       </div>
                       {totalTaskHours > totalAvailableHours && (
                         <div className="mt-3 flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                          <p className="text-sm text-red-800">
+                          <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-destructive">
                             タスクの合計時間（{totalTaskHours.toFixed(1)}時間）が利用可能時間（
                             {totalAvailableHours.toFixed(1)}時間）を超えています。
                             <br />
@@ -499,7 +552,7 @@ export default function ProjectCreatePage() {
 
               {/* ガントチャート */}
               {tasks.length > 0 && startDate && endDate && (
-                <Card>
+                <Card className="border border-border bg-surface-1">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Calendar className="h-5 w-5" />
@@ -512,7 +565,6 @@ export default function ProjectCreatePage() {
                       startDate={startDate}
                       endDate={endDate}
                       weeklyAllocations={weeklyAllocations}
-                      categoryColors={categoryColors}
                       onTaskUpdate={updateTaskWeeks}
                       totalTaskHours={totalTaskHours}
                       totalAvailableHours={totalAvailableHours}
@@ -525,9 +577,8 @@ export default function ProjectCreatePage() {
               <div className="flex gap-3">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !projectName || !goal || getValidTasks().length === 0}
+                  disabled={isSubmitting || !projectName || !goal}
                   className="flex-1 focus-visible"
-                  tabIndex={100}
                 >
                   {isSubmitting ? '作成中...' : 'プロジェクトを作成'}
                 </Button>
@@ -535,14 +586,12 @@ export default function ProjectCreatePage() {
                   type="button"
                   variant="outline"
                   onClick={handleCancel}
+                  disabled={isSubmitting}
                   className="focus-visible"
-                  tabIndex={101}
                 >
                   キャンセル
                 </Button>
               </div>
-            </div>
-          </div>
         </div>
       </form>
     </div>

@@ -22,14 +22,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BigTask, CreateBigTaskData, UpdateBigTaskData } from '@/types'
 import { cn } from '@/lib/utils'
+import { format, addDays, startOfWeek, endOfWeek } from 'date-fns'
+import { ja } from 'date-fns/locale'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CalendarIcon } from 'lucide-react'
 
 const bigTaskFormSchema = z.object({
   name: z.string().min(1, 'タスク名は必須です').max(100, 'タスク名は100文字以内で入力してください'),
   description: z.string().max(500, '説明は500文字以内で入力してください').optional(),
-  week_number: z
-    .number()
-    .min(1, '週番号は1以上である必要があります')
-    .max(52, '週番号は52以下である必要があります'),
+  start_date: z.string().min(1, '開始日は必須です'),
+  end_date: z.string().min(1, '終了日は必須です'),
+  category: z.string().min(1, 'カテゴリーは必須です'),
   estimated_hours: z
     .number()
     .min(0.5, '見積時間は0.5時間以上である必要があります')
@@ -64,7 +68,9 @@ export function BigTaskForm({
     defaultValues: {
       name: task?.name || '',
       description: task?.description || '',
-      week_number: task?.week_number || 1,
+      start_date: task?.start_date || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      end_date: task?.end_date || format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      category: task?.category || 'その他',
       estimated_hours: task?.estimated_hours || 8,
       priority: task?.priority || 'medium',
       status: task?.status || 'pending',
@@ -123,23 +129,99 @@ export function BigTaskForm({
             )}
           </div>
 
-          {/* Week Number and Estimated Hours */}
+          {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="week_number">週番号 *</Label>
-              <Input
-                id="week_number"
-                type="number"
-                min={1}
-                max={52}
-                placeholder="1"
-                {...form.register('week_number', { valueAsNumber: true })}
-                className={cn(
-                  form.formState.errors.week_number && 'border-red-500 focus:border-red-500'
-                )}
-              />
-              {form.formState.errors.week_number && (
-                <p className="text-sm text-red-600">{form.formState.errors.week_number.message}</p>
+              <Label htmlFor="start_date">開始日 *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !form.watch('start_date') && "text-muted-foreground",
+                      form.formState.errors.start_date && "border-red-500"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {form.watch('start_date') ? (
+                      format(new Date(form.watch('start_date')), 'yyyy年M月d日', { locale: ja })
+                    ) : (
+                      <span>開始日を選択</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.watch('start_date') ? new Date(form.watch('start_date')) : undefined}
+                    onSelect={(date) => date && form.setValue('start_date', format(date, 'yyyy-MM-dd'))}
+                    locale={ja}
+                  />
+                </PopoverContent>
+              </Popover>
+              {form.formState.errors.start_date && (
+                <p className="text-sm text-red-600">{form.formState.errors.start_date.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="end_date">終了日 *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !form.watch('end_date') && "text-muted-foreground",
+                      form.formState.errors.end_date && "border-red-500"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {form.watch('end_date') ? (
+                      format(new Date(form.watch('end_date')), 'yyyy年M月d日', { locale: ja })
+                    ) : (
+                      <span>終了日を選択</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.watch('end_date') ? new Date(form.watch('end_date')) : undefined}
+                    onSelect={(date) => date && form.setValue('end_date', format(date, 'yyyy-MM-dd'))}
+                    locale={ja}
+                  />
+                </PopoverContent>
+              </Popover>
+              {form.formState.errors.end_date && (
+                <p className="text-sm text-red-600">{form.formState.errors.end_date.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Category and Estimated Hours */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="category">カテゴリー *</Label>
+              <Select
+                value={form.watch('category')}
+                onValueChange={value => form.setValue('category', value)}
+              >
+                <SelectTrigger className={cn(
+                  form.formState.errors.category && 'border-red-500'
+                )}>
+                  <SelectValue placeholder="カテゴリーを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="開発">開発</SelectItem>
+                  <SelectItem value="設計">設計</SelectItem>
+                  <SelectItem value="テスト">テスト</SelectItem>
+                  <SelectItem value="その他">その他</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.formState.errors.category && (
+                <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
               )}
             </div>
 

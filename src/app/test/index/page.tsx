@@ -33,7 +33,7 @@ export default function TestIndexPage() {
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {testPages.map((page) => (
-          <Card key={page.href} className="hover:shadow-lg transition-shadow">
+          <Card key={page.href} className="hover:shadow-sm transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="text-2xl">{page.icon}</span>

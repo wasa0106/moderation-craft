@@ -10,7 +10,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -20,8 +19,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Project, CreateProjectData, UpdateProjectData } from '@/types'
 import { cn } from '@/lib/utils'
+import { ProjectColorPicker } from '@/components/project/project-color-picker'
 
 const projectFormSchema = z.object({
   name: z
@@ -34,6 +43,7 @@ const projectFormSchema = z.object({
     .enum(['planning', 'active', 'completed', 'paused', 'cancelled'])
     .optional()
     .default('active'),
+  color: z.string().optional().default('hsl(137, 42%, 55%)'),
 })
 
 type ProjectFormData = z.infer<typeof projectFormSchema>
@@ -62,6 +72,7 @@ export function ProjectForm({
       goal: project?.goal || '',
       deadline: project?.deadline ? project.deadline.split('T')[0] : '',
       status: project?.status || 'active',
+      color: project?.color || 'hsl(137, 42%, 55%)',
     },
   })
 
@@ -88,73 +99,108 @@ export function ProjectForm({
         <CardTitle>{isEditing ? 'プロジェクトを編集' : '新しいプロジェクトを作成'}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           {/* Project Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">プロジェクト名 *</Label>
-            <Input
-              id="name"
-              placeholder="プロジェクト名を入力"
-              {...form.register('name')}
-              className={cn(form.formState.errors.name && 'border-red-500 focus:border-red-500')}
-            />
-            {form.formState.errors.name && (
-              <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>プロジェクト名 *</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="プロジェクト名を入力"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Goal */}
-          <div className="space-y-2">
-            <Label htmlFor="goal">ゴール *</Label>
-            <Textarea
-              id="goal"
-              placeholder="プロジェクトの目標を入力"
-              rows={3}
-              {...form.register('goal')}
-              className={cn(form.formState.errors.goal && 'border-red-500 focus:border-red-500')}
-            />
-            {form.formState.errors.goal && (
-              <p className="text-sm text-red-600">{form.formState.errors.goal.message}</p>
+          <FormField
+            control={form.control}
+            name="goal"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>ゴール *</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="プロジェクトの目標を入力"
+                    rows={3}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Deadline */}
-          <div className="space-y-2">
-            <Label htmlFor="deadline">期限</Label>
-            <Input
-              id="deadline"
-              type="date"
-              {...form.register('deadline')}
-              className={cn(
-                form.formState.errors.deadline && 'border-red-500 focus:border-red-500'
-              )}
-            />
-            {form.formState.errors.deadline && (
-              <p className="text-sm text-red-600">{form.formState.errors.deadline.message}</p>
+          <FormField
+            control={form.control}
+            name="deadline"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>期限</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
           {/* Status (only for editing) */}
           {isEditing && (
-            <div className="space-y-2">
-              <Label htmlFor="status">ステータス</Label>
-              <Select
-                value={form.watch('status')}
-                onValueChange={value => form.setValue('status', value as Project['status'])}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="ステータスを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="planning">計画中</SelectItem>
-                  <SelectItem value="active">アクティブ</SelectItem>
-                  <SelectItem value="completed">完了</SelectItem>
-                  <SelectItem value="paused">一時停止</SelectItem>
-                  <SelectItem value="cancelled">キャンセル</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ステータス</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="ステータスを選択" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="planning">計画中</SelectItem>
+                      <SelectItem value="active">アクティブ</SelectItem>
+                      <SelectItem value="completed">完了</SelectItem>
+                      <SelectItem value="paused">一時停止</SelectItem>
+                      <SelectItem value="cancelled">キャンセル</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           )}
+
+          {/* Color */}
+          <FormField
+            control={form.control}
+            name="color"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>プロジェクトカラー</FormLabel>
+                <FormControl>
+                  <ProjectColorPicker
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
@@ -182,7 +228,8 @@ export function ProjectForm({
               </Button>
             )}
           </div>
-        </form>
+          </form>
+        </Form>
       </CardContent>
     </Card>
   )

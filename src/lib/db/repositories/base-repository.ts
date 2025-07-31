@@ -148,7 +148,7 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   }
 
   protected applyFilters(query: any, filters: Record<string, unknown>): any {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     let filteredQuery = query
 
     Object.entries(filters).forEach(([key, value]) => {

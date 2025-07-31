@@ -28,15 +28,15 @@ interface MoodDialogProps {
 }
 
 const moodLevels = [
-  { value: 1, icon: Angry, label: 'とても悪い', color: 'text-red-600' },
-  { value: 2, icon: Frown, label: '悪い', color: 'text-orange-600' },
-  { value: 3, icon: CloudRain, label: 'やや悪い', color: 'text-orange-500' },
-  { value: 4, icon: Meh, label: '普通', color: 'text-yellow-600' },
-  { value: 5, icon: Smile, label: 'まあまあ', color: 'text-yellow-500' },
-  { value: 6, icon: Heart, label: '良い', color: 'text-green-500' },
-  { value: 7, icon: Brain, label: 'とても良い', color: 'text-green-600' },
-  { value: 8, icon: Sparkles, label: '素晴らしい', color: 'text-blue-600' },
-  { value: 9, icon: Zap, label: '最高！', color: 'text-purple-600' },
+  { value: 1, icon: Angry, label: 'とても悪い' },
+  { value: 2, icon: Frown, label: '悪い' },
+  { value: 3, icon: CloudRain, label: 'やや悪い' },
+  { value: 4, icon: Meh, label: '普通' },
+  { value: 5, icon: Smile, label: 'まあまあ' },
+  { value: 6, icon: Heart, label: '良い' },
+  { value: 7, icon: Brain, label: 'とても良い' },
+  { value: 8, icon: Sparkles, label: '素晴らしい' },
+  { value: 9, icon: Zap, label: '最高！' },
 ]
 
 export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
@@ -125,11 +125,20 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
                       'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all',
                       'hover:bg-muted/50',
                       isSelected
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border bg-background'
                     )}
                   >
-                    <Icon className={cn('h-8 w-8', level.color)} />
+                    <Icon className={cn(
+                      'h-8 w-8',
+                      isSelected
+                        ? 'text-primary'
+                        : level.value <= 3
+                        ? 'text-muted-foreground'
+                        : level.value <= 6
+                        ? 'text-foreground'
+                        : 'text-foreground'
+                    )} />
                     <span className="text-xs font-medium">{level.label}</span>
                   </button>
                 )
@@ -157,7 +166,7 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
           <Button 
             onClick={handleSubmit} 
             disabled={!selectedMood || isSubmitting || isSuccess}
-            className={cn(isSuccess && 'bg-green-600 hover:bg-green-700')}
+            className={cn(isSuccess && 'bg-primary hover:bg-primary/90')}
           >
             {isSuccess ? (
               <>

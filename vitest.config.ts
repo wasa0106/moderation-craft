@@ -12,6 +12,26 @@ const dirname =
 export default defineConfig({
   test: {
     projects: [
+      // Unit tests configuration
+      {
+        test: {
+          name: 'unit',
+          environment: 'jsdom',
+          globals: true,
+          setupFiles: ['./vitest.setup.ts'],
+          include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+          exclude: ['**/node_modules/**', '**/dist/**', '**/cypress/**', '**/.{idea,git,cache,output,temp}/**'],
+        },
+        resolve: {
+          alias: {
+            '@': path.resolve(dirname, './src'),
+            '@/lib': path.resolve(dirname, './src/lib'),
+            '@/types': path.resolve(dirname, './src/types'),
+            '@/stores': path.resolve(dirname, './src/stores'),
+          },
+        },
+      },
+      // Storybook tests configuration
       {
         extends: true,
         plugins: [

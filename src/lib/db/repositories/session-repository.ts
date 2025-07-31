@@ -75,8 +75,13 @@ export class WorkSessionRepository
 
   async getSessionsForDate(userId: string, date: string): Promise<WorkSession[]> {
     try {
-      const startOfDay = `${date}T00:00:00.000Z`
-      const endOfDay = `${date}T23:59:59.999Z`
+      // ローカルタイムゾーンでの日付の開始と終了を計算
+      const localStartOfDay = new Date(`${date}T00:00:00`)
+      const localEndOfDay = new Date(`${date}T23:59:59.999`)
+      
+      // UTC形式に変換
+      const startOfDay = localStartOfDay.toISOString()
+      const endOfDay = localEndOfDay.toISOString()
 
       return await this.table
         .where('user_id')
@@ -159,7 +164,7 @@ export class WorkSessionRepository
     }
   }
 
-  async endSession(sessionId: string, endTime?: string, focusLevel?: number): Promise<WorkSession> {
+  async endSession(sessionId: string, endTime?: string, focusLevel?: number): Promise<WorkSession | null> {
     try {
       const session = await this.getById(sessionId)
       if (!session) {
@@ -173,6 +178,12 @@ export class WorkSessionRepository
       const actualEndTime = endTime || new Date().toISOString()
       const durationMilliseconds = new Date(actualEndTime).getTime() - new Date(session.start_time).getTime()
       const durationSeconds = Math.floor(durationMilliseconds / 1000)
+
+      // 2分（120秒）以下の場合はセッションを削除
+      if (durationSeconds <= 120) {
+        await this.delete(sessionId)
+        return null
+      }
 
       const updates: Partial<WorkSession> = {
         end_time: actualEndTime,

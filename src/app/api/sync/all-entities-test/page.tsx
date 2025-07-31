@@ -344,7 +344,7 @@ export default function AllEntitiesTestPage() {
                 {projects.map((project) => (
                   <div 
                     key={project.id} 
-                    className={`flex justify-between items-center p-3 border rounded cursor-pointer hover:bg-gray-50 ${
+                    className={`flex justify-between items-center p-3 border rounded cursor-pointer hover:bg-background ${
                       selectedProjectId === project.id ? 'border-blue-500 bg-blue-50' : ''
                     }`}
                     onClick={() => setSelectedProjectId(project.id)}
@@ -393,7 +393,7 @@ export default function AllEntitiesTestPage() {
                     {bigTasks.map((task) => (
                       <div 
                         key={task.id} 
-                        className={`flex justify-between items-center p-3 border rounded cursor-pointer hover:bg-gray-50 ${
+                        className={`flex justify-between items-center p-3 border rounded cursor-pointer hover:bg-background ${
                           selectedBigTaskId === task.id ? 'border-blue-500 bg-blue-50' : ''
                         }`}
                         onClick={() => setSelectedBigTaskId(task.id)}
@@ -401,7 +401,7 @@ export default function AllEntitiesTestPage() {
                         <div>
                           <p className="font-medium">{task.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            カテゴリー: {task.category} | 週: {task.week_number}
+                            カテゴリー: {task.category || 'その他'}
                           </p>
                         </div>
                         <Button

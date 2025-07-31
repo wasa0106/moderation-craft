@@ -84,10 +84,10 @@ export default function DebugBigTasksPage() {
           {bigTasks.length > 0 && (
             <div className="mt-4 space-y-2">
               {bigTasks.map(task => (
-                <div key={task.id} className="p-2 bg-gray-100 rounded">
+                <div key={task.id} className="p-2 bg-muted rounded">
                   <p className="font-medium">{task.name}</p>
-                  <p className="text-sm text-gray-600">
-                    Week {task.week_number} | {task.category} | {task.estimated_hours}h
+                  <p className="text-sm text-muted-foreground">
+                    {task.category} | {task.estimated_hours}h | {task.start_date} ~ {task.end_date}
                   </p>
                 </div>
               ))}
@@ -104,8 +104,8 @@ export default function DebugBigTasksPage() {
               {directBigTasks.map(task => (
                 <div key={task.id} className="p-2 bg-blue-100 rounded">
                   <p className="font-medium">{task.name}</p>
-                  <p className="text-sm text-gray-600">
-                    Week {task.week_number} | {task.category} | {task.estimated_hours}h
+                  <p className="text-sm text-muted-foreground">
+                    {task.category} | {task.estimated_hours}h | {task.start_date} ~ {task.end_date}
                   </p>
                 </div>
               ))}

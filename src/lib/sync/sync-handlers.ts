@@ -266,3 +266,122 @@ export async function syncEntry(request: SyncRequest, entryType: 'mood_entry' | 
       throw new Error(`Unsupported operation: ${request.operation}`)
   }
 }
+
+/**
+ * ScheduleMemoの同期処理
+ */
+export async function syncScheduleMemo(request: SyncRequest): Promise<SyncResult> {
+  const memo = request.payload
+  console.log('syncScheduleMemo呼び出し:', request.operation, memo.id)
+  
+  switch (request.operation) {
+    case 'CREATE':
+    case 'UPDATE':
+      const item = {
+        PK: `USER#${memo.user_id}`,
+        SK: `SCHEDULEMEMO#${memo.week_start_date}`,
+        
+        // GSI2用のキー（週単位での検索用）
+        GSI2PK: `SCHEDULEMEMO#${memo.user_id}`,
+        GSI2SK: `WEEK#${memo.week_start_date}`,
+        
+        entity_type: 'schedule_memo',
+        created_at: memo.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        
+        ...memo
+      }
+
+      await dynamoDb.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: item
+      }))
+
+      return {
+        success: true,
+        message: `ScheduleMemoを${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
+        syncedItem: item,
+        syncedEntityId: memo.id,
+        syncedEntityType: 'schedule_memo'
+      }
+
+    case 'DELETE':
+      await dynamoDb.send(new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          PK: `USER#${memo.user_id}`,
+          SK: `SCHEDULEMEMO#${memo.week_start_date}`
+        }
+      }))
+
+      return {
+        success: true,
+        message: 'ScheduleMemoを削除しました',
+        syncedEntityId: memo.id,
+        syncedEntityType: 'schedule_memo'
+      }
+
+    default:
+      throw new Error(`Unsupported operation: ${request.operation}`)
+  }
+}
+
+/**
+ * 睡眠スケジュールの同期処理
+ */
+export async function syncSleepSchedule(request: SyncRequest): Promise<SyncResult> {
+  const sleepSchedule = request.payload
+  console.log('syncSleepSchedule呼び出し:', request.operation, sleepSchedule.id)
+  
+  switch (request.operation) {
+    case 'CREATE':
+    case 'UPDATE':
+      const item = {
+        PK: `USER#${sleepSchedule.user_id}`,
+        SK: `SLEEP#${sleepSchedule.date_of_sleep}#${sleepSchedule.id}`,
+        
+        // GSI2用のキー（ユーザーデータ検索用）
+        GSI2PK: `USER#${sleepSchedule.user_id}`,
+        GSI2SK: `SLEEP#${sleepSchedule.date_of_sleep}`,
+        
+        // 管理用フィールド
+        entity_type: 'sleep_schedule',
+        created_at: sleepSchedule.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        
+        ...sleepSchedule
+      }
+      
+      await dynamoDb.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: item
+      }))
+      
+      return {
+        success: true,
+        message: `睡眠スケジュールを${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
+        syncedItem: item,
+        syncedEntityId: sleepSchedule.id,
+        syncedEntityType: 'sleep_schedule'
+      }
+
+    case 'DELETE':
+      await dynamoDb.send(new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          PK: `USER#${sleepSchedule.user_id}`,
+          SK: `SLEEP#${sleepSchedule.date_of_sleep}#${sleepSchedule.id}`
+        }
+      }))
+
+      return {
+        success: true,
+        message: '睡眠スケジュールを削除しました',
+        syncedEntityId: sleepSchedule.id,
+        syncedEntityType: 'sleep_schedule'
+      }
+
+    default:
+      throw new Error(`Unsupported operation: ${request.operation}`)
+  }
+}

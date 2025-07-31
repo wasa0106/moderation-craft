@@ -29,7 +29,7 @@ export function BigTaskList({
   if (bigTasks.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">大タスクがありません</p>
+        <p className="text-muted-foreground">大タスクがありません</p>
       </div>
     )
   }
@@ -41,7 +41,7 @@ export function BigTaskList({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-medium">{task.name}</h3>
-              <p className="text-sm text-gray-500">{task.description}</p>
+              <p className="text-sm text-muted-foreground">{task.description}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => onEdit(task)}>

@@ -198,23 +198,6 @@ export function useBigTask(bigTaskId: string) {
   }
 }
 
-export function useBigTasksByWeek(projectId: string, weekNumber: number) {
-  const bigTasksQuery = useQuery({
-    queryKey: queryKeys.bigTasksByWeek(projectId, weekNumber),
-    queryFn: async () => {
-      return await bigTaskRepository.getByWeekNumber(projectId, weekNumber)
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!projectId && weekNumber > 0,
-  })
-
-  return {
-    bigTasks: bigTasksQuery.data || [],
-    isLoading: bigTasksQuery.isLoading,
-    error: bigTasksQuery.error,
-    refetch: bigTasksQuery.refetch,
-  }
-}
 
 export function useBigTasksByDateRange(userId: string, startDate: string, endDate: string) {
   const bigTasksQuery = useQuery({
@@ -232,4 +215,9 @@ export function useBigTasksByDateRange(userId: string, startDate: string, endDat
     error: bigTasksQuery.error,
     refetch: bigTasksQuery.refetch,
   }
+}
+
+export function useCreateBigTask(userId: string) {
+  const { createBigTask } = useBigTasks(userId)
+  return { createBigTask }
 }

@@ -28,24 +28,12 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
 
   async getByProjectId(projectId: string): Promise<BigTask[]> {
     try {
-      return await this.table.where('project_id').equals(projectId).sortBy('week_number')
+      return await this.table.where('project_id').equals(projectId).sortBy('start_date')
     } catch (error) {
       throw new Error(`Failed to get big tasks by project ID: ${error}`)
     }
   }
 
-  async getByWeekNumber(projectId: string, weekNumber: number): Promise<BigTask[]> {
-    try {
-      return await this.table
-        .where('project_id')
-        .equals(projectId)
-        .and(task => task.week_number === weekNumber)
-        .reverse()
-        .sortBy('created_at')
-    } catch (error) {
-      throw new Error(`Failed to get big tasks by week number: ${error}`)
-    }
-  }
 
   async getByStatus(projectId: string, status: BigTask['status']): Promise<BigTask[]> {
     try {
@@ -81,21 +69,6 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
     }
   }
 
-  async getTasksByWeekRange(
-    projectId: string,
-    startWeek: number,
-    endWeek: number
-  ): Promise<BigTask[]> {
-    try {
-      return await this.table
-        .where('project_id')
-        .equals(projectId)
-        .and(task => task.week_number >= startWeek && task.week_number <= endWeek)
-        .sortBy('week_number')
-    } catch (error) {
-      throw new Error(`Failed to get big tasks by week range: ${error}`)
-    }
-  }
 
   async updateTaskStatus(taskId: string, status: BigTask['status']): Promise<BigTask> {
     try {
@@ -158,44 +131,23 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
       const projects = await db.projects.where('user_id').equals(userId).toArray()
       const projectIds = projects.map(p => p.id)
 
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
       const allTasks = await this.table
         .where('project_id')
         .anyOf(projectIds)
         .and(task => task.status !== 'completed')
         .toArray()
 
-      const currentWeek = this.getCurrentWeekNumber()
-
       return allTasks.filter(task => {
-        const project = projects.find(p => p.id === task.project_id)
-        if (!project) return false
-
-        const projectStartWeek = this.getProjectStartWeek(project.created_at)
-        const taskAbsoluteWeek = projectStartWeek + task.week_number - 1
-
-        return taskAbsoluteWeek < currentWeek
+        const endDate = new Date(task.end_date)
+        endDate.setHours(0, 0, 0, 0)
+        return endDate < today
       })
     } catch (error) {
       throw new Error(`Failed to get overdue tasks: ${error}`)
     }
-  }
-
-  private getCurrentWeekNumber(): number {
-    const now = new Date()
-    const startOfYear = new Date(now.getFullYear(), 0, 1)
-    const pastDaysOfYear = Math.floor(
-      (now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000)
-    )
-    return Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7)
-  }
-
-  private getProjectStartWeek(projectCreatedAt: string): number {
-    const createdDate = new Date(projectCreatedAt)
-    const startOfYear = new Date(createdDate.getFullYear(), 0, 1)
-    const pastDaysOfYear = Math.floor(
-      (createdDate.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000)
-    )
-    return Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7)
   }
 
   async getScheduledForDate(userId: string, date: string): Promise<SmallTask[]> {

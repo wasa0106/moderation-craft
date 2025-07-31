@@ -287,3 +287,8 @@ export function useEmergencyTasks(userId: string) {
     refetch: emergencyTasksQuery.refetch,
   }
 }
+
+export function useCreateSmallTask(userId: string) {
+  const { createSmallTask } = useSmallTasks(userId)
+  return { createSmallTask }
+}

@@ -106,11 +106,11 @@ export const projectCreationDebug = {
         user_id: 'test-user',
         name: 'テストBigTask',
         category: 'テスト',
-        week_number: 1,
-        week_start_date: new Date('2025-01-06').toISOString(),
-        week_end_date: new Date('2025-01-12').toISOString(),
         estimated_hours: 10,
+        actual_hours: 0,
         status: 'pending' as const,
+        start_date: '2025-01-06',
+        end_date: '2025-01-12',
       }
 
       console.log('作成するBigTask:', testBigTask)

@@ -43,116 +43,102 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Auto-generated CSS variables from TypeScript color definitions */
+/* See /src/lib/theme/colors.ts for the source of truth */
+
 :root {
-  --radius: 0.625rem;
-  
-  /* Material Theme Colors - Complete Set */
-  --material-primary: #5E621B;
-  --material-on-primary: #FFFFFF;
-  --material-primary-container: #E3E892;
-  --material-on-primary-container: #464A02;
-  
-  --material-secondary: #5F6044;
-  --material-on-secondary: #FFFFFF;
-  --material-secondary-container: #E4E5C0;
-  --material-on-secondary-container: #47492E;
-  
-  --material-tertiary: #3C6659;
-  --material-on-tertiary: #FFFFFF;
-  --material-tertiary-container: #BEECDB;
-  --material-on-tertiary-container: #244E42;
-  
-  --material-error: #BA1A1A;
-  --material-on-error: #FFFFFF;
-  --material-error-container: #FFDAD6;
-  --material-on-error-container: #93000A;
-  
-  --material-background: #FCFAEC;
-  --material-on-background: #1C1C14;
-  --material-surface: #FCFAEC;
-  --material-on-surface: #1C1C14;
-  --material-surface-variant: #E5E3D2;
-  --material-on-surface-variant: #47473B;
-  --material-surface-container-low: #F6F4E7;
-  --material-surface-container: #F0EEE1;
-  --material-surface-container-high: #EAE8DB;
-  --material-surface-container-highest: #E5E3D5;
-  
-  --material-outline: #787869;
-  --material-outline-variant: #C9C7B6;
-  --material-inverse-surface: #31312A;
-  --material-inverse-on-surface: #F4F2E5;
-  --material-inverse-primary: #C7CC77;
-  --material-scrim: #000000;
-  --material-shadow: #000000;
-  
-  /* Map Material Theme to Tailwind variables */
-  --background: var(--material-background);
-  --foreground: var(--material-on-background);
-  --card: var(--material-surface-container-low);
-  --card-foreground: var(--material-on-surface);
-  --popover: var(--material-surface-container);
-  --popover-foreground: var(--material-on-surface);
-  --primary: var(--material-primary);
-  --primary-foreground: var(--material-on-primary);
-  --secondary: var(--material-secondary);
-  --secondary-foreground: var(--material-on-secondary);
-  --muted: var(--material-surface-variant);
-  --muted-foreground: var(--material-on-surface-variant);
-  --accent: var(--material-tertiary);
-  --accent-foreground: var(--material-on-tertiary);
-  --destructive: var(--material-error);
-  --destructive-foreground: var(--material-on-error);
-  --border: var(--material-outline-variant);
-  --input: var(--material-surface-container-highest);
-  --ring: var(--material-outline);
-  --chart-1: var(--material-primary);
-  --chart-2: var(--material-secondary);
-  --chart-3: var(--material-tertiary);
-  --chart-4: var(--material-error);
-  --chart-5: var(--material-primary-container);
-  --sidebar: var(--material-surface-container-low);
-  --sidebar-foreground: var(--material-on-surface);
-  --sidebar-primary: var(--material-primary);
-  --sidebar-primary-foreground: var(--material-on-primary);
-  --sidebar-accent: var(--material-secondary);
-  --sidebar-accent-foreground: var(--material-on-secondary);
-  --sidebar-border: var(--material-outline-variant);
-  --sidebar-ring: var(--material-outline);
+  --radius: 0.5rem;
+  --background: 214 17% 94%;
+  --foreground: 221 12% 14%;
+  --card: 216 20% 97%;
+  --card-foreground: 221 12% 14%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 221 12% 14%;
+  --primary: 137 42% 55%;
+  --primary-foreground: 216 20% 97%;
+  --primary-dark: 137 55% 36%;
+  --secondary: 214 17% 95%;
+  --secondary-foreground: 221 12% 14%;
+  --muted: 214 17% 95%;
+  --muted-foreground: 215 9% 46%;
+  --accent: 144 57% 80%;
+  --accent-foreground: 137 55% 36%;
+  --destructive: 356 77% 47%;
+  --destructive-foreground: 216 20% 97%;
+  --success: 137 42% 55%;
+  --success-foreground: 216 20% 97%;
+  --warning: 215 9% 46%;
+  --warning-foreground: 221 12% 14%;
+  --info: 144 65% 94%;
+  --info-foreground: 137 55% 36%;
+  --border: 212 12% 85%;
+  --input: 212 12% 85%;
+  --ring: 137 42% 55%;
+  --chart-1: 137 42% 55%;
+  --chart-2: 144 57% 80%;
+  --chart-3: 215 9% 46%;
+  --chart-4: 137 55% 36%;
+  --chart-5: 213 8% 70%;
+  --sidebar: 216 20% 97%;
+  --sidebar-foreground: 221 12% 14%;
+  --sidebar-primary: 137 42% 55%;
+  --sidebar-primary-foreground: 216 20% 97%;
+  --sidebar-accent: 144 65% 94%;
+  --sidebar-accent-foreground: 137 55% 36%;
+  --sidebar-border: 212 12% 85%;
+  --sidebar-ring: 137 42% 55%;
+  --surface-0: 214 17% 94%;
+  --surface-1: 216 20% 97%;
+  --surface-2: 216 20% 99%;
+  --surface-3: 0 0% 100%;
+  --surface-4: 220 15% 96%;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: 220 13% 9%;
+  --foreground: 214 17% 95%;
+  --card: 217 10% 13%;
+  --card-foreground: 214 17% 95%;
+  --popover: 215 10% 17%;
+  --popover-foreground: 214 17% 95%;
+  --primary: 144 57% 80%;
+  --primary-foreground: 221 12% 14%;
+  --primary-dark: 137 42% 55%;
+  --secondary: 217 10% 18%;
+  --secondary-foreground: 214 17% 95%;
+  --muted: 217 10% 18%;
+  --muted-foreground: 213 8% 70%;
+  --accent: 137 42% 55%;
+  --accent-foreground: 214 17% 95%;
+  --destructive: 354 100% 96%;
+  --destructive-foreground: 221 12% 14%;
+  --success: 144 57% 80%;
+  --success-foreground: 221 12% 14%;
+  --warning: 213 8% 70%;
+  --warning-foreground: 214 17% 95%;
+  --info: 137 42% 55%;
+  --info-foreground: 214 17% 95%;
+  --border: 216 12% 24%;
+  --input: 216 12% 24%;
+  --ring: 144 57% 80%;
+  --chart-1: 144 57% 80%;
+  --chart-2: 137 42% 55%;
+  --chart-3: 213 8% 70%;
+  --chart-4: 144 65% 94%;
+  --chart-5: 215 9% 46%;
+  --sidebar: 217 10% 13%;
+  --sidebar-foreground: 214 17% 95%;
+  --sidebar-primary: 144 57% 80%;
+  --sidebar-primary-foreground: 221 12% 14%;
+  --sidebar-accent: 137 42% 55%;
+  --sidebar-accent-foreground: 214 17% 95%;
+  --sidebar-border: 216 12% 24%;
+  --sidebar-ring: 144 57% 80%;
+  --surface-0: 220 13% 9%;
+  --surface-1: 217 10% 13%;
+  --surface-2: 217 10% 15%;
+  --surface-3: 215 10% 17%;
+  --surface-4: 213 8% 20%;
 }
 
 @layer base {
@@ -165,213 +151,20 @@
 }
 
 @layer components {
-  /* Material Theme Components */
-  .surface-container-low {
-    background-color: var(--material-surface-container-low);
-    color: var(--material-on-surface);
+  /* Simple utility classes for edge cases */
+  .text-subtle {
+    @apply text-muted-foreground;
   }
   
-  .surface-container {
-    background-color: var(--material-surface-container);
-    color: var(--material-on-surface);
+  .bg-subtle {
+    @apply bg-muted;
   }
   
-  .surface-container-high {
-    background-color: var(--material-surface-container-high);
-    color: var(--material-on-surface);
+  /* Focus styles */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
   
-  .surface-container-highest {
-    background-color: var(--material-surface-container-highest);
-    color: var(--material-on-surface);
-  }
-  
-  .primary-container {
-    background-color: var(--material-primary-container);
-    color: var(--material-on-primary-container);
-  }
-  
-  .secondary-container {
-    background-color: var(--material-secondary-container);
-    color: var(--material-on-secondary-container);
-  }
-  
-  .tertiary-container {
-    background-color: var(--material-tertiary-container);
-    color: var(--material-on-tertiary-container);
-  }
-  
-  .error-container {
-    background-color: var(--material-error-container);
-    color: var(--material-on-error-container);
-  }
-  
-  /* Over-capacity styling */
-  .over-capacity {
-    background-color: var(--material-error-container);
-    border-color: var(--material-error);
-  }
-  
-  .over-capacity .progress-bar {
-    background-color: var(--material-error);
-  }
-  
-  /* Editable table styles */
-  .editable-table {
-    border-collapse: collapse;
-    width: 100%;
-    background-color: var(--material-surface);
-  }
-  
-  .editable-table th,
-  .editable-table td {
-    border: 1px solid var(--material-outline-variant);
-    padding: 8px;
-    text-align: left;
-    vertical-align: middle;
-  }
-  
-  .editable-table th {
-    background-color: var(--material-surface-container-high);
-    color: var(--material-on-surface);
-    font-weight: 600;
-  }
-  
-  .editable-table td {
-    background-color: var(--material-surface-container-lowest);
-    color: var(--material-on-surface);
-  }
-  
-  .editable-table tr:hover td {
-    background-color: var(--material-surface-container);
-  }
-  
-  .editable-table .cell-focused {
-    outline: 2px solid var(--material-primary);
-    outline-offset: -2px;
-  }
-  
-  .editable-table .cell-input {
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: inherit;
-    font-size: inherit;
-    padding: 0;
-    outline: none;
-  }
-  
-  .editable-table .cell-select {
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: inherit;
-    font-size: inherit;
-    padding: 0;
-    outline: none;
-  }
-  
-  /* Category color indicators */
-  .category-planning { background-color: var(--material-primary-container); }
-  .category-design { background-color: var(--material-secondary-container); }
-  .category-implementation { background-color: var(--material-tertiary-container); }
-  .category-testing { background-color: #FFF3C4; }
-  .category-deployment { background-color: var(--material-error-container); }
-  
-  /* Enhanced focus styles */
-  .focus-visible:focus-visible {
-    outline: 2px solid var(--material-primary);
-    outline-offset: 2px;
-    box-shadow: 0 0 0 4px var(--material-primary-container);
-  }
-  
-  /* Auto-save indicator */
-  .auto-save-indicator {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--material-primary-container);
-    color: var(--material-on-primary-container);
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    z-index: 1000;
-    animation: slideIn 0.3s ease-out;
-  }
-  
-  @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  /* Improved form layout */
-  .form-section {
-    scroll-margin-top: 80px;
-  }
-  
-  /* Drag and Drop Styles */
-  .drag-handle {
-    width: 40px;
-    text-align: center;
-    cursor: grab;
-    user-select: none;
-    padding: 4px;
-  }
-
-  .drag-handle:active {
-    cursor: grabbing;
-  }
-
-  .drag-handle:hover {
-    background-color: var(--material-surface-container);
-  }
-
-  /* ドラッグ中の行 */
-  .dragging {
-    opacity: 0.5;
-    background-color: var(--material-surface-container) !important;
-    z-index: 1000;
-    box-shadow: 0 4px 8px var(--material-shadow);
-    transform: rotate(2deg);
-  }
-
-  .dragging * {
-    pointer-events: none;
-  }
-
-  /* ドロップ可能エリアのインジケーター */
-  .drop-indicator {
-    height: 2px;
-    background-color: var(--material-primary);
-    margin: -1px 0;
-    border-radius: 1px;
-    opacity: 0.8;
-  }
-
-  /* ドラッグ開始時のアニメーション */
-  .sortable-item {
-    transition: transform 0.2s ease-in-out;
-  }
-
-  .sortable-item:not(.dragging):hover {
-    background-color: var(--material-surface-container);
-  }
-
-  /* タッチデバイス対応 */
-  @media (hover: none) and (pointer: coarse) {
-    .drag-handle {
-      min-height: 44px; /* タッチフレンドリーサイズ */
-      min-width: 44px;
-    }
-  }
-
   /* Accessibility improvements */
   .screen-reader-only {
     position: absolute;
@@ -383,5 +176,290 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+}
+
+@layer utilities {
+  /* Border utilities for Tailwind v4 */
+  .border {
+    border-width: 1px;
+    border-style: solid;
+    border-color: hsl(var(--border));
+  }
+  
+  .border-b {
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: hsl(var(--border));
+  }
+  
+  .border-t {
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: hsl(var(--border));
+  }
+  
+  .border-l {
+    border-left-width: 1px;
+    border-left-style: solid;
+    border-left-color: hsl(var(--border));
+  }
+  
+  .border-r {
+    border-right-width: 1px;
+    border-right-style: solid;
+    border-right-color: hsl(var(--border));
+  }
+  
+  .border-x {
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-left-style: solid;
+    border-right-style: solid;
+    border-left-color: hsl(var(--border));
+    border-right-color: hsl(var(--border));
+  }
+  
+  .border-y {
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-top-style: solid;
+    border-bottom-style: solid;
+    border-top-color: hsl(var(--border));
+    border-bottom-color: hsl(var(--border));
+  }
+  
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+  
+  /* Background color for borders */
+  .bg-border {
+    background-color: hsl(var(--border));
+  }
+  
+  /* Background utilities */
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+  
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+  
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+  
+  .bg-accent {
+    background-color: hsl(var(--accent));
+  }
+  
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  
+  .bg-info {
+    background-color: hsl(var(--info));
+  }
+  
+  /* Surface background utilities */
+  .bg-surface-0 {
+    background-color: hsl(var(--surface-0));
+  }
+  
+  .bg-surface-1 {
+    background-color: hsl(var(--surface-1));
+  }
+  
+  .bg-surface-2 {
+    background-color: hsl(var(--surface-2));
+  }
+  
+  .bg-surface-3 {
+    background-color: hsl(var(--surface-3));
+  }
+  
+  .bg-surface-4 {
+    background-color: hsl(var(--surface-4));
+  }
+  
+  /* Text color utilities */
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+  
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+  
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+  
+  .text-info {
+    color: hsl(var(--info));
+  }
+  
+  .text-info-foreground {
+    color: hsl(var(--info-foreground));
+  }
+  
+  /* Sidebar background colors */
+  .bg-sidebar {
+    background-color: hsl(var(--sidebar));
+  }
+  .bg-sidebar-primary {
+    background-color: hsl(var(--sidebar-primary));
+  }
+  .bg-sidebar-accent {
+    background-color: hsl(var(--sidebar-accent));
+  }
+  
+  /* Sidebar text colors */
+  .text-sidebar-foreground {
+    color: hsl(var(--sidebar-foreground));
+  }
+  .text-sidebar-primary-foreground {
+    color: hsl(var(--sidebar-primary-foreground));
+  }
+  .text-sidebar-accent-foreground {
+    color: hsl(var(--sidebar-accent-foreground));
+  }
+  
+  /* Sidebar border colors */
+  .border-sidebar-border {
+    border-color: hsl(var(--sidebar-border));
+  }
+  
+  /* Sidebar ring colors */
+  .ring-sidebar-ring {
+    --tw-ring-color: hsl(var(--sidebar-ring));
+  }
+  
+  /* Sidebar hover states */
+  .hover\:bg-sidebar-accent:hover {
+    background-color: hsl(var(--sidebar-accent));
+  }
+  .hover\:text-sidebar-accent-foreground:hover {
+    color: hsl(var(--sidebar-accent-foreground));
+  }
+  
+  /* Shadow utilities */
+  .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+  
+  .shadow {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+  
+  .shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  /* Surface shadow utilities */
+  .shadow-surface-1 {
+    box-shadow: var(--shadow-surface-1);
+  }
+  
+  .shadow-surface-2 {
+    box-shadow: var(--shadow-surface-2);
+  }
+  
+  .shadow-surface-3 {
+    box-shadow: var(--shadow-surface-3);
+  }
+  
+  .shadow-surface-4 {
+    box-shadow: var(--shadow-surface-4);
+  }
+  
+  /* Rounded utilities */
+  .rounded-lg {
+    border-radius: var(--radius-lg);
+  }
+  
+  .rounded-md {
+    border-radius: var(--radius-md);
+  }
+  
+  .rounded-sm {
+    border-radius: var(--radius-sm);
+  }
+  
+  .rounded {
+    border-radius: var(--radius);
+  }
+  
+  /* Editable table styles */
+  .editable-table {
+    border-collapse: collapse;
+  }
+  
+  .editable-table th {
+    padding: 0.75rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  
+  .editable-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  
+  .editable-table tbody tr:hover {
+    background-color: hsl(var(--muted) / 0.5);
+  }
+  
+  /* Cell input styles */
+  .cell-input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    outline: none;
+    transition: background-color 0.2s;
+  }
+  
+  .cell-input:hover {
+    background-color: hsl(var(--muted) / 0.3) !important;
+  }
+  
+  .cell-input:focus {
+    background-color: hsl(var(--accent) / 0.1) !important;
+  }
+  
+  /* Cell focused state */
+  .cell-focused {
+    background-color: hsl(var(--accent) / 0.1) !important;
+    box-shadow: inset 0 0 0 2px hsl(var(--accent) / 0.3);
+  }
+  
+  /* Sortable item styles */
+  .sortable-item {
+    transition: opacity 0.2s;
+  }
+  
+  .sortable-item.dragging {
+    opacity: 0.5;
+  }
+  
+  /* Drag handle styles */
+  .drag-handle {
+    cursor: grab;
+  }
+  
+  .drag-handle:active {
+    cursor: grabbing;
   }
 }

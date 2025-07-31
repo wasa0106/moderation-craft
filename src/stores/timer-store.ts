@@ -86,6 +86,8 @@ export const useTimerStore = create<TimerState>()(
           elapsedTime: 0,
           startTime: null,
           pausedTime: 0,
+          currentTask: null,
+          currentProject: null,
         }),
 
       resetTimer: () =>

@@ -5,14 +5,14 @@
 
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo, memo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Label } from '@/components/ui/label'
-import { Trash2, Plus, GripVertical } from 'lucide-react'
-import { Task, useProjectCreationStore } from '@/stores/project-creation-store'
+import { Trash2, GripVertical } from 'lucide-react'
+import { Task } from '@/stores/project-creation-store'
 import {
   DndContext,
   closestCenter,
@@ -56,6 +56,137 @@ const COLUMNS = [
   { key: 'actions', label: '', width: '40px' },
 ]
 
+// 入力フィールドコンポーネント（ローカルステート管理）
+interface BufferedInputProps {
+  value: string | number
+  onChange: (value: string | number) => void
+  onKeyDown?: (e: React.KeyboardEvent) => void
+  onFocus?: () => void
+  type?: 'text' | 'number'
+  placeholder?: string
+  className?: string
+  list?: string
+  min?: number
+  max?: number
+  step?: number
+  inputRef?: (el: HTMLInputElement | null) => void
+}
+
+const BufferedInput = memo(function BufferedInput({
+  value,
+  onChange,
+  onKeyDown,
+  onFocus,
+  type = 'text',
+  placeholder = '',
+  className = '',
+  list,
+  min,
+  max,
+  step,
+  inputRef,
+}: BufferedInputProps) {
+  // 内部状態は常に文字列として管理（数値入力でも）
+  const [localValue, setLocalValue] = useState(
+    type === 'number' ? String(value) : String(value)
+  )
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 親コンポーネントの値が変更されたら同期
+  useEffect(() => {
+    setLocalValue(String(value))
+  }, [value])
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const inputValue = e.target.value
+
+      // 数値入力の場合、簡単なバリデーション
+      if (type === 'number') {
+        // 数値、ピリオド、空文字列以外は入力を無視
+        if (inputValue !== '' && !/^\d*\.?\d*$/.test(inputValue)) {
+          return
+        }
+      }
+
+      // 内部状態は常に文字列として保持
+      setLocalValue(inputValue)
+
+      // デバウンス処理
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        if (type === 'number') {
+          // 親コンポーネントに渡す時に数値に変換
+          const numValue = inputValue === '' ? 0 : parseFloat(inputValue) || 0
+          onChange(numValue)
+        } else {
+          onChange(inputValue)
+        }
+      }, 300) // 300ms後に親コンポーネントに反映
+    },
+    [onChange, type]
+  )
+
+  const handleBlur = useCallback(() => {
+    // Blur時は即座に親コンポーネントに反映
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+
+    if (type === 'number') {
+      // 数値の場合は適切に変換
+      const numValue = localValue === '' ? 0 : parseFloat(localValue) || 0
+      onChange(numValue)
+    } else {
+      onChange(localValue)
+    }
+  }, [localValue, onChange, type])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // Enterキーが押されたら即座に値を確定
+      if (e.key === 'Enter') {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+        }
+
+        if (type === 'number') {
+          const numValue = localValue === '' ? 0 : parseFloat(localValue) || 0
+          onChange(numValue)
+        } else {
+          onChange(localValue)
+        }
+      }
+      // 親コンポーネントのonKeyDownを呼び出す
+      if (onKeyDown) {
+        onKeyDown(e)
+      }
+    },
+    [localValue, onChange, onKeyDown, type]
+  )
+
+  return (
+    <Input
+      ref={inputRef}
+      type={type}
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      onFocus={onFocus}
+      placeholder={placeholder}
+      className={className}
+      list={list}
+      min={min}
+      max={max}
+      step={step}
+    />
+  )
+})
+
 // ドラッグ可能な行コンポーネント
 interface SortableRowProps {
   task: Task
@@ -69,170 +200,165 @@ interface SortableRowProps {
   onDeleteTask: (taskId: string) => void
   onKeyDown: (e: React.KeyboardEvent, row: number, col: number) => void
   onFocus: (row: number, col: number) => void
-  cellRefs: React.MutableRefObject<Map<string, HTMLElement>>
+  cellRefs: React.RefObject<Map<string, HTMLElement>>
   getCellKey: (row: number, col: number) => string
-  getCategoryColor: (category: string) => string
-  getCategoryBgColor: (color: string) => string
 }
 
-function SortableRow({
-  task,
-  rowIndex,
-  selectedRows,
-  focusedCell,
-  projectCategories,
-  onToggleRowSelection,
-  onUpdateCellValue,
-  onAddCategory,
-  onDeleteTask,
-  onKeyDown,
-  onFocus,
-  cellRefs,
-  getCellKey,
-  getCategoryColor,
-  getCategoryBgColor,
-}: SortableRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: task.id,
-  })
+const SortableRow = memo(
+  function SortableRow({
+    task,
+    rowIndex,
+    selectedRows,
+    focusedCell,
+    projectCategories,
+    onToggleRowSelection,
+    onUpdateCellValue,
+    onAddCategory,
+    onDeleteTask,
+    onKeyDown,
+    onFocus,
+    cellRefs,
+    getCellKey,
+  }: SortableRowProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: task.id,
+    })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  }
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    }
 
-  return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      className={`sortable-item ${selectedRows.has(task.id) ? 'bg-muted' : ''} ${isDragging ? 'dragging' : ''}`}
-    >
-      {/* ドラッグハンドル */}
-      <td className="drag-handle" {...attributes} {...listeners}>
-        <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 flex items-center justify-center h-8">
-          <GripVertical className="h-4 w-4" />
-        </span>
-      </td>
+    return (
+      <tr
+        ref={setNodeRef}
+        style={style}
+        className={`sortable-item ${selectedRows.has(task.id) ? 'bg-muted' : ''} ${isDragging ? 'dragging' : ''}`}
+      >
+        {/* ドラッグハンドル */}
+        <td className="drag-handle" {...attributes} {...listeners}>
+          <span className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground flex items-center justify-center h-8">
+            <GripVertical className="h-4 w-4" />
+          </span>
+        </td>
 
-      {/* チェックボックス */}
-      <td>
-        <input
-          type="checkbox"
-          checked={selectedRows.has(task.id)}
-          onChange={() => onToggleRowSelection(task.id)}
-          className="rounded"
-        />
-      </td>
-
-      {/* カテゴリ */}
-      <td style={{ position: 'relative' }}>
-        {/* カテゴリ色インジケーター */}
-        {task.category && (
-          <div
-            className="absolute left-0 top-0 bottom-0 w-1"
-            style={{
-              backgroundColor: getCategoryColor(task.category),
-              borderRadius: '2px 0 0 2px',
-            }}
+        {/* チェックボックス */}
+        <td>
+          <input
+            type="checkbox"
+            checked={selectedRows.has(task.id)}
+            onChange={() => onToggleRowSelection(task.id)}
+            className="rounded"
           />
-        )}
-        <Input
-          ref={el => {
-            if (el) {
-              cellRefs.current.set(getCellKey(rowIndex, 2), el)
-            }
-          }}
-          type="text"
-          list={`category-options-${rowIndex}`}
-          value={task.category}
-          onChange={e => onUpdateCellValue(rowIndex, 2, e.target.value)}
-          onKeyDown={e => onKeyDown(e, rowIndex, 2)}
-          onFocus={() => onFocus(rowIndex, 2)}
-          onBlur={e => {
-            const value = e.target.value.trim()
-            if (value) {
-              onAddCategory(value)
-            }
-          }}
-          placeholder=""
-          className={`border-none bg-transparent cell-input pl-3 ${
-            focusedCell?.row === rowIndex && focusedCell?.col === 2 ? 'cell-focused' : ''
-          }`}
-          style={
-            task.category
-              ? {
-                  backgroundColor: getCategoryBgColor(getCategoryColor(task.category)),
-                  borderLeft: `3px solid ${getCategoryColor(task.category)}`,
-                }
-              : {}
-          }
-        />
-        <datalist id={`category-options-${rowIndex}`}>
-          {projectCategories.map(category => (
-            <option key={category} value={category} />
-          ))}
-        </datalist>
-      </td>
+        </td>
 
-      {/* タスク名 */}
-      <td>
-        <Input
-          ref={el => {
-            if (el) {
-              cellRefs.current.set(getCellKey(rowIndex, 3), el)
-            }
-          }}
-          value={task.name}
-          onChange={e => onUpdateCellValue(rowIndex, 3, e.target.value)}
-          onKeyDown={e => onKeyDown(e, rowIndex, 3)}
-          onFocus={() => onFocus(rowIndex, 3)}
-          placeholder=""
-          className={`border-none bg-transparent cell-input ${
-            focusedCell?.row === rowIndex && focusedCell?.col === 3 ? 'cell-focused' : ''
-          }`}
-        />
-      </td>
-
-      {/* 見積時間 */}
-      <td>
-        <div className="flex items-center gap-1">
-          <Input
-            ref={el => {
+        {/* カテゴリ */}
+        <td>
+          <BufferedInput
+            inputRef={el => {
               if (el) {
-                cellRefs.current.set(getCellKey(rowIndex, 4), el)
+                cellRefs.current.set(getCellKey(rowIndex, 2), el)
               }
             }}
-            type="number"
-            min="0"
-            step="0.5"
-            value={task.estimatedHours || ''}
-            onChange={e => onUpdateCellValue(rowIndex, 4, e.target.value)}
-            onKeyDown={e => onKeyDown(e, rowIndex, 4)}
-            onFocus={() => onFocus(rowIndex, 4)}
+            type="text"
+            list={`category-options-${rowIndex}`}
+            value={task.category}
+            onChange={value => {
+              onUpdateCellValue(rowIndex, 2, value as string)
+              const trimmedValue = (value as string).trim()
+              if (trimmedValue) {
+                onAddCategory(trimmedValue)
+              }
+            }}
+            onKeyDown={e => onKeyDown(e, rowIndex, 2)}
+            onFocus={() => onFocus(rowIndex, 2)}
             placeholder=""
-            className={`border-none bg-transparent cell-input text-right ${
-              focusedCell?.row === rowIndex && focusedCell?.col === 4 ? 'cell-focused' : ''
+            className={`border-none bg-transparent cell-input ${
+              focusedCell?.row === rowIndex && focusedCell?.col === 2 ? 'cell-focused' : ''
             }`}
           />
-          <span className="text-xs text-muted-foreground">h</span>
-        </div>
-      </td>
+          <datalist id={`category-options-${rowIndex}`}>
+            {projectCategories.map(category => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+        </td>
 
-      {/* アクション */}
-      <td>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDeleteTask(task.id)}
-          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </td>
-    </tr>
-  )
-}
+        {/* タスク名 */}
+        <td>
+          <BufferedInput
+            inputRef={el => {
+              if (el) {
+                cellRefs.current.set(getCellKey(rowIndex, 3), el)
+              }
+            }}
+            value={task.name}
+            onChange={value => onUpdateCellValue(rowIndex, 3, value as string)}
+            onKeyDown={e => onKeyDown(e, rowIndex, 3)}
+            onFocus={() => onFocus(rowIndex, 3)}
+            placeholder=""
+            className={`border-none bg-transparent cell-input ${
+              focusedCell?.row === rowIndex && focusedCell?.col === 3 ? 'cell-focused' : ''
+            }`}
+          />
+        </td>
+
+        {/* 見積時間 */}
+        <td>
+          <div className="flex items-center gap-1">
+            <BufferedInput
+              inputRef={el => {
+                if (el) {
+                  cellRefs.current.set(getCellKey(rowIndex, 4), el)
+                }
+              }}
+              type="number"
+              min={0}
+              step={0.5}
+              value={task.estimatedHours || ''}
+              onChange={value => onUpdateCellValue(rowIndex, 4, value)}
+              onKeyDown={e => onKeyDown(e, rowIndex, 4)}
+              onFocus={() => onFocus(rowIndex, 4)}
+              placeholder=""
+              className={`border-none bg-transparent cell-input text-right ${
+                focusedCell?.row === rowIndex && focusedCell?.col === 4 ? 'cell-focused' : ''
+              }`}
+            />
+            <span className="text-xs text-muted-foreground">h</span>
+          </div>
+        </td>
+
+        {/* アクション */}
+        <td>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDeleteTask(task.id)}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </td>
+      </tr>
+    )
+  },
+  (prevProps, nextProps) => {
+    // カスタム比較関数：必要なプロパティのみをチェック
+    return (
+      prevProps.task.id === nextProps.task.id &&
+      prevProps.task.name === nextProps.task.name &&
+      prevProps.task.category === nextProps.task.category &&
+      prevProps.task.estimatedHours === nextProps.task.estimatedHours &&
+      prevProps.rowIndex === nextProps.rowIndex &&
+      prevProps.selectedRows.has(prevProps.task.id) ===
+        nextProps.selectedRows.has(nextProps.task.id) &&
+      prevProps.focusedCell?.row === nextProps.focusedCell?.row &&
+      prevProps.focusedCell?.col === nextProps.focusedCell?.col &&
+      prevProps.projectCategories.length === nextProps.projectCategories.length
+    )
+  }
+)
 
 export function EditableTaskTable({
   tasks,
@@ -251,17 +377,6 @@ export function EditableTaskTable({
   const tableRef = useRef<HTMLTableElement>(null)
   const cellRefs = useRef<Map<string, HTMLElement>>(new Map())
 
-  // カテゴリ色取得
-  const getCategoryColor = useProjectCreationStore(state => state.getCategoryColor)
-
-  // 背景色を薄くする関数
-  const getCategoryBgColor = (color: string) => {
-    const r = parseInt(color.slice(1, 3), 16)
-    const g = parseInt(color.slice(3, 5), 16)
-    const b = parseInt(color.slice(5, 7), 16)
-    return `rgba(${r}, ${g}, ${b}, 0.15)`
-  }
-
   // ドラッグ&ドロップ用のセンサー設定
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -273,22 +388,39 @@ export function EditableTaskTable({
   // セルのキーを生成
   const getCellKey = (row: number, col: number) => `${row}-${col}`
 
+  // tasksの参照を保持（再レンダリング時の関数再生成を防ぐ）
+  const tasksLengthRef = useRef(tasks.length)
+  useEffect(() => {
+    tasksLengthRef.current = tasks.length
+  }, [tasks.length])
+
   // セルにフォーカスを設定
   const focusCell = useCallback(
     (row: number, col: number) => {
-      if (row < 0 || row >= tasks.length || col < 0 || col >= COLUMNS.length) {
+      if (row < 0 || row >= tasksLengthRef.current || col < 0 || col >= COLUMNS.length) {
         return
       }
 
-      const cellKey = getCellKey(row, col)
-      const cellElement = cellRefs.current.get(cellKey)
+      // 非同期処理の競合を防ぐため、微小な遅延を追加
+      requestAnimationFrame(() => {
+        const cellKey = getCellKey(row, col)
+        const cellElement = cellRefs.current.get(cellKey)
 
-      if (cellElement) {
-        cellElement.focus()
-        setFocusedCell({ row, col })
-      }
+        if (cellElement && cellElement instanceof HTMLElement) {
+          try {
+            // 要素がドキュメントに存在することを確認
+            if (document.contains(cellElement)) {
+              cellElement.focus()
+              setFocusedCell({ row, col })
+            }
+          } catch (error) {
+            // フォーカスエラーをキャッチして継続
+            console.warn('Focus error:', error)
+          }
+        }
+      })
     },
-    [tasks.length]
+    [] // 依存配列を空にして関数の再生成を防ぐ
   )
 
   // ドラッグ終了時の処理
@@ -312,10 +444,15 @@ export function EditableTaskTable({
   const addNewTask = useCallback(() => {
     onAddTask()
     // 新しいタスクが追加された後、カテゴリセルにフォーカス
+    // 少し遅延を増やして、タスクの追加が確実に完了してからフォーカス
     setTimeout(() => {
-      focusCell(tasks.length, 2) // カテゴリ列（ドラッグハンドル分+1）
-    }, 0)
-  }, [onAddTask, tasks.length, focusCell])
+      const newRowIndex = tasksLengthRef.current
+      // 新しい行が実際に存在することを確認
+      if (newRowIndex >= 0) {
+        focusCell(newRowIndex, 2) // カテゴリ列（ドラッグハンドル分+1）
+      }
+    }, 50) // 50msの遅延で安定性を向上
+  }, [onAddTask, focusCell])
 
   // キーボードイベントハンドラー
   const handleKeyDown = useCallback(
@@ -352,7 +489,7 @@ export function EditableTaskTable({
               focusCell(row, col + 1)
             } else {
               // 見積時間セル（col=4）から次の行のカテゴリ（col=2）へ
-              if (row === tasks.length - 1) {
+              if (row === tasksLengthRef.current - 1) {
                 addNewTask()
               }
               setTimeout(() => focusCell(row + 1, 2), 0)
@@ -363,10 +500,14 @@ export function EditableTaskTable({
           e.preventDefault() // すべての列でフォーム送信を防ぐ
           if (col === 4) {
             // 見積時間列でのみ次の行へ移動
-            if (row === tasks.length - 1) {
+            if (row === tasksLengthRef.current - 1) {
+              // 最後の行の場合はaddNewTaskに任せる
               addNewTask()
+              // addNewTask内でフォーカス処理を行うため、ここではフォーカスしない
+            } else {
+              // 最後の行でない場合のみ次の行へ
+              setTimeout(() => focusCell(row + 1, 2), 0)
             }
-            setTimeout(() => focusCell(row + 1, 2), 0) // 次の行のカテゴリへ
           }
           // カテゴリ・タスク名セルではEnterキーは入力確定のみ（次の行へは移動しない）
           break
@@ -380,7 +521,7 @@ export function EditableTaskTable({
               // フォーカスを調整
               if (row > 0) {
                 setTimeout(() => focusCell(row - 1, col), 0)
-              } else if (tasks.length > 1) {
+              } else if (tasksLengthRef.current > 1) {
                 setTimeout(() => focusCell(0, col), 0)
               }
             }
@@ -388,7 +529,7 @@ export function EditableTaskTable({
           break
       }
     },
-    [focusCell, tasks.length, onDeleteTask, addNewTask]
+    [focusCell, onDeleteTask, addNewTask, tasks] // tasksを追加して削除時の正しいtaskIdを取得
   )
 
   // セルの値を更新
@@ -444,30 +585,30 @@ export function EditableTaskTable({
     }
   }, [selectedRows, onDeleteTask])
 
-  // カテゴリ別時間配分の計算
-  const categoryStats = projectCategories
-    .map(category => {
-      const categoryTasks = tasks.filter(t => t.category === category)
-      const categoryHours = categoryTasks.reduce((sum, t) => sum + t.estimatedHours, 0)
-      const percentage = totalTaskHours > 0 ? (categoryHours / totalTaskHours) * 100 : 0
+  // カテゴリ別時間配分の計算（メモ化）
+  const categoryStats = useMemo(
+    () =>
+      projectCategories
+        .map(category => {
+          const categoryTasks = tasks.filter(t => t.category === category)
+          const categoryHours = categoryTasks.reduce((sum, t) => sum + t.estimatedHours, 0)
+          const percentage = totalTaskHours > 0 ? (categoryHours / totalTaskHours) * 100 : 0
 
-      return {
-        category,
-        hours: Number(categoryHours.toFixed(1)),
-        percentage: Number(percentage.toFixed(1)),
-      }
-    })
-    .filter(stat => stat.hours > 0)
+          return {
+            category,
+            hours: Number(categoryHours.toFixed(1)),
+            percentage: Number(percentage.toFixed(1)),
+          }
+        })
+        .filter(stat => stat.hours > 0),
+    [projectCategories, tasks, totalTaskHours]
+  )
 
   return (
     <div className="space-y-4">
       {/* ツールバー */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button onClick={addNewTask} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            タスクを追加
-          </Button>
           {selectedRows.size > 0 && (
             <Button onClick={deleteSelectedRows} size="sm" variant="destructive">
               <Trash2 className="h-4 w-4 mr-1" />
@@ -476,7 +617,6 @@ export function EditableTaskTable({
           )}
         </div>
 
-        <div className="text-sm text-muted-foreground">合計: {totalTaskHours.toFixed(1)}時間</div>
       </div>
 
       {/* テーブル */}
@@ -485,7 +625,7 @@ export function EditableTaskTable({
           <table ref={tableRef} className="editable-table w-full">
             <thead>
               <tr>
-                {COLUMNS.map((column, colIndex) => (
+                {COLUMNS.map(column => (
                   <th key={column.key} style={{ width: column.width }} className="text-left">
                     {column.label}
                   </th>
@@ -503,7 +643,7 @@ export function EditableTaskTable({
                       <div>
                         <p>タスクがありません</p>
                         <p className="text-sm mt-1">
-                          「タスクを追加」ボタンでタスクを作成してください
+                          Tab または Enter キーで新しいタスクを追加できます
                         </p>
                       </div>
                     </td>
@@ -525,8 +665,6 @@ export function EditableTaskTable({
                       onFocus={(row, col) => setFocusedCell({ row, col })}
                       cellRefs={cellRefs}
                       getCellKey={getCellKey}
-                      getCategoryColor={getCategoryColor}
-                      getCategoryBgColor={getCategoryBgColor}
                     />
                   ))
                 )}
@@ -541,56 +679,23 @@ export function EditableTaskTable({
         <div className="space-y-3">
           <Label>カテゴリ別時間配分</Label>
           <div className="space-y-2">
-            {categoryStats.map(({ category, hours, percentage }) => {
-              const categoryColor = getCategoryColor(category)
-              return (
-                <div key={category} className="flex items-center gap-3">
-                  <Badge
-                    variant="secondary"
-                    className="min-w-[80px] flex items-center gap-2"
-                    style={{
-                      backgroundColor: getCategoryBgColor(categoryColor),
-                      borderColor: categoryColor,
-                      color: categoryColor,
-                      borderWidth: '1px',
-                    }}
-                  >
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: categoryColor }}
-                    />
-                    {category}
-                  </Badge>
-                  <div className="flex-1">
-                    <Progress
-                      value={percentage}
-                      className="h-2"
-                      style={
-                        {
-                          '--progress-foreground': categoryColor,
-                          backgroundColor: getCategoryBgColor(categoryColor),
-                        } as React.CSSProperties
-                      }
-                    />
-                  </div>
-                  <span className="text-sm text-muted-foreground min-w-[80px]">
-                    {hours}h ({percentage}%)
-                  </span>
+            {categoryStats.map(({ category, hours, percentage }) => (
+              <div key={category} className="flex items-center gap-3">
+                <Badge variant="secondary" className="min-w-[80px]">
+                  {category}
+                </Badge>
+                <div className="flex-1">
+                  <Progress value={percentage} className="h-2" />
                 </div>
-              )
-            })}
+                <span className="text-sm text-muted-foreground min-w-[80px]">
+                  {hours}h ({percentage}%)
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* キーボードショートカットのヘルプ */}
-      <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
-        <p className="font-medium mb-1">キーボードショートカット：</p>
-        <p>
-          矢印キー: セル移動 | Tab: 次のセル | Shift+Tab: 前のセル | Enter: 次の行 | Ctrl+Delete:
-          行削除
-        </p>
-      </div>
     </div>
   )
 }

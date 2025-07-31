@@ -51,8 +51,6 @@ export const queryKeys = {
   bigTasksByUser: (userId: string) => [...queryKeys.bigTasks(), 'user', userId] as const,
   bigTasksByProject: (projectId: string) =>
     [...queryKeys.bigTasks(), 'project', projectId] as const,
-  bigTasksByWeek: (projectId: string, weekNumber: number) =>
-    [...queryKeys.bigTasks(), 'project', projectId, 'week', weekNumber] as const,
 
   smallTasks: () => [...queryKeys.all, 'small-tasks'] as const,
   smallTask: (id: string) => [...queryKeys.smallTasks(), id] as const,

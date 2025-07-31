@@ -8,6 +8,8 @@ import {
   syncTask, 
   syncWorkSession,
   syncEntry,
+  syncScheduleMemo,
+  syncSleepSchedule,
   type SyncRequest 
 } from '@/lib/sync/sync-handlers'
 import { validateApiKey, createAuthErrorResponse } from '@/lib/api/auth-middleware'
@@ -66,6 +68,14 @@ export async function POST(request: NextRequest) {
       
       case 'dopamine_entry':
         result = await syncEntry(syncRequest, 'dopamine_entry')
+        break
+      
+      case 'schedule_memo':
+        result = await syncScheduleMemo(syncRequest)
+        break
+      
+      case 'sleep_schedule':
+        result = await syncSleepSchedule(syncRequest)
         break
       
       default:

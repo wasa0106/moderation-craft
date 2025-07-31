@@ -79,7 +79,7 @@ export default function QueueTestPage() {
       {result && (
         <Card className="p-4">
           <h3 className="text-lg font-semibold mb-2">結果</h3>
-          <pre className="p-3 bg-gray-100 rounded overflow-auto text-xs">
+          <pre className="p-3 bg-muted rounded overflow-auto text-xs">
             {JSON.stringify(result, null, 2)}
           </pre>
         </Card>

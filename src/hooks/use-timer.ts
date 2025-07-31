@@ -101,6 +101,12 @@ export function useTimer(userId: string) {
         finalFocusLevel || undefined
       )
 
+      // セッションが削除された場合（2分以下）
+      if (!session) {
+        timerStore.stopTimer()
+        return null
+      }
+
       // Add mood notes if present
       if (moodNotes.trim()) {
         await workSessionRepository.addMoodNotes(session.id, moodNotes)
@@ -177,10 +183,15 @@ export function useTimer(userId: string) {
 
   // Timer interval effect
   useEffect(() => {
-    if (timerStore.isRunning && timerStore.startTime) {
+    const { isRunning, startTime } = timerStore
+    
+    if (isRunning && startTime) {
       intervalRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - timerStore.startTime!.getTime()) / 1000)
-        timerStore.updateElapsedTime(elapsed)
+        const currentStartTime = useTimerStore.getState().startTime
+        if (currentStartTime) {
+          const elapsed = Math.floor((Date.now() - currentStartTime.getTime()) / 1000)
+          useTimerStore.getState().updateElapsedTime(elapsed)
+        }
       }, 1000)
     } else {
       if (intervalRef.current) {
@@ -194,24 +205,29 @@ export function useTimer(userId: string) {
         clearInterval(intervalRef.current)
       }
     }
-  }, [timerStore.isRunning, timerStore.startTime, timerStore])
+  }, [timerStore.isRunning, timerStore.startTime])
 
   // Auto-save timer state periodically
   useEffect(() => {
-    if (!timerStore.isRunning || !timerStore.activeSession) return
+    const { isRunning, activeSession } = timerStore
+    
+    if (!isRunning || !activeSession) return
 
     const autoSaveInterval = setInterval(async () => {
       try {
-        await workSessionRepository.pauseSession(timerStore.activeSession!.id)
-        // 開発中は自動同期を無効化
-        // await syncService.addToSyncQueue('work_session', timerStore.activeSession!.id, 'update')
+        const currentSession = useTimerStore.getState().activeSession
+        if (currentSession) {
+          await workSessionRepository.pauseSession(currentSession.id)
+          // 開発中は自動同期を無効化
+          // await syncService.addToSyncQueue('work_session', currentSession.id, 'update')
+        }
       } catch (error) {
         console.error('Auto-save failed:', error)
       }
     }, 30000) // Auto-save every 30 seconds
 
     return () => clearInterval(autoSaveInterval)
-  }, [timerStore.isRunning, timerStore.activeSession, timerStore])
+  }, [timerStore.isRunning, timerStore.activeSession?.id])
 
   return {
     // Timer state

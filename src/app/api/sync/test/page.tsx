@@ -176,10 +176,10 @@ export default function SyncTestPage() {
                 </p>
                 {result.success && result.response && (
                   <div className="mt-2 text-sm">
-                    <p className="text-gray-600">メッセージ: {result.response.message}</p>
+                    <p className="text-muted-foreground">メッセージ: {result.response.message}</p>
                     <details className="mt-2">
                       <summary className="cursor-pointer text-blue-600">詳細を表示</summary>
-                      <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                      <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
                         {JSON.stringify(result.response.syncedItem, null, 2)}
                       </pre>
                     </details>

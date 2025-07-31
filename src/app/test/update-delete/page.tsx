@@ -139,9 +139,12 @@ export default function UpdateDeleteTestPage() {
             project_id: project.id,
             name: 'UPDATE/DELETEテスト用BigTask',
             estimated_hours: 10,
-            week_number: 1,
             status: 'pending',
-            version: 1
+            version: 1,
+            actual_hours: 0,
+            start_date: new Date().toISOString().split('T')[0],
+            end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            category: 'その他'
           })
           console.log('Created BigTask:', testBigTask)
           toast.success('テストBigTaskを作成しました')

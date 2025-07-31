@@ -8,6 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Calendar, Clock, CheckCircle2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react'
 import { BigTask, Project, SmallTask } from '@/types'
 import { format, startOfWeek, endOfWeek, differenceInDays, addWeeks } from 'date-fns'
@@ -94,7 +102,7 @@ export function WBSReferencePanel({
       const project = projects.find(p => p.id === task.project_id)
       console.log(`- ${task.name}`)
       console.log(`  プロジェクト: ${project?.name || '不明'}`)
-      console.log(`  week_number: ${task.week_number}`)
+      console.log(`  期間: ${task.start_date} ~ ${task.end_date}`)
       console.log(`  予定時間: ${task.estimated_hours}h`)
     })
 
@@ -103,7 +111,7 @@ export function WBSReferencePanel({
       const project = projects.find(p => p.id === task.project_id)
       console.log(`- ${task.name}`)
       console.log(`  プロジェクト: ${project?.name || '不明'}`)
-      console.log(`  week_number: ${task.week_number}`)
+      console.log(`  期間: ${task.start_date} ~ ${task.end_date}`)
       console.log(`  予定時間: ${task.estimated_hours}h`)
     })
 
@@ -227,8 +235,8 @@ export function WBSReferencePanel({
   return (
     <>
       <CardHeader className="pb-3 px-6">
-        <CardTitle className="flex items-center gap-2 text-[#1C1C14]">
-          <Calendar className="h-5 w-5 text-[#5E621B]" />
+        <CardTitle className="flex items-center gap-2 text-foreground">
+          <Calendar className="h-5 w-5 text-primary" />
           WBS参照
         </CardTitle>
       </CardHeader>
@@ -238,11 +246,11 @@ export function WBSReferencePanel({
           <div className="space-y-6">
             {/* Week Range Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-[#47473B] flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
                 今週: {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), 'M/d')} -{' '}
                 {format(endOfWeek(currentWeek, { weekStartsOn: 1 }), 'M/d')}
               </h3>
-              <h3 className="text-sm font-semibold text-[#47473B] flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
                 来週: {format(startOfWeek(addWeeks(currentWeek, 1), { weekStartsOn: 1 }), 'M/d')} -{' '}
                 {format(endOfWeek(addWeeks(currentWeek, 1), { weekStartsOn: 1 }), 'M/d')}
               </h3>
@@ -250,7 +258,7 @@ export function WBSReferencePanel({
 
             {/* Projects Tables */}
             {tasksByProject.length === 0 ? (
-              <p className="text-sm text-[#47473B] text-center py-4">タスクがありません</p>
+              <p className="text-sm text-muted-foreground text-center py-4">タスクがありません</p>
             ) : (
               tasksByProject.map(({ project, currentWeekTasks, nextWeekTasks }) => {
                 const projectName = project?.name || '不明なプロジェクト'
@@ -258,81 +266,71 @@ export function WBSReferencePanel({
                 return (
                   <div key={project?.id || 'unknown'} className="space-y-2">
                     {/* Project Header */}
-                    <h4 className="font-medium text-sm text-[#1C1C14] bg-[#E4E5C0] px-3 py-1.5 rounded">
+                    <h4 className="font-medium text-sm text-foreground bg-accent px-3 py-1.5 rounded">
                       {projectName}
                     </h4>
 
                     {/* Table */}
-                    <div className="overflow-hidden rounded-lg border border-[#D4D2C1]">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-[#F5F3E2] text-xs">
-                            <th className="text-left px-3 py-2 font-medium text-[#47473B] w-2/5">
-                              タスク名
-                            </th>
-                            <th className="text-left px-3 py-2 font-medium text-[#47473B] w-1/6">
-                              カテゴリ
-                            </th>
-                            <th className="text-center px-3 py-2 font-medium text-[#47473B] w-1/12">
-                              時間
-                            </th>
-                            <th className="text-center px-3 py-2 font-medium text-[#47473B] w-1/12">
-                              進捗
-                            </th>
-                            <th className="text-center px-3 py-2 font-medium text-[#47473B] w-1/6">
-                              ステータス
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                    <div className="overflow-hidden rounded-lg border border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted">
+                            <TableHead className="w-2/5">タスク名</TableHead>
+                            <TableHead className="w-1/6">カテゴリ</TableHead>
+                            <TableHead className="text-center w-1/12">時間</TableHead>
+                            <TableHead className="text-center w-1/12">進捗</TableHead>
+                            <TableHead className="text-center w-1/6">ステータス</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {/* Current Week Tasks */}
                           {currentWeekTasks.length > 0 && (
                             <>
-                              <tr>
-                                <td
+                              <TableRow>
+                                <TableCell
                                   colSpan={5}
-                                  className="bg-[#E3E892] px-3 py-1 text-xs font-medium text-[#464A02]"
+                                  className="bg-muted py-1 text-xs font-medium text-muted-foreground"
                                 >
                                   今週
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                               {currentWeekTasks.map(task => {
                                 const progress = calculateProgress(task)
 
                                 return (
-                                  <tr
+                                  <TableRow
                                     key={`current-${task.id}`}
-                                    className="border-t border-[#E5E3D2] hover:bg-[#FCFAEC]"
+                                    className="hover:bg-accent"
                                   >
-                                    <td className="px-3 py-2 text-sm text-[#1C1C14]">
+                                    <TableCell className="text-sm">
                                       {task.name}
-                                    </td>
-                                    <td className="px-3 py-2">
+                                    </TableCell>
+                                    <TableCell>
                                       {task.category && (
-                                        <Badge className="text-xs bg-[#BEECDB] text-[#244E42] border-[#AEECCB]">
+                                        <Badge className="text-xs bg-primary/10 text-primary border-primary/20">
                                           {task.category}
                                         </Badge>
                                       )}
-                                    </td>
-                                    <td className="text-center px-3 py-2 text-sm text-[#47473B]">
+                                    </TableCell>
+                                    <TableCell className="text-center text-sm text-muted-foreground">
                                       {task.estimated_hours}h
-                                    </td>
-                                    <td className="text-center px-3 py-2">
+                                    </TableCell>
+                                    <TableCell className="text-center">
                                       <div className="flex items-center justify-center gap-1">
                                         <Progress value={progress} className="w-12 h-1.5" />
-                                        <span className="text-xs text-[#47473B]">{progress}%</span>
+                                        <span className="text-xs text-muted-foreground">{progress}%</span>
                                       </div>
-                                    </td>
-                                    <td className="text-center px-3 py-2">
+                                    </TableCell>
+                                    <TableCell className="text-center">
                                       <Badge
                                         variant={getStatusVariant(task.status)}
                                         className={cn(
                                           'text-xs',
                                           task.status === 'completed'
-                                            ? 'bg-[#BEECDB] text-[#244E42]'
+                                            ? 'bg-primary/10 text-primary'
                                             : task.status === 'active'
-                                              ? 'bg-[#E3E892] text-[#464A02]'
-                                              : 'bg-[#E4E5C0] text-[#47492E]'
+                                              ? 'bg-accent text-accent-foreground'
+                                              : 'bg-muted text-muted-foreground'
                                         )}
                                       >
                                         {task.status === 'completed'
@@ -341,8 +339,8 @@ export function WBSReferencePanel({
                                             ? '進行中'
                                             : '未着手'}
                                       </Badge>
-                                    </td>
-                                  </tr>
+                                    </TableCell>
+                                  </TableRow>
                                 )
                               })}
                             </>
@@ -351,47 +349,47 @@ export function WBSReferencePanel({
                           {/* Next Week Tasks */}
                           {nextWeekTasks.length > 0 && (
                             <>
-                              <tr>
-                                <td
+                              <TableRow>
+                                <TableCell
                                   colSpan={5}
-                                  className="bg-[#E4E5C0] px-3 py-1 text-xs font-medium text-[#47492E]"
+                                  className="bg-accent py-1 text-xs font-medium text-accent-foreground"
                                 >
                                   来週
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                               {nextWeekTasks.map(task => (
-                                <tr
+                                <TableRow
                                   key={`next-${task.id}`}
-                                  className="border-t border-[#E5E3D2] hover:bg-[#FCFAEC]"
+                                  className="hover:bg-accent"
                                 >
-                                  <td className="px-3 py-2 text-sm text-[#1C1C14]">{task.name}</td>
-                                  <td className="px-3 py-2">
+                                  <TableCell className="text-sm">{task.name}</TableCell>
+                                  <TableCell>
                                     {task.category && (
-                                      <Badge className="text-xs bg-[#BEECDB] text-[#244E42] border-[#AEECCB]">
+                                      <Badge className="text-xs bg-primary/10 text-primary border-primary/20">
                                         {task.category}
                                       </Badge>
                                     )}
-                                  </td>
-                                  <td className="text-center px-3 py-2 text-sm text-[#47473B]">
+                                  </TableCell>
+                                  <TableCell className="text-center text-sm text-muted-foreground">
                                     {task.estimated_hours}h
-                                  </td>
-                                  <td className="text-center px-3 py-2 text-xs text-[#7B7D5F]">
+                                  </TableCell>
+                                  <TableCell className="text-center text-xs text-muted-foreground/70">
                                     -
-                                  </td>
-                                  <td className="text-center px-3 py-2">
+                                  </TableCell>
+                                  <TableCell className="text-center">
                                     <Badge
                                       variant="outline"
-                                      className="text-xs bg-[#E4E5C0] text-[#47492E]"
+                                      className="text-xs bg-accent text-accent-foreground"
                                     >
                                       予定
                                     </Badge>
-                                  </td>
-                                </tr>
+                                  </TableCell>
+                                </TableRow>
                               ))}
                             </>
                           )}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
                 )
@@ -401,8 +399,8 @@ export function WBSReferencePanel({
             {/* プロジェクトが登録されていない場合 */}
             {projects.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-[#47473B] mb-2">プロジェクトが登録されていません</p>
-                <p className="text-sm text-[#47473B]">
+                <p className="text-muted-foreground mb-2">プロジェクトが登録されていません</p>
+                <p className="text-sm text-muted-foreground">
                   /projects/new からプロジェクトを作成してください
                 </p>
               </div>
@@ -410,7 +408,7 @@ export function WBSReferencePanel({
 
             {/* デバッグ用: 全BigTaskのリスト */}
             {process.env.NODE_ENV === 'development' && (
-              <div className="mt-8 p-4 bg-gray-100 rounded-lg text-xs">
+              <div className="mt-8 p-4 bg-muted rounded-lg text-xs">
                 <h4 className="font-bold mb-2">デバッグ情報</h4>
                 <p>
                   現在の週: {format(currentWeek, 'yyyy-MM-dd')} (
@@ -457,7 +455,7 @@ export function WBSReferencePanel({
                   <div className="mt-2 space-y-1">
                     {[...currentWeekBigTasks, ...nextWeekBigTasks].map((task, index) => (
                       <div key={`debug-${index}-${task.id}`} className="pl-4">
-                        - {task.name} (week: {task.week_number}, project:{' '}
+                        - {task.name} (期間: {task.start_date} ~ {task.end_date}, project:{' '}
                         {getProjectName(task.project_id)})
                       </div>
                     ))}

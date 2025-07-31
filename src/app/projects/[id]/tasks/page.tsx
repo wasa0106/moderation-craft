@@ -23,6 +23,7 @@ import {
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
+import { useWorkSessions } from '@/hooks/use-timer'
 import {
   CreateBigTaskData,
   CreateSmallTaskData,
@@ -64,6 +65,8 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
     deleteSmallTask,
     isLoading: smallTasksLoading,
   } = useSmallTasks(resolvedParams?.id || '')
+  
+  const { data: workSessions = [] } = useWorkSessions('current-user')
 
   const [showBigTaskForm, setShowBigTaskForm] = useState(false)
   const [showSmallTaskForm, setShowSmallTaskForm] = useState(false)
@@ -82,9 +85,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
 
   if (!resolvedParams) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div className="text-center py-12">
-          <p className="text-gray-600">読み込み中...</p>
+          <p className="text-muted-foreground">読み込み中...</p>
         </div>
       </div>
     )
@@ -92,11 +95,11 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
 
   if (!project) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div className="text-center py-12">
-          <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">プロジェクトが見つかりません</h2>
-          <p className="text-gray-600 mb-6">
+          <Target className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">プロジェクトが見つかりません</h2>
+          <p className="text-muted-foreground mb-6">
             指定されたプロジェクトは存在しないか、削除されています。
           </p>
           <Link href="/projects">
@@ -239,9 +242,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex items-center gap-3 mb-4">
           <Link href={`/projects/${resolvedParams.id}`}>
             <Button variant="ghost" size="sm" className="flex items-center gap-2">
@@ -253,12 +256,12 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <Target className="h-8 w-8 text-purple-600" />
+            <div className="p-3 bg-primary/10 rounded-lg">
+              <Target className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">タスク管理</h1>
-              <p className="text-gray-600">{project.name}</p>
+              <h1 className="text-3xl font-bold text-foreground">タスク管理</h1>
+              <p className="text-muted-foreground">{project.name}</p>
             </div>
           </div>
 
@@ -274,48 +277,48 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">大タスク</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">大タスク</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-primary">
               {stats.bigTasks.completed}/{stats.bigTasks.total}
             </div>
-            <div className="text-sm text-gray-500">完了 / 総数</div>
+            <div className="text-sm text-muted-foreground">完了 / 総数</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">小タスク</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">小タスク</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-primary">
               {stats.smallTasks.completed}/{stats.smallTasks.total}
             </div>
-            <div className="text-sm text-gray-500">完了 / 総数</div>
+            <div className="text-sm text-muted-foreground">完了 / 総数</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">実行中</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">実行中</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.bigTasks.active}</div>
-            <div className="text-sm text-gray-500">大タスク</div>
+            <div className="text-2xl font-bold text-muted-foreground">{stats.bigTasks.active}</div>
+            <div className="text-sm text-muted-foreground">大タスク</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">緊急</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">緊急</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.smallTasks.emergency}</div>
-            <div className="text-sm text-gray-500">小タスク</div>
+            <div className="text-2xl font-bold text-destructive">{stats.smallTasks.emergency}</div>
+            <div className="text-sm text-muted-foreground">小タスク</div>
           </CardContent>
         </Card>
       </div>
@@ -329,10 +332,10 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
 
         {/* Big Tasks Tab */}
         <TabsContent value="big-tasks" className="space-y-6">
-          <Card>
+          <Card className="border border-border">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <Target className="h-5 w-5" />
                   大タスク一覧
                 </CardTitle>
@@ -377,10 +380,10 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
 
         {/* Small Tasks Tab */}
         <TabsContent value="small-tasks" className="space-y-6">
-          <Card>
+          <Card className="border border-border">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <CheckCircle2 className="h-5 w-5" />
                   小タスク一覧
                 </CardTitle>
@@ -425,8 +428,8 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
             <CardContent>
               {projectBigTasks.length === 0 ? (
                 <div className="text-center py-8">
-                  <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">
+                  <Target className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground">
                     小タスクを作成するには、まず大タスクを作成してください
                   </p>
                 </div>
@@ -434,6 +437,7 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
                 <SmallTaskList
                   smallTasks={projectSmallTasks}
                   bigTasks={projectBigTasks}
+                  sessions={workSessions}
                   onEdit={handleEditSmallTask}
                   onDelete={handleDeleteSmallTask}
                   isLoading={smallTasksLoading}

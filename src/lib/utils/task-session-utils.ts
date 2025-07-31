@@ -127,9 +127,9 @@ export function getTaskDisplayInfo(
   
   // Color classes based on status and session state
   const colorClassMap = {
-    pending: hasActiveSession ? 'bg-blue-500' : totalMinutes > 0 ? 'bg-yellow-400' : 'bg-gray-300',
-    completed: 'bg-blue-900',
-    cancelled: 'bg-gray-400',
+    pending: hasActiveSession ? 'bg-primary' : totalMinutes > 0 ? 'bg-muted-foreground' : 'bg-muted',
+    completed: 'bg-muted',
+    cancelled: 'bg-muted/50',
   }
   
   return {

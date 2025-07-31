@@ -70,13 +70,13 @@ export default function SitemapPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'checking':
-        return 'text-yellow-600 bg-yellow-50'
+        return 'text-warning bg-warning/10'
       case 'ok':
-        return 'text-green-600 bg-green-50'
+        return 'text-primary bg-primary/10'
       case 'error':
-        return 'text-red-600 bg-red-50'
+        return 'text-destructive bg-destructive/10'
       default:
-        return 'text-gray-600 bg-gray-50'
+        return 'text-muted-foreground bg-muted'
     }
   }
 
@@ -84,46 +84,46 @@ export default function SitemapPage() {
   const errorPages = pages.filter(p => p.status === 'error')
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-background py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+        <h1 className="text-3xl font-bold text-foreground mb-8 text-center">
           🗺️ サイトマップ（動的確認）
         </h1>
 
         {/* 統計情報 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-blue-600">{pages.length}</div>
-            <div className="text-gray-600">総ページ数</div>
+          <div className="bg-card rounded-lg shadow p-6 text-center">
+            <div className="text-2xl font-bold text-primary">{pages.length}</div>
+            <div className="text-muted-foreground">総ページ数</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-green-600">{okPages.length}</div>
-            <div className="text-gray-600">正常ページ</div>
+          <div className="bg-card rounded-lg shadow p-6 text-center">
+            <div className="text-2xl font-bold text-primary">{okPages.length}</div>
+            <div className="text-muted-foreground">正常ページ</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-red-600">{errorPages.length}</div>
-            <div className="text-gray-600">エラーページ</div>
+          <div className="bg-card rounded-lg shadow p-6 text-center">
+            <div className="text-2xl font-bold text-destructive">{errorPages.length}</div>
+            <div className="text-muted-foreground">エラーページ</div>
           </div>
         </div>
 
         {/* ページリスト */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">ページ一覧</h2>
-            <p className="text-sm text-gray-600 mt-1">
+        <div className="bg-card rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 bg-muted border-b">
+            <h2 className="text-lg font-semibold text-foreground">ページ一覧</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               各ページの存在確認とアクセステストを行っています
             </p>
           </div>
 
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-border">
             {pages.map((page, index) => (
-              <div key={page.path} className="px-6 py-4 hover:bg-gray-50">
+              <div key={page.path} className="px-6 py-4 hover:bg-accent">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <span className="text-xl">{getStatusIcon(page.status)}</span>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-900">{page.name}</h3>
-                      <p className="text-sm text-gray-500">{page.path}</p>
+                      <h3 className="text-sm font-medium text-foreground">{page.name}</h3>
+                      <p className="text-sm text-muted-foreground">{page.path}</p>
                     </div>
                   </div>
 
@@ -141,7 +141,7 @@ export default function SitemapPage() {
                     {page.status === 'ok' && (
                       <Link
                         href={page.path}
-                        className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors"
+                        className="inline-flex items-center px-3 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full hover:bg-primary/20 transition-colors"
                       >
                         確認 →
                       </Link>
@@ -155,16 +155,16 @@ export default function SitemapPage() {
 
         {/* エラーページがある場合の注意 */}
         {errorPages.length > 0 && (
-          <div className="mt-8 bg-red-50 border border-red-200 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-red-900 mb-3">⚠️ 確認が必要なページ</h3>
-            <ul className="space-y-1 text-red-800">
+          <div className="mt-8 bg-destructive/10 border border-destructive/20 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-destructive mb-3">⚠️ 確認が必要なページ</h3>
+            <ul className="space-y-1 text-destructive/90">
               {errorPages.map(page => (
                 <li key={page.path}>
                   • {page.name} ({page.path})
                 </li>
               ))}
             </ul>
-            <p className="text-sm text-red-700 mt-3">
+            <p className="text-sm text-destructive/80 mt-3">
               これらのページが存在しない場合は、expectedPages配列から削除してください。
             </p>
           </div>
@@ -173,7 +173,7 @@ export default function SitemapPage() {
         <div className="mt-8 text-center">
           <Link
             href="/"
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-md hover:bg-accent transition-colors"
           >
             ← ホームに戻る
           </Link>

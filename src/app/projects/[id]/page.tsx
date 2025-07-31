@@ -58,9 +58,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
   if (!resolvedParams) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div className="text-center py-12">
-          <p className="text-gray-600">読み込み中...</p>
+          <p className="text-muted-foreground">読み込み中...</p>
         </div>
       </div>
     )
@@ -68,11 +68,11 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
   if (!project) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div className="text-center py-12">
-          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">プロジェクトが見つかりません</h2>
-          <p className="text-gray-600 mb-6">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">プロジェクトが見つかりません</h2>
+          <p className="text-muted-foreground mb-6">
             指定されたプロジェクトは存在しないか、削除されています。
           </p>
           <Link href="/projects">
@@ -126,7 +126,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       case 'completed':
         return 'bg-blue-100 text-blue-800'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-muted text-muted-foreground'
     }
   }
 
@@ -167,9 +167,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       : 0
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex items-center gap-3 mb-4">
           <Link href="/projects">
             <Button variant="ghost" size="sm" className="flex items-center gap-2">
@@ -186,14 +186,14 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
             </div>
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+                <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
                 <Badge className={getStatusColor(project.status)}>
                   {getStatusText(project.status)}
                 </Badge>
               </div>
-              <p className="text-gray-600">{project.goal}</p>
+              <p className="text-muted-foreground">{project.goal}</p>
               {project.deadline && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   期限: {format(new Date(project.deadline), 'yyyy年MM月dd日', { locale: ja })}
                 </p>
               )}
@@ -235,14 +235,14 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           {/* Progress Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="border border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">進捗率</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">進捗率</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-blue-600">{completionPercentage}%</div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div className="w-full bg-muted rounded-full h-2 mt-2">
                   <div
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${completionPercentage}%` }}
@@ -251,41 +251,41 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">大タスク</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">大タスク</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-gray-900">
+                <div className="text-3xl font-bold text-foreground">
                   {stats.bigTasks.completed}/{stats.bigTasks.total}
                 </div>
-                <div className="text-sm text-gray-500">完了 / 総数</div>
+                <div className="text-sm text-muted-foreground">完了 / 総数</div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">小タスク</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">小タスク</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-gray-900">
+                <div className="text-3xl font-bold text-foreground">
                   {stats.smallTasks.completed}/{stats.smallTasks.total}
                 </div>
-                <div className="text-sm text-gray-500">完了 / 総数</div>
+                <div className="text-sm text-muted-foreground">完了 / 総数</div>
               </CardContent>
             </Card>
           </div>
 
           {/* Quick Actions */}
-          <Card>
+          <Card className="border border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-card-foreground">
                 <Settings className="h-5 w-5" />
                 クイックアクション
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-4 md:grid-cols-2 gap-4">
                 <Link href={`/projects/${resolvedParams.id}/tasks`}>
                   <Button className="w-full flex items-center gap-2 h-12">
                     <Plus className="h-5 w-5" />
@@ -323,9 +323,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
             <CardContent>
               {stats.bigTasks.total === 0 ? (
                 <div className="text-center py-8">
-                  <CheckCircle2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">まだタスクがありません</p>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <CheckCircle2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">まだタスクがありません</p>
+                  <p className="text-sm text-muted-foreground mb-4">
                     大タスクを作成してプロジェクトを開始しましょう
                   </p>
                   <Link href={`/projects/${resolvedParams.id}/tasks`}>
@@ -337,7 +337,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-4 md:grid-cols-2 gap-4">
                     <div className="p-4 bg-blue-50 rounded-lg">
                       <h3 className="font-medium text-blue-900 mb-2">大タスク</h3>
                       <div className="space-y-1 text-sm">
@@ -379,20 +379,20 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                   <div className="mt-6">
                     <h3 className="font-medium mb-2">大タスク一覧</h3>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full border-collapse border border-gray-200">
+                      <table className="min-w-full border-collapse border border-border">
                         <thead>
-                          <tr className="bg-gray-50">
-                            <th className="border border-gray-200 px-4 py-2 text-left">カテゴリ</th>
-                            <th className="border border-gray-200 px-4 py-2 text-left">タスク名</th>
-                            <th className="border border-gray-200 px-4 py-2 text-right">見積時間</th>
+                          <tr className="bg-muted">
+                            <th className="border border-border px-4 py-2 text-left">カテゴリ</th>
+                            <th className="border border-border px-4 py-2 text-left">タスク名</th>
+                            <th className="border border-border px-4 py-2 text-right">見積時間</th>
                           </tr>
                         </thead>
                         <tbody>
                           {projectBigTasks.map((task) => (
-                            <tr key={task.id} className="hover:bg-gray-50">
-                              <td className="border border-gray-200 px-4 py-2">{task.category || '-'}</td>
-                              <td className="border border-gray-200 px-4 py-2">{task.name}</td>
-                              <td className="border border-gray-200 px-4 py-2 text-right">{task.estimated_hours}h</td>
+                            <tr key={task.id} className="hover:bg-muted">
+                              <td className="border border-border px-4 py-2">{task.category || '-'}</td>
+                              <td className="border border-border px-4 py-2">{task.name}</td>
+                              <td className="border border-border px-4 py-2 text-right">{task.estimated_hours}h</td>
                             </tr>
                           ))}
                         </tbody>
@@ -432,15 +432,15 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">プロジェクト名</label>
-                    <p className="text-gray-900">{project.name}</p>
+                    <label className="text-sm font-medium text-muted-foreground">プロジェクト名</label>
+                    <p className="text-foreground">{project.name}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">ゴール</label>
-                    <p className="text-gray-900">{project.goal}</p>
+                    <label className="text-sm font-medium text-muted-foreground">ゴール</label>
+                    <p className="text-foreground">{project.goal}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">ステータス</label>
+                    <label className="text-sm font-medium text-muted-foreground">ステータス</label>
                     <div className="mt-1">
                       <Badge className={getStatusColor(project.status)}>
                         {getStatusText(project.status)}
@@ -449,8 +449,8 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                   </div>
                   {project.deadline && (
                     <div>
-                      <label className="text-sm font-medium text-gray-600">期限</label>
-                      <p className="text-gray-900">
+                      <label className="text-sm font-medium text-muted-foreground">期限</label>
+                      <p className="text-foreground">
                         {format(new Date(project.deadline), 'yyyy年MM月dd日', { locale: ja })}
                       </p>
                     </div>

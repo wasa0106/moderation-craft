@@ -57,16 +57,26 @@ export function DailyScheduleView({
 
   // プロジェクトの色を取得
   const getProjectColor = (projectId?: string): string => {
-    if (!projectId) return 'from-gray-400 to-gray-500'
+    if (!projectId) return 'bg-muted text-muted-foreground border-muted-foreground/20'
     
-    const colors = [
-      'from-[#3C6659] to-[#244E42]',
-      'from-[#5E621B] to-[#464A02]',
-      'from-[#8C4332] to-[#68342A]',
-      'from-[#5F6044] to-[#47492E]',
-    ]
+    const project = projects.find(p => p.id === projectId)
+    
+    // プロジェクトにカラーが設定されている場合
+    if (project?.color) {
+      // HSLカラーをインラインスタイルで適用するためのクラスを返す
+      // Note: 実際の色はstyle属性で設定するため、ここではベースクラスのみ返す
+      return 'text-white border-white/20'
+    }
+    
+    // フォールバック: インデックスベースの色
     const index = projects.findIndex(p => p.id === projectId)
-    return colors[index % colors.length] || colors[0]
+    const colorClasses = [
+      'bg-accent text-accent-foreground border-accent-foreground/20',
+      'bg-muted text-muted-foreground border-muted-foreground/20', 
+      'bg-secondary text-secondary-foreground border-secondary-foreground/20',
+      'bg-card text-card-foreground border-border',
+    ]
+    return colorClasses[index % colorClasses.length] || colorClasses[0]
   }
 
   // タスクの高さを計算（分単位）
@@ -110,16 +120,16 @@ export function DailyScheduleView({
                 {/* 現在時刻ライン */}
                 {isToday && hour === currentHour && (
                 <div 
-                  className="absolute w-full h-0.5 bg-red-500 z-20"
+                  className="absolute w-full h-0.5 bg-destructive z-20"
                   style={{ top: `${(now.getMinutes() / 60) * 120}px` }}
                 >
-                  <div className="absolute -left-2 -top-1 w-2 h-2 bg-red-500 rounded-full" />
+                  <div className="absolute -left-2 -top-1 w-2 h-2 bg-destructive rounded-full" />
                 </div>
               )}
               
               {/* 過去の時間帯を薄く表示 */}
               {isPastHour && (
-                <div className="absolute inset-0 bg-gray-100/50 pointer-events-none" />
+                <div className="absolute inset-0 bg-muted/50 pointer-events-none" />
               )}
                 
                 {/* 30分ごとの補助線 */}
@@ -141,7 +151,7 @@ export function DailyScheduleView({
                 key={task.id}
                 className={cn(
                   'absolute left-2 right-2 rounded-lg p-2 cursor-pointer transition-all',
-                  'hover:shadow-lg hover:scale-[1.02]',
+                  'hover:shadow-sm hover:scale-[1.02]',
                   isActive && 'ring-2 ring-primary ring-offset-2',
                   isCompleted && 'opacity-60'
                 )}
@@ -154,10 +164,13 @@ export function DailyScheduleView({
               >
                   <div
                     className={cn(
-                      'h-full rounded-md p-2 text-white overflow-hidden',
-                      'bg-gradient-to-r',
-                      getProjectColor(task.project_id)
+                      'h-full rounded-md p-2 overflow-hidden',
+                      'border',
+                      project?.color ? 'text-white border-white/20' : getProjectColor(task.project_id)
                     )}
+                    style={{
+                      ...(project?.color ? { backgroundColor: project.color } : {})
+                    }}
                   >
                     <div className="flex items-start justify-between gap-1">
                       <div className="flex-1 min-w-0">

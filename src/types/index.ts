@@ -18,6 +18,7 @@ export interface Project extends DatabaseEntity {
   status: 'active' | 'completed'
   version: number
   estimated_total_hours?: number
+  color?: string // HSL形式: "hsl(137, 42%, 55%)"
 }
 
 export interface BigTask extends DatabaseEntity {
@@ -28,22 +29,14 @@ export interface BigTask extends DatabaseEntity {
   actual_hours: number
   status: 'pending' | 'active' | 'completed' | 'cancelled'
   priority?: 'low' | 'medium' | 'high' | 'urgent'
-  
-  // 新規追加フィールド
-  category: string        // 開発、設計、テスト、その他
+  category?: string       // 開発、設計、テスト、その他
   start_date: string      // YYYY-MM-DD形式
   end_date: string        // YYYY-MM-DD形式
-  
-  // 後方互換性のため残す（段階的に廃止予定）
-  week_number?: number
-  week_start_date?: string
-  week_end_date?: string
-  
   description?: string
 }
 
 export interface SmallTask extends DatabaseEntity {
-  big_task_id: string
+  big_task_id?: string
   user_id: string
   name: string
   estimated_minutes: number
@@ -54,6 +47,9 @@ export interface SmallTask extends DatabaseEntity {
   description?: string
   tags?: string[]
   project_id?: string
+  actual_minutes?: number
+  task_type?: 'project' | 'routine'
+  is_reportable?: boolean
 }
 
 export interface WorkSession extends DatabaseEntity {
@@ -98,6 +94,39 @@ export interface CategoryColor extends DatabaseEntity {
   color_code: string // hex形式 (#5E621B など)
 }
 
+export interface ScheduleMemo extends DatabaseEntity {
+  user_id: string
+  week_start_date: string  // YYYY-MM-DD形式（週の開始日：月曜日）
+  content: string         // マークダウン形式のメモ内容
+}
+
+export interface SleepSchedule extends DatabaseEntity {
+  user_id: string
+  date_of_sleep: string  // 起床日（YYYY-MM-DD）※Fitbit形式
+  
+  // 予定時刻（ISO 8601形式）
+  scheduled_start_time: string  // 就寝時刻
+  scheduled_end_time: string    // 起床時刻
+  scheduled_duration_minutes: number
+  
+  // 実績（Fitbitから取得）
+  actual_start_time?: string    // 実際の就寝時刻
+  actual_end_time?: string      // 実際の起床時刻
+  actual_duration_minutes?: number
+  
+  // Fitbitデータ
+  minutes_asleep?: number       // 実際に眠っていた時間
+  minutes_awake?: number        // 覚醒していた時間
+  time_in_bed?: number         // ベッドにいた総時間
+  sleep_efficiency?: number     // 睡眠効率（0-100）
+  
+  // データソース管理
+  actual_data_source?: 'manual' | 'fitbit' | 'import'
+  actual_data_synced_at?: string
+  
+  notes?: string
+}
+
 export interface SyncOperation extends DatabaseEntity {
   operation_id: string
   operation_type: 'CREATE' | 'UPDATE' | 'DELETE'
@@ -110,6 +139,7 @@ export interface SyncOperation extends DatabaseEntity {
     | 'dopamine_entry'
     | 'daily_condition'
     | 'category_color'
+    | 'schedule_memo'
   entity_id: string
   payload: Record<string, unknown>
   timestamp: string
@@ -179,6 +209,12 @@ export type UpdateDopamineEntryData = Partial<Omit<DopamineEntry, 'id' | 'create
 export type CreateCategoryColorData = Omit<CategoryColor, 'id' | 'created_at' | 'updated_at'>
 export type UpdateCategoryColorData = Partial<Omit<CategoryColor, 'id' | 'created_at'>>
 
+export type CreateScheduleMemoData = Omit<ScheduleMemo, 'id' | 'created_at' | 'updated_at'>
+export type UpdateScheduleMemoData = Partial<Omit<ScheduleMemo, 'id' | 'created_at'>>
+
+export type CreateSleepScheduleData = Omit<SleepSchedule, 'id' | 'created_at' | 'updated_at'>
+export type UpdateSleepScheduleData = Partial<Omit<SleepSchedule, 'id' | 'created_at'>>
+
 export type CreateDailyConditionData = Omit<DailyCondition, 'id' | 'created_at' | 'updated_at'>
 export type UpdateDailyConditionData = Partial<Omit<DailyCondition, 'id' | 'created_at'>>
 
@@ -233,6 +269,8 @@ export interface EntityType {
   mood_entry: 'mood_entry'
   dopamine_entry: 'dopamine_entry'
   daily_condition: 'daily_condition'
+  schedule_memo: 'schedule_memo'
+  sleep_schedule: 'sleep_schedule'
 }
 
 export interface SubjectiveMood {
@@ -339,7 +377,6 @@ export interface ProjectRepository extends RepositoryInterface<Project> {
 
 export interface BigTaskRepository extends RepositoryInterface<BigTask> {
   getByProjectId(projectId: string): Promise<BigTask[]>
-  getByWeekNumber(projectId: string, weekNumber: number): Promise<BigTask[]>
   getByStatus(projectId: string, status: BigTask['status']): Promise<BigTask[]>
 }
 
@@ -361,7 +398,7 @@ export interface WorkSessionRepository extends RepositoryInterface<WorkSession> 
   getByUserId(userId: string): Promise<WorkSession[]>
   getSessionsForDate(userId: string, date: string): Promise<WorkSession[]>
   startSession(userId: string, taskId?: string, startTime?: string): Promise<WorkSession>
-  endSession(sessionId: string, endTime?: string, focusLevel?: number): Promise<WorkSession>
+  endSession(sessionId: string, endTime?: string, focusLevel?: number): Promise<WorkSession | null>
   pauseSession(sessionId: string): Promise<WorkSession>
   resumeSession(sessionId: string): Promise<WorkSession>
   addMoodNotes(sessionId: string, moodNotes: string): Promise<WorkSession>
@@ -383,6 +420,20 @@ export interface DailyConditionRepository extends RepositoryInterface<DailyCondi
   getByDate(userId: string, date: string): Promise<DailyCondition | undefined>
   getByDateRange(userId: string, startDate: string, endDate: string): Promise<DailyCondition[]>
   getUnsyncedConditions(): Promise<DailyCondition[]>
+}
+
+export interface ScheduleMemoRepository extends RepositoryInterface<ScheduleMemo> {
+  getByWeek(userId: string, weekStartDate: string): Promise<ScheduleMemo | undefined>
+  upsertByWeek(userId: string, weekStartDate: string, content: string): Promise<ScheduleMemo>
+  getRecent(userId: string, limit?: number): Promise<ScheduleMemo[]>
+  searchByContent(userId: string, query: string): Promise<ScheduleMemo[]>
+}
+
+export interface SleepScheduleRepository extends RepositoryInterface<SleepSchedule> {
+  getByDateOfSleep(userId: string, dateOfSleep: string): Promise<SleepSchedule | undefined>
+  getByDateRange(userId: string, startDate: string, endDate: string): Promise<SleepSchedule[]>
+  upsertByDateOfSleep(userId: string, dateOfSleep: string, data: Partial<SleepSchedule>): Promise<SleepSchedule>
+  getRecentSchedules(userId: string, limit?: number): Promise<SleepSchedule[]>
 }
 
 export interface DatabaseOperations {

@@ -138,14 +138,14 @@ export function TaskDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px] bg-[#FCFAEC] border-[#C9C7B6]">
+        <DialogContent className="sm:max-w-[500px] bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-[#1C1C14] text-xl">
+            <DialogTitle className="text-foreground text-xl">
               {isEditing ? (
                 <Input
                   value={taskName}
                   onChange={(e) => setTaskName(e.target.value)}
-                  className="text-xl font-semibold bg-white border-[#D4D2C1]"
+                  className="text-xl font-semibold bg-background border-border"
                 />
               ) : (
                 task.name
@@ -156,13 +156,13 @@ export function TaskDetailDialog({
           <div className="grid gap-4 py-4">
             {/* プロジェクト */}
             <div className="grid gap-2">
-              <Label className="text-[#47473B] flex items-center gap-2">
+              <Label className="text-muted-foreground flex items-center gap-2">
                 <FolderOpen className="w-4 h-4" />
                 プロジェクト
               </Label>
               {isEditing ? (
                 <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                  <SelectTrigger className="bg-white border-[#D4D2C1]">
+                  <SelectTrigger className="bg-background border-border">
                     <SelectValue placeholder="プロジェクトを選択" />
                   </SelectTrigger>
                   <SelectContent>
@@ -174,7 +174,7 @@ export function TaskDetailDialog({
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="text-[#1C1C14] font-medium">
+                <p className="text-foreground font-medium">
                   {project?.name || '未設定'}
                 </p>
               )}
@@ -182,7 +182,7 @@ export function TaskDetailDialog({
 
             {/* 大タスク */}
             <div className="grid gap-2">
-              <Label className="text-[#47473B] flex items-center gap-2">
+              <Label className="text-muted-foreground flex items-center gap-2">
                 <ListTodo className="w-4 h-4" />
                 大タスク
               </Label>
@@ -192,7 +192,7 @@ export function TaskDetailDialog({
                   onValueChange={setSelectedBigTaskId}
                   disabled={!selectedProjectId}
                 >
-                  <SelectTrigger className="bg-white border-[#D4D2C1]">
+                  <SelectTrigger className="bg-background border-border">
                     <SelectValue placeholder="大タスクを選択" />
                   </SelectTrigger>
                   <SelectContent>
@@ -204,7 +204,7 @@ export function TaskDetailDialog({
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="text-[#1C1C14] font-medium">
+                <p className="text-foreground font-medium">
                   {bigTask?.name || '未設定'}
                 </p>
               )}
@@ -212,7 +212,7 @@ export function TaskDetailDialog({
 
             {/* 日時 */}
             <div className="grid gap-2">
-              <Label className="text-[#47473B] flex items-center gap-2">
+              <Label className="text-muted-foreground flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 日時
               </Label>
@@ -222,18 +222,18 @@ export function TaskDetailDialog({
                     type="time"
                     value={startTimeInput}
                     onChange={(e) => setStartTimeInput(e.target.value)}
-                    className="bg-white border-[#D4D2C1]"
+                    className="bg-background border-border"
                   />
-                  <span className="text-[#47473B]">〜</span>
+                  <span className="text-muted-foreground">〜</span>
                   <Input
                     type="time"
                     value={endTimeInput}
                     onChange={(e) => setEndTimeInput(e.target.value)}
-                    className="bg-white border-[#D4D2C1]"
+                    className="bg-background border-border"
                   />
                 </div>
               ) : (
-                <p className="text-[#1C1C14] font-medium">
+                <p className="text-foreground font-medium">
                   {task.scheduled_start && task.scheduled_end ? (
                     <>
                       {format(new Date(task.scheduled_start), 'yyyy年M月d日 (E)', { locale: ja })}
@@ -250,7 +250,7 @@ export function TaskDetailDialog({
 
             {/* 推定時間 */}
             <div className="grid gap-2">
-              <Label className="text-[#47473B] flex items-center gap-2">
+              <Label className="text-muted-foreground flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 推定時間
               </Label>
@@ -262,12 +262,12 @@ export function TaskDetailDialog({
                     onChange={(e) => setEstimatedMinutes(parseInt(e.target.value) || 30)}
                     min="1"
                     step="15"
-                    className="bg-white border-[#D4D2C1] w-24"
+                    className="bg-background border-border w-24"
                   />
-                  <span className="text-[#47473B]">分</span>
+                  <span className="text-muted-foreground">分</span>
                 </div>
               ) : (
-                <p className="text-[#1C1C14] font-medium">
+                <p className="text-foreground font-medium">
                   {task.estimated_minutes}分
                 </p>
               )}
@@ -280,7 +280,7 @@ export function TaskDetailDialog({
               size="sm"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="text-red-600 border-red-300 hover:bg-red-50"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               {isDeleting ? '削除中...' : '削除'}
@@ -293,7 +293,7 @@ export function TaskDetailDialog({
                     variant="outline"
                     size="sm"
                     onClick={() => setIsEditing(false)}
-                    className="border-[#C9C7B6] text-[#47473B]"
+                    className="border-border text-muted-foreground"
                   >
                     キャンセル
                   </Button>
@@ -301,7 +301,7 @@ export function TaskDetailDialog({
                     size="sm"
                     onClick={handleSave}
                     disabled={isSaving || !taskName.trim()}
-                    className="bg-[#5E621B] hover:bg-[#464A02] text-white"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {isSaving ? '保存中...' : '保存'}
                   </Button>
@@ -310,7 +310,7 @@ export function TaskDetailDialog({
                 <Button
                   size="sm"
                   onClick={() => setIsEditing(true)}
-                  className="bg-[#3C6659] hover:bg-[#244E42] text-white"
+                  className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
                   編集

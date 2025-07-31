@@ -16,6 +16,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { ProjectCard } from './project-card'
 import { ProjectDeleteDialog } from './project-delete-dialog'
 import { Search, Plus, Grid, List } from 'lucide-react'
@@ -53,6 +62,8 @@ export function ProjectList({
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 9
 
   // Filter and sort projects
   const filteredProjects = useMemo(() => {
@@ -92,6 +103,20 @@ export function ProjectList({
     return filtered
   }, [projects, searchQuery, statusFilter, sortField, sortDirection])
 
+  // Paginated projects
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredProjects.slice(startIndex, endIndex)
+  }, [filteredProjects, currentPage])
+
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, sortField, sortDirection])
+
   const handleDeleteProject = (project: Project) => {
     setProjectToDelete(project)
   }
@@ -118,12 +143,12 @@ export function ProjectList({
     return (
       <div className={cn('space-y-4', className)}>
         <div className="flex justify-between items-center">
-          <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-          <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+          <div className="h-10 w-32 bg-muted rounded animate-pulse" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-64 bg-gray-200 rounded-lg animate-pulse" />
+            <div key={i} className="h-64 bg-muted rounded-lg animate-pulse" />
           ))}
         </div>
       </div>
@@ -245,7 +270,7 @@ export function ProjectList({
               : 'space-y-4'
           )}
         >
-          {filteredProjects.map(project => (
+          {paginatedProjects.map(project => (
             <ProjectCard
               key={project.id}
               project={project}
@@ -256,6 +281,103 @@ export function ProjectList({
               className={viewMode === 'list' ? 'max-w-none' : ''}
             />
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setCurrentPage(prev => Math.max(1, prev - 1))
+                  }}
+                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                />
+              </PaginationItem>
+              
+              {/* First page */}
+              <PaginationItem>
+                <PaginationLink
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setCurrentPage(1)
+                  }}
+                  isActive={currentPage === 1}
+                >
+                  1
+                </PaginationLink>
+              </PaginationItem>
+              
+              {/* Ellipsis if needed */}
+              {currentPage > 3 && totalPages > 4 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+              
+              {/* Middle pages */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  if (page === 1 || page === totalPages) return false
+                  if (page >= currentPage - 1 && page <= currentPage + 1) return true
+                  return false
+                })
+                .map(page => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setCurrentPage(page)
+                      }}
+                      isActive={currentPage === page}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+              
+              {/* Ellipsis if needed */}
+              {currentPage < totalPages - 2 && totalPages > 4 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+              
+              {/* Last page */}
+              {totalPages > 1 && (
+                <PaginationItem>
+                  <PaginationLink
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setCurrentPage(totalPages)
+                    }}
+                    isActive={currentPage === totalPages}
+                  >
+                    {totalPages}
+                  </PaginationLink>
+                </PaginationItem>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setCurrentPage(prev => Math.min(totalPages, prev + 1))
+                  }}
+                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
 
