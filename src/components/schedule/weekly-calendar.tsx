@@ -251,11 +251,11 @@ export function WeeklyCalendar({
 
   // Get sleep schedules for the week
   const { data: weeklySleepData } = useWeeklySleepSchedules(userId, weekStart)
-  
+
   // Generate sleep blocks for all days
   const sleepBlocks = useMemo(() => {
     if (!weeklySleepData) return []
-    
+
     interface SleepBlock {
       date: string
       type: 'sleep-single' | 'sleep-start' | 'sleep-end'
@@ -270,7 +270,7 @@ export function WeeklyCalendar({
       if (schedule) {
         const dayBlocks = generateSleepBlocks(schedule)
         blocks.push(...dayBlocks)
-        
+
         // デバッグ: 日曜日の睡眠ブロックの生成を確認
         if (process.env.NODE_ENV === 'development' && dateOfSleep.includes('月')) {
           console.log('月曜日の睡眠データ:', {
@@ -282,7 +282,7 @@ export function WeeklyCalendar({
         }
       }
     })
-    
+
     // デバッグ: 生成された全睡眠ブロックを確認
     if (process.env.NODE_ENV === 'development') {
       console.log('生成された睡眠ブロック:', {
@@ -295,7 +295,7 @@ export function WeeklyCalendar({
         }))
       })
     }
-    
+
     return blocks
   }, [weeklySleepData])
 
@@ -339,7 +339,7 @@ export function WeeklyCalendar({
   // Calculate BigTask progress from SmallTasks
   const bigTaskProgress = useMemo(() => {
     const progressMap = new Map<string, number>()
-    
+
     // SmallTaskをBigTaskごとに集計
     smallTasks.forEach(task => {
       if (task.big_task_id) {
@@ -347,7 +347,7 @@ export function WeeklyCalendar({
         progressMap.set(task.big_task_id, current + task.estimated_minutes)
       }
     })
-    
+
     return progressMap
   }, [smallTasks])
 
@@ -598,14 +598,14 @@ export function WeeklyCalendar({
   // Get sleep blocks for a specific time slot
   const getSleepBlocksForSlot = (date: Date, hour: number, minute: number) => {
     const dateStr = format(date, 'yyyy-MM-dd')
-    
+
     return sleepBlocks.filter(block => {
       if (block.date !== dateStr) return false
-      
+
       const slotTime = hour * 60 + minute
       const blockStart = block.startHour * 60 + block.startMinute
       const blockEnd = block.endHour * 60 + block.endMinute
-      
+
       // Check if this slot is within the sleep block
       return slotTime >= blockStart && slotTime < blockEnd
     })
@@ -670,7 +670,7 @@ export function WeeklyCalendar({
                   {Array.from({ length: 24 }, (_, hour) => {
                     // この時間に開始するタスクを取得
                     const hourTasks = getScheduledTasksForHour(date, hour)
-                    
+
                     return (
                       <div key={hour} className="border-b border-border relative">
                         {/* 15分スロット */}
@@ -696,7 +696,7 @@ export function WeeklyCalendar({
                             >
                               {/* 睡眠ブロックを表示（背景として） */}
                               {sleepBlocks.length > 0 && (
-                                <div 
+                                <div
                                   className="absolute inset-0 bg-slate-800 opacity-30 pointer-events-none"
                                   style={{ zIndex: 0 }}
                                 />
@@ -704,7 +704,7 @@ export function WeeklyCalendar({
                             </DroppableTimeSlot>
                           )
                         })}
-                        
+
                         {/* タスクを時間コンテナ直下に配置 */}
                         {hourTasks.map(block => {
                           const taskStart = parseISO(block.startTime)
@@ -808,7 +808,7 @@ export function WeeklyCalendar({
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               {/* 週間睡眠設定ボタン */}
               <Button
                 onClick={() => setShowWeeklySleepDialog(true)}
@@ -844,7 +844,7 @@ export function WeeklyCalendar({
               ) : (
                 // プロジェクトごとにグループ化（シンプルなリスト形式）
                 projects.map(project => {
-                  const projectBigTasks = bigTasks.filter(task => 
+                  const projectBigTasks = bigTasks.filter(task =>
                     task.project_id === project.id && task.category !== 'その他'
                   )
                   if (projectBigTasks.length === 0) return null
