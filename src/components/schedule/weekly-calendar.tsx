@@ -162,8 +162,8 @@ function DroppableTimeSlot({
       onMouseDown={hasTask ? undefined : onMouseDown}
       onMouseEnter={onMouseEnter}
       className={cn(
-        'border-r border-border p-1 min-h-[12px] transition-colors relative',
-        hasTask ? '' : 'cursor-pointer',
+        'border-r border-border p-1 min-h-[12px] transition-colors relative overflow-visible',
+        hasTask ? 'z-10' : 'cursor-pointer',
         'bg-surface-1',
         isWeekendDay && 'opacity-95',
         isOver && 'bg-primary/10 ring-2 ring-primary/50',
@@ -644,7 +644,7 @@ export function WeeklyCalendar({
               {weekDates.map(date => (
                 <div key={date.toISOString()}>
                   {Array.from({ length: 24 }, (_, hour) => (
-                    <div key={hour} className="border-b border-border">
+                    <div key={hour} className="border-b border-border relative">
                       {[0, 15, 30, 45].map((minute) => {
                         const scheduledTasks = getScheduledTasksForSlot(date, hour, minute)
                         const sleepBlocks = getSleepBlocksForSlot(date, hour, minute)
