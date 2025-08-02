@@ -571,6 +571,30 @@ export function WeeklyCalendar({
     return tasks
   }
 
+  // Get scheduled tasks for a specific hour
+  const getScheduledTasksForHour = (date: Date, hour: number) => {
+    const hourStart = new Date(date)
+    hourStart.setHours(hour, 0, 0, 0)
+    const hourEnd = new Date(date)
+    hourEnd.setHours(hour + 1, 0, 0, 0)
+
+    const tasks = weeklySchedule.scheduleBlocks.filter(block => {
+      const taskStart = parseISO(block.startTime)
+      const taskEnd = parseISO(block.endTime)
+
+      // Check if task starts in this hour
+      const startsInHour = (
+        taskStart >= hourStart &&
+        taskStart < hourEnd &&
+        format(taskStart, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+      )
+
+      return startsInHour
+    })
+
+    return tasks
+  }
+
   // Get sleep blocks for a specific time slot
   const getSleepBlocksForSlot = (date: Date, hour: number, minute: number) => {
     const dateStr = format(date, 'yyyy-MM-dd')
@@ -643,116 +667,111 @@ export function WeeklyCalendar({
               {/* Calendar Cells - 15-minute intervals */}
               {weekDates.map(date => (
                 <div key={date.toISOString()}>
-                  {Array.from({ length: 24 }, (_, hour) => (
-                    <div key={hour} className="border-b border-border relative">
-                      {[0, 15, 30, 45].map((minute) => {
-                        const scheduledTasks = getScheduledTasksForSlot(date, hour, minute)
-                        const sleepBlocks = getSleepBlocksForSlot(date, hour, minute)
-                        const isSelected = !!(selectedStartTime && selectedEndTime &&
-                          isSlotInSelection(date, hour, minute))
+                  {Array.from({ length: 24 }, (_, hour) => {
+                    // この時間に開始するタスクを取得
+                    const hourTasks = getScheduledTasksForHour(date, hour)
+                    
+                    return (
+                      <div key={hour} className="border-b border-border relative">
+                        {/* 15分スロット */}
+                        {[0, 15, 30, 45].map((minute) => {
+                          const scheduledTasks = getScheduledTasksForSlot(date, hour, minute)
+                          const sleepBlocks = getSleepBlocksForSlot(date, hour, minute)
+                          const isSelected = !!(selectedStartTime && selectedEndTime &&
+                            isSlotInSelection(date, hour, minute))
 
-                        return (
-                          <DroppableTimeSlot
-                            key={`${date}-${hour}-${minute}`}
-                            date={date}
-                            hour={hour}
-                            minute={minute}
-                            isWeekendDay={isWeekend(date)}
-                            onClick={() => handleTimeSlotClick(date, hour, minute)}
-                            onMouseDown={() => handleSelectionStart(date, hour, minute)}
-                            onMouseEnter={() => handleSelectionMove(date, hour, minute)}
-                            isSelected={isSelected}
-                            isInSelection={isSlotInSelection(date, hour, minute)}
-                            hasTask={scheduledTasks.length > 0}
-                          >
-                            {/* 睡眠ブロックを表示（背景として） */}
-                            {sleepBlocks.length > 0 && (
-                              <div 
-                                className="absolute inset-0 bg-slate-800 opacity-30 pointer-events-none"
-                                style={{ zIndex: 0 }}
-                              />
-                            )}
-                            
-                            {/* タスクを表示 */}
-                            {scheduledTasks.map(block => {
-                              const taskStart = parseISO(block.startTime)
-                              const taskEnd = parseISO(block.endTime)
-                              const taskHour = taskStart.getHours()
-                              const taskMinute = taskStart.getMinutes()
+                          return (
+                            <DroppableTimeSlot
+                              key={`${date}-${hour}-${minute}`}
+                              date={date}
+                              hour={hour}
+                              minute={minute}
+                              isWeekendDay={isWeekend(date)}
+                              onClick={() => handleTimeSlotClick(date, hour, minute)}
+                              onMouseDown={() => handleSelectionStart(date, hour, minute)}
+                              onMouseEnter={() => handleSelectionMove(date, hour, minute)}
+                              isSelected={isSelected}
+                              isInSelection={isSlotInSelection(date, hour, minute)}
+                              hasTask={scheduledTasks.length > 0}
+                            >
+                              {/* 睡眠ブロックを表示（背景として） */}
+                              {sleepBlocks.length > 0 && (
+                                <div 
+                                  className="absolute inset-0 bg-slate-800 opacity-30 pointer-events-none"
+                                  style={{ zIndex: 0 }}
+                                />
+                              )}
+                            </DroppableTimeSlot>
+                          )
+                        })}
+                        
+                        {/* タスクを時間コンテナ直下に配置 */}
+                        {hourTasks.map(block => {
+                          const taskStart = parseISO(block.startTime)
+                          const taskEnd = parseISO(block.endTime)
+                          const taskMinute = taskStart.getMinutes()
+                          const durationMinutes = Math.ceil(
+                            (taskEnd.getTime() - taskStart.getTime()) / (1000 * 60)
+                          )
+                          const slots = Math.ceil(durationMinutes / 15)
 
-                              // タスクがこの時間帯に開始する場合のみ表示
-                              if (taskHour === hour && taskMinute >= minute && taskMinute < minute + 15) {
-                                const durationMinutes = Math.ceil(
-                                  (taskEnd.getTime() - taskStart.getTime()) / (1000 * 60)
-                                )
-                                const slots = Math.ceil(durationMinutes / 15)
+                          const blockProject = projects.find(p => p.id === block.projectId)
+                          const colorClass = getProjectColor(block.projectId)
 
-                                const blockProject = projects.find(p => p.id === block.projectId)
-                                const colorClass = getProjectColor(block.projectId)
-
-                                return (
-                                  <div
-                                    key={block.id}
-                                    onClick={(e) => {
-                                      if (process.env.NODE_ENV === 'development') {
-                                        console.log('Task clicked', { taskId: block.taskId })
-                                      }
-                                      e.stopPropagation()
-                                      e.preventDefault()
-                                      handleTaskClick(block.taskId)
-                                    }}
-                                    onMouseDown={(e) => {
-                                      // マウスダウンイベントでも伝播を止める
-                                      e.stopPropagation()
-                                    }}
-                                    className={cn(
-                                      'absolute inset-x-0 mx-1 rounded text-xs cursor-pointer shadow-sm z-[15]',
-                                      'border hover:opacity-80 transition-opacity overflow-hidden',
-                                      slots <= 2 ? 'p-0.5' : 'p-1', // 短いタスクはパディングを減らす
-                                      blockProject?.color ? 'text-primary-foreground border-border' : colorClass
-                                    )}
-                                    style={{
-                                      top: `${(taskMinute % 15) * (100 / 15)}%`,
-                                      height: `${slots * 12}px`,
-                                      ...(blockProject?.color ? { backgroundColor: blockProject.color } : {})
-                                    }}
-                                  >
-                                    {/* タスクの長さに応じて表示内容を調整 */}
-                                    {slots === 1 ? (
-                                      // 15分: タスク名のみ（1行）
-                                      <div className="font-medium truncate leading-[10px]">{block.taskName}</div>
-                                    ) : slots === 2 ? (
-                                      // 30分: タスク名のみ（中央配置）
-                                      <div className="flex items-center h-full">
-                                        <div className="font-medium truncate w-full">{block.taskName}</div>
-                                      </div>
-                                    ) : slots === 3 ? (
-                                      // 45分: タスク名 + 短縮時刻
-                                      <>
-                                        <div className="font-medium truncate">{block.taskName}</div>
-                                        <div className="text-[10px] opacity-75 truncate">
-                                          {format(taskStart, 'H:mm')}-{format(taskEnd, 'H:mm')}
-                                        </div>
-                                      </>
-                                    ) : (
-                                      // 60分以上: フル表示
-                                      <>
-                                        <div className="font-medium truncate">{block.taskName}</div>
-                                        <div className="text-xs opacity-75">
-                                          {format(taskStart, 'HH:mm')} - {format(taskEnd, 'HH:mm')}
-                                        </div>
-                                      </>
-                                    )}
+                          return (
+                            <div
+                              key={block.id}
+                              onClick={(e) => {
+                                if (process.env.NODE_ENV === 'development') {
+                                  console.log('Task clicked', { taskId: block.taskId })
+                                }
+                                e.stopPropagation()
+                                e.preventDefault()
+                                handleTaskClick(block.taskId)
+                              }}
+                              onMouseDown={(e) => {
+                                e.stopPropagation()
+                              }}
+                              className={cn(
+                                'absolute left-0 right-0 mx-1 rounded text-xs cursor-pointer shadow-sm z-[20]',
+                                'border hover:opacity-80 transition-opacity overflow-hidden',
+                                slots <= 2 ? 'p-0.5' : 'p-1',
+                                blockProject?.color ? 'text-primary-foreground border-border' : colorClass
+                              )}
+                              style={{
+                                top: `${(taskMinute / 15) * 12}px`,
+                                height: `${slots * 12}px`,
+                                ...(blockProject?.color ? { backgroundColor: blockProject.color } : {})
+                              }}
+                            >
+                              {/* タスクの長さに応じて表示内容を調整 */}
+                              {slots === 1 ? (
+                                <div className="font-medium truncate leading-[10px]">{block.taskName}</div>
+                              ) : slots === 2 ? (
+                                <div className="flex items-center h-full">
+                                  <div className="font-medium truncate w-full">{block.taskName}</div>
+                                </div>
+                              ) : slots === 3 ? (
+                                <>
+                                  <div className="font-medium truncate">{block.taskName}</div>
+                                  <div className="text-[10px] opacity-75 truncate">
+                                    {format(taskStart, 'H:mm')}-{format(taskEnd, 'H:mm')}
                                   </div>
-                                )
-                              }
-                              return null
-                            })}
-                          </DroppableTimeSlot>
-                        )
-                      })}
-                    </div>
-                  ))}
+                                </>
+                              ) : (
+                                <>
+                                  <div className="font-medium truncate">{block.taskName}</div>
+                                  <div className="text-xs opacity-75">
+                                    {format(taskStart, 'HH:mm')} - {format(taskEnd, 'HH:mm')}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
                 </div>
               ))}
             </div>
