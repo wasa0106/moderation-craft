@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { createGoal, createWBSTask, generateTestId } from '@/test-utils/test-factories'
+import { createMockGoal, createMockWBSTask, generateMockId } from './mock-data-utils'
 
 /**
  * MSW request handlers for API mocking
@@ -54,7 +54,7 @@ export const handlers = [
   http.post(`${API_BASE_URL}/projects`, async ({ request }) => {
     const body = await request.json() as any
     const project = {
-      id: generateTestId('proj'),
+      id: generateMockId('proj'),
       user_id: 'test-user',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -126,7 +126,7 @@ export const handlers = [
   http.post(`${API_BASE_URL}/small-tasks`, async ({ request }) => {
     const body = await request.json() as any
     const task = {
-      id: generateTestId('task'),
+      id: generateMockId('task'),
       user_id: 'test-user',
       status: 'pending',
       is_emergency: false,
@@ -202,7 +202,7 @@ export const handlers = [
     }
     
     const session = {
-      id: generateTestId('session'),
+      id: generateMockId('session'),
       user_id: 'test-user',
       small_task_id: body.small_task_id,
       start_time: new Date().toISOString(),
@@ -246,7 +246,7 @@ export const handlers = [
   http.get(`${API_BASE_URL}/schedules/:weekOf`, ({ params }) => {
     const weekOf = params.weekOf as string
     const schedule = mockDatabase.schedules.get(weekOf) || {
-      id: generateTestId('schedule'),
+      id: generateMockId('schedule'),
       user_id: 'test-user',
       week_of: weekOf,
       scheduled_tasks: [],
@@ -267,7 +267,7 @@ export const handlers = [
     const weekOf = params.weekOf as string
     
     const schedule = {
-      id: generateTestId('schedule'),
+      id: generateMockId('schedule'),
       user_id: 'test-user',
       week_of: weekOf,
       created_at: new Date().toISOString(),
@@ -298,7 +298,7 @@ export const handlers = [
   http.post(`${API_BASE_URL}/goals`, async ({ request }) => {
     const body = await request.json() as any
     const goal = {
-      id: generateTestId('goal'),
+      id: generateMockId('goal'),
       user_id: 'test-user',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

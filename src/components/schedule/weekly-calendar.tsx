@@ -621,7 +621,7 @@ export function WeeklyCalendar({
         <div className="flex-1 overflow-auto" ref={scrollContainerRef}>
           <div className="min-w-[800px]">
             {/* Days Header */}
-            <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-muted z-20">
+            <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-muted z-30">
               <div className="py-1.5 px-2">
                 {/* 空欄 */}
               </div>

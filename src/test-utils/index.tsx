@@ -3,6 +3,7 @@ import { render as rtlRender, RenderOptions } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
+import { vi, expect } from 'vitest'
 
 /**
  * Custom render function that includes all necessary providers
@@ -39,12 +40,6 @@ export function createTestQueryClient() {
         // Disable retries in tests
         retry: false,
       },
-    },
-    // Suppress error logging in tests
-    logger: {
-      log: () => {},
-      warn: () => {},
-      error: () => {},
     },
   })
 }
