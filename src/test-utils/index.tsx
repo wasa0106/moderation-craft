@@ -86,7 +86,7 @@ export function render(ui: React.ReactElement, options?: CustomRenderOptions) {
 /**
  * Render hook with providers
  */
-export function renderHook<TProps, TResult>(
+export async function renderHook<TProps, TResult>(
   hook: (props: TProps) => TResult,
   options?: CustomRenderOptions
 ) {
@@ -96,7 +96,7 @@ export function renderHook<TProps, TResult>(
     return <AllTheProviders queryClient={queryClient}>{children}</AllTheProviders>
   }
 
-  const { renderHook: rtlRenderHook } = require('@testing-library/react')
+  const { renderHook: rtlRenderHook } = await import('@testing-library/react')
   return {
     ...rtlRenderHook(hook, { wrapper: Wrapper, ...renderOptions }),
     queryClient,

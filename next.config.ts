@@ -8,9 +8,6 @@ const nextConfig: NextConfig = {
     } : false,
   },
   
-  /* Production optimizations */
-  swcMinify: true,
-  
   /* Image optimization */
   images: {
     formats: ["image/avif", "image/webp"],
