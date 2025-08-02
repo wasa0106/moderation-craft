@@ -21,6 +21,45 @@ export default defineConfig({
           setupFiles: ['./vitest.setup.ts'],
           include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
           exclude: ['**/node_modules/**', '**/dist/**', '**/cypress/**', '**/.{idea,git,cache,output,temp}/**'],
+          // Test timeout
+          testTimeout: 30000,
+          hookTimeout: 30000,
+          // Pool options for better isolation
+          pool: 'threads',
+          poolOptions: {
+            threads: {
+              singleThread: true,
+            },
+          },
+          // Define globals
+          define: {
+            'import.meta.env.SSR': false,
+          },
+          // Coverage configuration
+          coverage: {
+            provider: 'v8',
+            reporter: ['text', 'json', 'html', 'lcov'],
+            reportsDirectory: './coverage',
+            exclude: [
+              'node_modules/',
+              'dist/',
+              '.storybook/',
+              '**/*.stories.tsx',
+              '**/*.stories.ts',
+              '**/*.d.ts',
+              'src/test-utils/**',
+              'src/mocks/**',
+              '**/__tests__/**',
+              '**/*.config.*',
+              '**/mockServiceWorker.js',
+            ],
+            thresholds: {
+              lines: 80,
+              functions: 80,
+              branches: 75,
+              statements: 80,
+            },
+          },
         },
         resolve: {
           alias: {

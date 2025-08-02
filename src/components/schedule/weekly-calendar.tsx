@@ -706,7 +706,7 @@ export function WeeklyCalendar({
                                       e.stopPropagation()
                                     }}
                                     className={cn(
-                                      'absolute inset-x-0 mx-1 rounded text-xs cursor-pointer shadow-sm z-[1]',
+                                      'absolute inset-x-0 mx-1 rounded text-xs cursor-pointer shadow-sm z-[15]',
                                       'border hover:opacity-80 transition-opacity overflow-hidden',
                                       slots <= 2 ? 'p-0.5' : 'p-1', // 短いタスクはパディングを減らす
                                       blockProject?.color ? 'text-primary-foreground border-border' : colorClass

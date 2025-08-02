@@ -1,7 +1,12 @@
-import { vi } from 'vitest'
+import { vi, beforeAll, afterEach, afterAll } from 'vitest'
+import { cleanup } from '@testing-library/react'
+import React from 'react'
 
 // @ts-expect-error - global assignment
 global.vi = vi
+
+// Make React available globally for tests
+global.React = React
 
 // Mock crypto.randomUUID for Node.js environments
 if (!global.crypto) {
@@ -25,6 +30,8 @@ global.process = {
   env: {
     ...global.process?.env,
     NODE_ENV: 'test',
+    NEXT_PUBLIC_API_URL: '/api',
+    SYNC_API_KEY: 'test-api-key',
   },
 }
 
@@ -52,3 +59,28 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 if (typeof document !== 'undefined' && !document.body.insertAdjacentElement) {
   document.body.insertAdjacentElement = vi.fn()
 }
+
+// MSW Setup - temporarily disabled due to environment conflict
+// We'll use direct fetch mocking for now
+// import { beforeAll as vitestBeforeAll } from 'vitest'
+
+// Mock fetch globally for tests
+global.fetch = vi.fn()
+
+// Reset handlers and cleanup after each test
+afterEach(() => {
+  // Cleanup React Testing Library
+  cleanup()
+  
+  // Clear all mocks
+  vi.clearAllMocks()
+  
+  // Clear all timers if fake timers were used
+  if (vi.isFakeTimers()) {
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  }
+  
+  // Reset fetch mock
+  ;(global.fetch as any).mockReset()
+})

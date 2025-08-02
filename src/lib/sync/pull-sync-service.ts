@@ -42,14 +42,25 @@ export class PullSyncService {
       syncLogger.info('プル同期を開始します')
       
       // APIからデータを取得
-      const response = await fetch(`/api/sync/pull?userId=${userId}`, {
+      const apiUrl = `/api/sync/pull?userId=${userId}`
+      const apiKey = process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key'
+      
+      syncLogger.debug('API呼び出し:', { url: apiUrl, hasApiKey: !!apiKey })
+      
+      const response = await fetch(apiUrl, {
         headers: {
-          'x-api-key': process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key'
+          'x-api-key': apiKey
         }
       })
       
       if (!response.ok) {
-        throw new Error('プル同期APIエラー')
+        const errorText = await response.text()
+        syncLogger.error('プル同期APIエラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.substring(0, 200) // 最初の200文字のみ
+        })
+        throw new Error(`プル同期APIエラー: ${response.status} ${response.statusText}`)
       }
       
       const result = await response.json()
@@ -79,8 +90,17 @@ export class PullSyncService {
       }
       
     } catch (error) {
-      syncLogger.error('プル同期エラー:', error)
-      syncStore.addSyncError(error instanceof Error ? error.message : 'プル同期エラー')
+      // エラーの詳細をログに記録
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        syncLogger.error('プル同期ネットワークエラー: APIに接続できません', {
+          message: error.message,
+          stack: error.stack
+        })
+        syncStore.addSyncError('ネットワークエラー: 同期サーバーに接続できません')
+      } else {
+        syncLogger.error('プル同期エラー:', error)
+        syncStore.addSyncError(error instanceof Error ? error.message : 'プル同期エラー')
+      }
     } finally {
       this.isPulling = false
     }
