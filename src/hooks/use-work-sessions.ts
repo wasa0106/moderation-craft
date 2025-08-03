@@ -35,11 +35,7 @@ export function useWorkSessions(userId: string) {
 
       try {
         setIsLoading(true)
-        const rangeSessions = await workSessionRepository.getByDateRange(
-          userId,
-          startDate,
-          endDate
-        )
+        const rangeSessions = await workSessionRepository.getByDateRange(userId, startDate, endDate)
         setSessions(rangeSessions)
         setError(null)
       } catch (err) {

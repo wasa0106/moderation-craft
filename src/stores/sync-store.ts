@@ -14,7 +14,7 @@ interface SyncState {
   lastSyncTime: string | null
   syncErrors: string[]
   autoSyncEnabled: boolean
-  
+
   // Pull sync state
   lastPullTime: string | null
   isPulling: boolean
@@ -65,9 +65,9 @@ export const useSyncStore = create<SyncState>()(
       setLastSyncTime: time => set({ lastSyncTime: time }),
 
       setAutoSync: enabled => set({ autoSyncEnabled: enabled }),
-      
+
       setLastPullTime: time => set({ lastPullTime: time }),
-      
+
       setPullStatus: pulling => set({ isPulling: pulling }),
 
       addToSyncQueue: item =>

@@ -13,27 +13,14 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  Loader2, 
-  Wifi, 
-  WifiOff, 
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Clock
-} from 'lucide-react'
+import { Loader2, Wifi, WifiOff, RefreshCw, AlertCircle, CheckCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SyncDetailsPanel } from './sync-details-panel'
 
 export function SyncStatusIndicator() {
-  const { 
-    isOnline, 
-    isSyncing,
-    getPendingItemsCount,
-    getFailedItemsCount,
-    lastSyncTime 
-  } = useSyncStore()
-  
+  const { isOnline, isSyncing, getPendingItemsCount, getFailedItemsCount, lastSyncTime } =
+    useSyncStore()
+
   const pendingCount = getPendingItemsCount()
   const failedCount = getFailedItemsCount()
   const totalCount = pendingCount + failedCount
@@ -74,18 +61,15 @@ export function SyncStatusIndicator() {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "relative flex items-center gap-2 px-3",
-            getStatusColor()
-          )}
+          className={cn('relative flex items-center gap-2 px-3', getStatusColor())}
         >
           {getStatusIcon()}
           <span className="text-sm font-medium">{getStatusText()}</span>
-          
+
           {/* 保留中/失敗アイテムのバッジ */}
           {totalCount > 0 && (
-            <Badge 
-              variant={failedCount > 0 ? "destructive" : "secondary"}
+            <Badge
+              variant={failedCount > 0 ? 'destructive' : 'secondary'}
               className="ml-1 h-5 px-1.5 text-xs"
             >
               {totalCount}
@@ -93,12 +77,8 @@ export function SyncStatusIndicator() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      
-      <DropdownMenuContent 
-        align="end" 
-        className="w-80"
-        sideOffset={8}
-      >
+
+      <DropdownMenuContent align="end" className="w-80" sideOffset={8}>
         <SyncDetailsPanel />
       </DropdownMenuContent>
     </DropdownMenu>

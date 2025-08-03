@@ -19,13 +19,13 @@ if (isLocal) {
   clientConfig.endpoint = process.env.NEXT_PUBLIC_DYNAMODB_ENDPOINT
   clientConfig.credentials = {
     accessKeyId: 'dummy',
-    secretAccessKey: 'dummy'
+    secretAccessKey: 'dummy',
   }
 } else if (isServer) {
   // サーバーサイドでのみ認証情報を設定
   clientConfig.credentials = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   }
 }
 
@@ -34,8 +34,8 @@ const client = new DynamoDBClient(clientConfig)
 export const dynamoDb = DynamoDBDocumentClient.from(client, {
   marshallOptions: {
     removeUndefinedValues: true,
-    convertClassInstanceToMap: true
-  }
+    convertClassInstanceToMap: true,
+  },
 })
 
 // 環境に応じたテーブル名を使用

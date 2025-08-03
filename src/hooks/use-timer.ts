@@ -5,7 +5,11 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { workSessionRepository, smallTaskRepository, projectRepository } from '@/lib/db/repositories'
+import {
+  workSessionRepository,
+  smallTaskRepository,
+  projectRepository,
+} from '@/lib/db/repositories'
 import { useTimerStore } from '@/stores/timer-store'
 import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
@@ -30,7 +34,7 @@ export function useTimer(userId: string) {
         const startTime = new Date(session.start_time)
         const now = new Date()
         const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000)
-        
+
         // タスクとプロジェクトの情報を取得
         let task = null
         let project = null
@@ -46,13 +50,13 @@ export function useTimer(userId: string) {
             console.error('Failed to restore task/project:', error)
           }
         }
-        
+
         // タイマーを復元
         timerStore.startTimer(session, task || undefined, project || undefined)
         // 経過時間を更新
         timerStore.updateElapsedTime(elapsedSeconds)
       }
-      return session || null  // undefinedの代わりにnullを返す
+      return session || null // undefinedの代わりにnullを返す
     },
     staleTime: 30 * 1000, // 30 seconds
     enabled: !!userId,
@@ -69,11 +73,7 @@ export function useTimer(userId: string) {
         is_synced: false,
       }
 
-      const session = await workSessionRepository.startSession(
-        userId, 
-        data?.taskId,
-        undefined
-      )
+      const session = await workSessionRepository.startSession(userId, data?.taskId, undefined)
       // 開発中は自動同期を無効化（手動で同期キューに追加）
       // await syncService.addToSyncQueue('work_session', session.id, 'create', session)
 
@@ -184,7 +184,7 @@ export function useTimer(userId: string) {
   // Timer interval effect
   useEffect(() => {
     const { isRunning, startTime } = timerStore
-    
+
     if (isRunning && startTime) {
       intervalRef.current = setInterval(() => {
         const currentStartTime = useTimerStore.getState().startTime
@@ -210,7 +210,7 @@ export function useTimer(userId: string) {
   // Auto-save timer state periodically
   useEffect(() => {
     const { isRunning, activeSession } = timerStore
-    
+
     if (!isRunning || !activeSession) return
 
     const autoSaveInterval = setInterval(async () => {

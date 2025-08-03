@@ -63,12 +63,12 @@ export function TaskDetailDialog({
       setSelectedProjectId(task.project_id || '')
       setSelectedBigTaskId(task.big_task_id || '')
       setEstimatedMinutes(task.estimated_minutes || 30)
-      
+
       if (task.scheduled_start) {
         const startDate = new Date(task.scheduled_start)
         setStartTimeInput(format(startDate, 'HH:mm'))
       }
-      
+
       if (task.scheduled_end) {
         const endDate = new Date(task.scheduled_end)
         setEndTimeInput(format(endDate, 'HH:mm'))
@@ -138,186 +138,180 @@ export function TaskDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px] bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-foreground text-xl">
-              {isEditing ? (
-                <Input
-                  value={taskName}
-                  onChange={(e) => setTaskName(e.target.value)}
-                  className="text-xl font-semibold bg-background border-border"
-                />
-              ) : (
-                task.name
-              )}
-            </DialogTitle>
-          </DialogHeader>
+      <DialogContent className="sm:max-w-[500px] bg-card border-border">
+        <DialogHeader>
+          <DialogTitle className="text-foreground text-xl">
+            {isEditing ? (
+              <Input
+                value={taskName}
+                onChange={e => setTaskName(e.target.value)}
+                className="text-xl font-semibold bg-background border-border"
+              />
+            ) : (
+              task.name
+            )}
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            {/* プロジェクト */}
-            <div className="grid gap-2">
-              <Label className="text-muted-foreground flex items-center gap-2">
-                <FolderOpen className="w-4 h-4" />
-                プロジェクト
-              </Label>
-              {isEditing ? (
-                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue placeholder="プロジェクトを選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((proj) => (
-                      <SelectItem key={proj.id} value={proj.id}>
-                        {proj.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-foreground font-medium">
-                  {project?.name || '未設定'}
-                </p>
-              )}
-            </div>
-
-            {/* 大タスク */}
-            <div className="grid gap-2">
-              <Label className="text-muted-foreground flex items-center gap-2">
-                <ListTodo className="w-4 h-4" />
-                大タスク
-              </Label>
-              {isEditing ? (
-                <Select 
-                  value={selectedBigTaskId} 
-                  onValueChange={setSelectedBigTaskId}
-                  disabled={!selectedProjectId}
-                >
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue placeholder="大タスクを選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableBigTasks.map((bt) => (
-                      <SelectItem key={bt.id} value={bt.id}>
-                        {bt.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-foreground font-medium">
-                  {bigTask?.name || '未設定'}
-                </p>
-              )}
-            </div>
-
-            {/* 日時 */}
-            <div className="grid gap-2">
-              <Label className="text-muted-foreground flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                日時
-              </Label>
-              {isEditing ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={startTimeInput}
-                    onChange={(e) => setStartTimeInput(e.target.value)}
-                    className="bg-background border-border"
-                  />
-                  <span className="text-muted-foreground">〜</span>
-                  <Input
-                    type="time"
-                    value={endTimeInput}
-                    onChange={(e) => setEndTimeInput(e.target.value)}
-                    className="bg-background border-border"
-                  />
-                </div>
-              ) : (
-                <p className="text-foreground font-medium">
-                  {task.scheduled_start && task.scheduled_end ? (
-                    <>
-                      {format(new Date(task.scheduled_start), 'yyyy年M月d日 (E)', { locale: ja })}
-                      <br />
-                      {format(new Date(task.scheduled_start), 'HH:mm')} - 
-                      {format(new Date(task.scheduled_end), 'HH:mm')}
-                    </>
-                  ) : (
-                    '未スケジュール'
-                  )}
-                </p>
-              )}
-            </div>
-
-            {/* 推定時間 */}
-            <div className="grid gap-2">
-              <Label className="text-muted-foreground flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                推定時間
-              </Label>
-              {isEditing ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={estimatedMinutes}
-                    onChange={(e) => setEstimatedMinutes(parseInt(e.target.value) || 30)}
-                    min="1"
-                    step="15"
-                    className="bg-background border-border w-24"
-                  />
-                  <span className="text-muted-foreground">分</span>
-                </div>
-              ) : (
-                <p className="text-foreground font-medium">
-                  {task.estimated_minutes}分
-                </p>
-              )}
-            </div>
+        <div className="grid gap-4 py-4">
+          {/* プロジェクト */}
+          <div className="grid gap-2">
+            <Label className="text-muted-foreground flex items-center gap-2">
+              <FolderOpen className="w-4 h-4" />
+              プロジェクト
+            </Label>
+            {isEditing ? (
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue placeholder="プロジェクトを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(proj => (
+                    <SelectItem key={proj.id} value={proj.id}>
+                      {proj.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-foreground font-medium">{project?.name || '未設定'}</p>
+            )}
           </div>
 
-          <DialogFooter className="flex justify-between sm:justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="text-destructive border-destructive/30 hover:bg-destructive/10"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {isDeleting ? '削除中...' : '削除'}
-            </Button>
+          {/* 大タスク */}
+          <div className="grid gap-2">
+            <Label className="text-muted-foreground flex items-center gap-2">
+              <ListTodo className="w-4 h-4" />
+              大タスク
+            </Label>
+            {isEditing ? (
+              <Select
+                value={selectedBigTaskId}
+                onValueChange={setSelectedBigTaskId}
+                disabled={!selectedProjectId}
+              >
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue placeholder="大タスクを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableBigTasks.map(bt => (
+                    <SelectItem key={bt.id} value={bt.id}>
+                      {bt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-foreground font-medium">{bigTask?.name || '未設定'}</p>
+            )}
+          </div>
 
-            <div className="flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditing(false)}
-                    className="border-border text-muted-foreground"
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={isSaving || !taskName.trim()}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  >
-                    {isSaving ? '保存中...' : '保存'}
-                  </Button>
-                </>
-              ) : (
+          {/* 日時 */}
+          <div className="grid gap-2">
+            <Label className="text-muted-foreground flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              日時
+            </Label>
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  value={startTimeInput}
+                  onChange={e => setStartTimeInput(e.target.value)}
+                  className="bg-background border-border"
+                />
+                <span className="text-muted-foreground">〜</span>
+                <Input
+                  type="time"
+                  value={endTimeInput}
+                  onChange={e => setEndTimeInput(e.target.value)}
+                  className="bg-background border-border"
+                />
+              </div>
+            ) : (
+              <p className="text-foreground font-medium">
+                {task.scheduled_start && task.scheduled_end ? (
+                  <>
+                    {format(new Date(task.scheduled_start), 'yyyy年M月d日 (E)', { locale: ja })}
+                    <br />
+                    {format(new Date(task.scheduled_start), 'HH:mm')} -
+                    {format(new Date(task.scheduled_end), 'HH:mm')}
+                  </>
+                ) : (
+                  '未スケジュール'
+                )}
+              </p>
+            )}
+          </div>
+
+          {/* 推定時間 */}
+          <div className="grid gap-2">
+            <Label className="text-muted-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              推定時間
+            </Label>
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={estimatedMinutes}
+                  onChange={e => setEstimatedMinutes(parseInt(e.target.value) || 30)}
+                  min="1"
+                  step="15"
+                  className="bg-background border-border w-24"
+                />
+                <span className="text-muted-foreground">分</span>
+              </div>
+            ) : (
+              <p className="text-foreground font-medium">{task.estimated_minutes}分</p>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="flex justify-between sm:justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="text-destructive border-destructive/30 hover:bg-destructive/10"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            {isDeleting ? '削除中...' : '削除'}
+          </Button>
+
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(false)}
+                  className="border-border text-muted-foreground"
+                >
+                  キャンセル
+                </Button>
                 <Button
                   size="sm"
-                  onClick={() => setIsEditing(true)}
-                  className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                  onClick={handleSave}
+                  disabled={isSaving || !taskName.trim()}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  編集
+                  {isSaving ? '保存中...' : '保存'}
                 </Button>
-              )}
-            </div>
-          </DialogFooter>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                編集
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

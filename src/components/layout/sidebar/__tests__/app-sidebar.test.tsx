@@ -3,7 +3,11 @@ import { vi } from 'vitest'
 import { AppSidebar } from '../app-sidebar'
 
 vi.mock('@/components/ui/sidebar', () => ({
-  Sidebar: ({ children, ...props }: any) => <div data-testid="sidebar" {...props}>{children}</div>,
+  Sidebar: ({ children, ...props }: any) => (
+    <div data-testid="sidebar" {...props}>
+      {children}
+    </div>
+  ),
   SidebarContent: ({ children }: any) => <div data-testid="sidebar-content">{children}</div>,
   SidebarFooter: ({ children }: any) => <div data-testid="sidebar-footer">{children}</div>,
   SidebarHeader: ({ children }: any) => <div data-testid="sidebar-header">{children}</div>,
@@ -30,11 +34,10 @@ vi.mock('@/components/sync/sync-status-indicator', () => ({
   SyncStatusIndicator: () => <div data-testid="sync-status">Sync Status</div>,
 }))
 
-
 describe('AppSidebar', () => {
   it('renders all main navigation items', () => {
     render(<AppSidebar />)
-    
+
     expect(screen.getByText('タイマー')).toBeInTheDocument()
     expect(screen.getByText('プロジェクト')).toBeInTheDocument()
     expect(screen.getByText('スケジュール')).toBeInTheDocument()
@@ -43,27 +46,27 @@ describe('AppSidebar', () => {
 
   it('renders app name and version', () => {
     render(<AppSidebar />)
-    
+
     expect(screen.getByText('ModerationCraft')).toBeInTheDocument()
     expect(screen.getByText('v1.0')).toBeInTheDocument()
   })
 
   it('renders sync status indicator', () => {
     render(<AppSidebar />)
-    
+
     expect(screen.getByTestId('sync-status')).toBeInTheDocument()
   })
 
   it('renders user navigation', () => {
     render(<AppSidebar />)
-    
+
     expect(screen.getByTestId('nav-user')).toBeInTheDocument()
     expect(screen.getByText('ユーザー')).toBeInTheDocument()
   })
 
   it('applies collapsible="icon" prop to sidebar', () => {
     render(<AppSidebar />)
-    
+
     const sidebar = screen.getByTestId('sidebar')
     expect(sidebar).toHaveAttribute('collapsible', 'icon')
   })

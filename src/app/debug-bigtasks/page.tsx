@@ -14,7 +14,7 @@ export default function DebugBigTasksPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [directBigTasks, setDirectBigTasks] = useState<BigTask[]>([])
-  
+
   // React Query経由でBigTasksを取得
   const { bigTasks, isLoading, error, refetch } = useBigTasks('current-user', selectedProjectId)
 
@@ -56,13 +56,13 @@ export default function DebugBigTasksPage() {
   return (
     <div className="container mx-auto p-4 max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">BigTasks デバッグ</h1>
-      
+
       <div className="space-y-4">
         <Card className="p-4">
           <h2 className="text-lg font-semibold mb-2">プロジェクト選択</h2>
           <select
             value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
+            onChange={e => setSelectedProjectId(e.target.value)}
             className="w-full p-2 border rounded"
           >
             <option value="">プロジェクトを選択</option>
@@ -79,8 +79,10 @@ export default function DebugBigTasksPage() {
           <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
           <p>Error: {error ? error.message : 'None'}</p>
           <p>BigTasks count: {bigTasks.length}</p>
-          <Button onClick={() => refetch()} className="mt-2">再取得</Button>
-          
+          <Button onClick={() => refetch()} className="mt-2">
+            再取得
+          </Button>
+
           {bigTasks.length > 0 && (
             <div className="mt-4 space-y-2">
               {bigTasks.map(task => (
@@ -98,7 +100,7 @@ export default function DebugBigTasksPage() {
         <Card className="p-4">
           <h2 className="text-lg font-semibold mb-2">IndexedDB 直接</h2>
           <p>BigTasks count: {directBigTasks.length}</p>
-          
+
           {directBigTasks.length > 0 && (
             <div className="mt-4 space-y-2">
               {directBigTasks.map(task => (

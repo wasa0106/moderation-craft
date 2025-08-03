@@ -19,15 +19,15 @@ import { toast } from 'sonner'
 export default function SyncServiceTestPage() {
   const [loading, setLoading] = useState(false)
   const syncService = SyncService.getInstance()
-  
+
   // Zustandストアから同期状態を取得
-  const { 
-    isOnline, 
-    isSyncing, 
-    syncQueue, 
+  const {
+    isOnline,
+    isSyncing,
+    syncQueue,
     lastSyncTime,
     getPendingItemsCount,
-    getFailedItemsCount
+    getFailedItemsCount,
   } = useSyncStore()
 
   // 今日のWorkSessionを取得
@@ -36,7 +36,7 @@ export default function SyncServiceTestPage() {
 
   // 同期統計を定期的に更新
   const [syncStats, setSyncStats] = useState(syncService.getSyncStats())
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setSyncStats(syncService.getSyncStats())
@@ -48,22 +48,19 @@ export default function SyncServiceTestPage() {
   const addToQueue = async (session: any) => {
     try {
       setLoading(true)
-      
+
       console.log('同期キューに追加するセッション:', session)
-      
+
       // セッションデータを同期キューに追加
-      await syncService.addToSyncQueue(
-        'work_session',
-        session.id,
-        'create',
-        session
-      )
-      
+      await syncService.addToSyncQueue('work_session', session.id, 'create', session)
+
       toast.success('同期キューに追加しました')
     } catch (error) {
       console.error('キュー追加エラー:', error)
       console.error('セッションデータ:', session)
-      toast.error(`同期キューへの追加に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(
+        `同期キューへの追加に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     } finally {
       setLoading(false)
     }
@@ -153,9 +150,7 @@ export default function SyncServiceTestPage() {
           </div>
           <div>
             <p className="text-muted-foreground">自動同期</p>
-            <p className="font-medium">
-              {syncStats.autoSyncEnabled ? '有効' : '無効'}
-            </p>
+            <p className="font-medium">{syncStats.autoSyncEnabled ? '有効' : '無効'}</p>
           </div>
         </div>
       </Card>
@@ -164,10 +159,7 @@ export default function SyncServiceTestPage() {
       <Card className="p-4 mb-6">
         <h2 className="text-lg font-semibold mb-4">同期コントロール</h2>
         <div className="flex gap-2 flex-wrap">
-          <Button
-            onClick={manualSync}
-            disabled={loading || isSyncing}
-          >
+          <Button onClick={manualSync} disabled={loading || isSyncing}>
             {isSyncing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -182,16 +174,12 @@ export default function SyncServiceTestPage() {
           </Button>
           <Button
             onClick={toggleAutoSync}
-            variant={syncStats.autoSyncEnabled ? "destructive" : "default"}
+            variant={syncStats.autoSyncEnabled ? 'destructive' : 'default'}
           >
             {syncStats.autoSyncEnabled ? '自動同期を停止' : '自動同期を開始'}
           </Button>
           {syncStats.failedItems > 0 && (
-            <Button
-              onClick={retryFailed}
-              disabled={loading}
-              variant="outline"
-            >
+            <Button onClick={retryFailed} disabled={loading} variant="outline">
               失敗したアイテムを再試行
             </Button>
           )}
@@ -205,11 +193,14 @@ export default function SyncServiceTestPage() {
           <p className="text-muted-foreground">今日のセッションがありません</p>
         ) : (
           <div className="space-y-2">
-            {sessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between p-2 border rounded">
+            {sessions.map(session => (
+              <div
+                key={session.id}
+                className="flex items-center justify-between p-2 border rounded"
+              >
                 <div>
                   <p className="font-medium">
-                    {format(new Date(session.start_time), 'HH:mm')} - 
+                    {format(new Date(session.start_time), 'HH:mm')} -
                     {session.end_time ? format(new Date(session.end_time), 'HH:mm') : '進行中'}
                     {session.is_synced && (
                       <span className="ml-2 text-xs text-green-600">✓ 同期済み</span>
@@ -237,15 +228,15 @@ export default function SyncServiceTestPage() {
           <p className="text-muted-foreground">キューは空です</p>
         ) : (
           <div className="space-y-2">
-            {syncQueue.map((item) => (
+            {syncQueue.map(item => (
               <div
                 key={item.id}
                 className={`p-2 rounded border ${
-                  item.status === 'failed' 
-                    ? 'border-red-200 bg-red-50' 
+                  item.status === 'failed'
+                    ? 'border-red-200 bg-red-50'
                     : item.status === 'processing'
-                    ? 'border-blue-200 bg-blue-50'
-                    : 'border-gray-200'
+                      ? 'border-blue-200 bg-blue-50'
+                      : 'border-gray-200'
                 }`}
               >
                 <div className="flex justify-between items-start">
@@ -253,28 +244,30 @@ export default function SyncServiceTestPage() {
                     <p className="font-medium text-sm">
                       {item.entity_type} - {item.operation_type}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      ID: {item.entity_id}
-                    </p>
+                    <p className="text-xs text-muted-foreground">ID: {item.entity_id}</p>
                     {item.error_message && (
-                      <p className="text-xs text-red-600 mt-1">
-                        エラー: {item.error_message}
-                      </p>
+                      <p className="text-xs text-red-600 mt-1">エラー: {item.error_message}</p>
                     )}
                   </div>
                   <div className="text-xs text-right">
-                    <p className={`font-medium ${
-                      item.status === 'failed' ? 'text-red-600' :
-                      item.status === 'processing' ? 'text-blue-600' :
-                      'text-muted-foreground'
-                    }`}>
-                      {item.status === 'pending' ? '保留中' :
-                       item.status === 'processing' ? '処理中' :
-                       item.status === 'completed' ? '完了' : '失敗'}
+                    <p
+                      className={`font-medium ${
+                        item.status === 'failed'
+                          ? 'text-red-600'
+                          : item.status === 'processing'
+                            ? 'text-blue-600'
+                            : 'text-muted-foreground'
+                      }`}
+                    >
+                      {item.status === 'pending'
+                        ? '保留中'
+                        : item.status === 'processing'
+                          ? '処理中'
+                          : item.status === 'completed'
+                            ? '完了'
+                            : '失敗'}
                     </p>
-                    <p className="text-muted-foreground">
-                      試行: {item.attempt_count}回
-                    </p>
+                    <p className="text-muted-foreground">試行: {item.attempt_count}回</p>
                   </div>
                 </div>
               </div>

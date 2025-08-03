@@ -18,13 +18,13 @@ export default function DebugPage() {
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
   const weekStartStr = format(weekStart, 'yyyy-MM-dd')
   const weekEndStr = format(weekEnd, 'yyyy-MM-dd')
-  
+
   const { smallTasks: weekSmallTasks } = useSmallTasksByDateRange(userId, weekStartStr, weekEndStr)
 
   const filteredTasks = bigTasks.filter(task => {
     const taskStart = new Date(task.start_date)
     const taskEnd = new Date(task.end_date)
-    
+
     return (
       (taskStart >= weekStart && taskStart <= weekEnd) ||
       (taskEnd >= weekStart && taskEnd <= weekEnd) ||
@@ -35,18 +35,21 @@ export default function DebugPage() {
   return (
     <div className="p-8 bg-background min-h-screen">
       <h1 className="text-2xl font-bold mb-4 text-foreground">デバッグ情報</h1>
-      
+
       <div className="mb-6 p-4 bg-card rounded-lg border border-border">
         <h2 className="text-xl font-semibold mb-2">現在の週</h2>
         <div className="flex items-center gap-4 mb-2">
-          <button 
+          <button
             onClick={() => setCurrentWeek(prev => subWeeks(prev, 1))}
             className="px-3 py-1 bg-primary text-primary-foreground rounded"
           >
             前週
           </button>
-          <span>{format(weekStart, 'yyyy年M月d日', { locale: ja })} - {format(weekEnd, 'M月d日', { locale: ja })}</span>
-          <button 
+          <span>
+            {format(weekStart, 'yyyy年M月d日', { locale: ja })} -{' '}
+            {format(weekEnd, 'M月d日', { locale: ja })}
+          </span>
+          <button
             onClick={() => setCurrentWeek(prev => addWeeks(prev, 1))}
             className="px-3 py-1 bg-primary text-primary-foreground rounded"
           >
@@ -60,7 +63,9 @@ export default function DebugPage() {
         <h2 className="text-xl font-semibold mb-2">プロジェクト ({projects.length}件)</h2>
         {projects.map(project => (
           <div key={project.id} className="mb-2 p-2 bg-muted">
-            <p><strong>{project.name}</strong></p>
+            <p>
+              <strong>{project.name}</strong>
+            </p>
             <p className="text-sm">ID: {project.id}</p>
             <p className="text-sm">作成日: {project.created_at}</p>
           </div>
@@ -71,10 +76,14 @@ export default function DebugPage() {
         <h2 className="text-xl font-semibold mb-2">BigTasks ({bigTasks.length}件)</h2>
         {bigTasks.map((task, index) => (
           <div key={task.id} className="mb-3 p-3 bg-muted rounded">
-            <p className="font-semibold">{index + 1}. {task.name}</p>
+            <p className="font-semibold">
+              {index + 1}. {task.name}
+            </p>
             <div className="text-sm mt-1">
               <p>プロジェクトID: {task.project_id}</p>
-              <p>期間: {task.start_date} 〜 {task.end_date}</p>
+              <p>
+                期間: {task.start_date} 〜 {task.end_date}
+              </p>
               <p>予定開始日: {task.start_date}</p>
               <p>予定終了日: {task.end_date}</p>
             </div>
@@ -83,24 +92,31 @@ export default function DebugPage() {
       </div>
 
       <div className="mb-6 p-4 bg-card rounded-lg border border-border">
-        <h2 className="text-xl font-semibold mb-2">SmallTasks - すべて ({allSmallTasks.length}件)</h2>
+        <h2 className="text-xl font-semibold mb-2">
+          SmallTasks - すべて ({allSmallTasks.length}件)
+        </h2>
         <div className="max-h-60 overflow-y-auto">
           {allSmallTasks.map((task, index) => (
             <div key={task.id} className="mb-2 p-2 bg-muted text-sm">
-              <p className="font-semibold">{index + 1}. {task.name}</p>
+              <p className="font-semibold">
+                {index + 1}. {task.name}
+              </p>
               <div className="text-xs mt-1">
                 <p>ID: {task.id}</p>
                 <p>プロジェクトID: {task.project_id}</p>
                 <p>BigTaskID: {task.big_task_id}</p>
                 <p>推定時間: {task.estimated_minutes}分</p>
-                <p className={task.scheduled_start ? "text-primary" : "text-destructive"}>
+                <p className={task.scheduled_start ? 'text-primary' : 'text-destructive'}>
                   開始時刻: {task.scheduled_start || '未スケジュール'}
                 </p>
-                <p className={task.scheduled_end ? "text-primary" : "text-destructive"}>
+                <p className={task.scheduled_end ? 'text-primary' : 'text-destructive'}>
                   終了時刻: {task.scheduled_end || '未スケジュール'}
                 </p>
                 {task.scheduled_start && (
-                  <p>開始日時: {format(new Date(task.scheduled_start), 'yyyy-MM-dd HH:mm', { locale: ja })}</p>
+                  <p>
+                    開始日時:{' '}
+                    {format(new Date(task.scheduled_start), 'yyyy-MM-dd HH:mm', { locale: ja })}
+                  </p>
                 )}
               </div>
             </div>
@@ -109,8 +125,12 @@ export default function DebugPage() {
       </div>
 
       <div className="mb-6 p-4 bg-card rounded-lg border border-border">
-        <h2 className="text-xl font-semibold mb-2">SmallTasks - 今週 ({weekSmallTasks.length}件)</h2>
-        <p className="text-sm text-muted-foreground mb-2">期間: {weekStartStr} ~ {weekEndStr}</p>
+        <h2 className="text-xl font-semibold mb-2">
+          SmallTasks - 今週 ({weekSmallTasks.length}件)
+        </h2>
+        <p className="text-sm text-muted-foreground mb-2">
+          期間: {weekStartStr} ~ {weekEndStr}
+        </p>
         <div className="max-h-60 overflow-y-auto">
           {weekSmallTasks.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">今週のSmallTaskはありません</p>
@@ -120,14 +140,16 @@ export default function DebugPage() {
               const bigTask = bigTasks.find(bt => bt.id === task.big_task_id)
               return (
                 <div key={task.id} className="mb-2 p-2 bg-muted text-sm">
-                  <p className="font-semibold">{index + 1}. {task.name}</p>
+                  <p className="font-semibold">
+                    {index + 1}. {task.name}
+                  </p>
                   <div className="text-xs mt-1">
                     <p>プロジェクト: {project?.name || '不明'}</p>
                     <p>BigTask: {bigTask?.name || '不明'}</p>
                     <p>推定時間: {task.estimated_minutes}分</p>
                     {task.scheduled_start && (
                       <p className="text-primary">
-                        スケジュール: {format(new Date(task.scheduled_start), 'M/d HH:mm')} - 
+                        スケジュール: {format(new Date(task.scheduled_start), 'M/d HH:mm')} -
                         {format(new Date(task.scheduled_end!), 'HH:mm')}
                       </p>
                     )}

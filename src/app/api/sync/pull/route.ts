@@ -18,17 +18,19 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const userId = url.searchParams.get('userId') || 'current-user'
     const lastSyncTime = url.searchParams.get('lastSyncTime')
-    
+
     console.log('プル同期リクエスト:', { userId, lastSyncTime })
 
     // ユーザーの全データを取得
-    const result = await dynamoDb.send(new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`
-      }
-    }))
+    const result = await dynamoDb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk',
+        ExpressionAttributeValues: {
+          ':pk': `USER#${userId}`,
+        },
+      })
+    )
 
     // エンティティタイプごとにグループ化
     const data = {
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
       smallTasks: [] as any[],
       moodEntries: [] as any[],
       dopamineEntries: [] as any[],
-      workSessions: [] as any[]
+      workSessions: [] as any[],
     }
 
     // アイテムを分類
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
       delete cleanItem.SK
       delete cleanItem.user_time_pk
       delete cleanItem.user_time_sk
-      
+
       switch (item.entity_type) {
         case 'project':
           data.projects.push(cleanItem)
@@ -75,21 +77,23 @@ export async function GET(request: NextRequest) {
       projects: data.projects.length,
       bigTasks: data.bigTasks.length,
       smallTasks: data.smallTasks.length,
-      total: result.Items?.length || 0
+      total: result.Items?.length || 0,
     })
 
     return NextResponse.json({
       success: true,
       data,
       syncTime: new Date().toISOString(),
-      itemCount: result.Items?.length || 0
+      itemCount: result.Items?.length || 0,
     })
-
   } catch (error: any) {
     console.error('プル同期エラー:', error)
-    return NextResponse.json({
-      success: false,
-      error: error?.message || 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error?.message || 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

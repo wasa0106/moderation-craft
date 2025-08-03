@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import type { NavItem } from "./types"
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import type { NavItem } from './types'
 
 import {
   SidebarGroup,
@@ -10,7 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar'
 
 interface NavMainProps {
   items: NavItem[]
@@ -23,10 +23,9 @@ export function NavMain({ items }: NavMainProps) {
     <SidebarGroup>
       <SidebarGroupLabel>メニュー</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => {
-          const isActive = pathname === item.url || 
-            (item.url === '/timer' && pathname === '/')
-          
+        {items.map(item => {
+          const isActive = pathname === item.url || (item.url === '/timer' && pathname === '/')
+
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>

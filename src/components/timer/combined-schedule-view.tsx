@@ -61,22 +61,22 @@ export function CombinedScheduleView({
   // Generate sleep blocks from current, previous, and next day
   const sleepBlocks = useMemo(() => {
     const blocks = []
-    
+
     // Add blocks from current day's sleep schedule (wake up on this day)
     if (sleepSchedule) {
       blocks.push(...generateSleepBlocks(sleepSchedule))
     }
-    
+
     // Add blocks from previous day's sleep schedule (for sleep that starts the day before)
     if (previousDaySleepSchedule) {
       blocks.push(...generateSleepBlocks(previousDaySleepSchedule))
     }
-    
+
     // Add blocks from next day's sleep schedule (for sleep that starts this day)
     if (nextDaySleepSchedule) {
       blocks.push(...generateSleepBlocks(nextDaySleepSchedule))
     }
-    
+
     return blocks
   }, [sleepSchedule, previousDaySleepSchedule, nextDaySleepSchedule])
 
@@ -119,7 +119,7 @@ export function CombinedScheduleView({
   const adjustHSLForBackground = (hslColor: string): string => {
     const match = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
     if (!match) return hslColor
-    
+
     const [, hue] = match
     return `hsl(${hue}, 18%, 82%)`
   }
@@ -140,7 +140,7 @@ export function CombinedScheduleView({
     const hour = startTime.getHours()
     const minute = startTime.getMinutes()
     const slot = Math.floor(minute / 15) // 15分スロット（0-3）
-    return (hour * 48) + (slot * 12) // 1時間 = 48px (4スロット × 12px)
+    return hour * 48 + slot * 12 // 1時間 = 48px (4スロット × 12px)
   }
 
   // セッションに紐づくタスクとプロジェクト情報を取得
@@ -148,21 +148,22 @@ export function CombinedScheduleView({
     if (!session.small_task_id) return null
     const task = tasks.find(t => t.id === session.small_task_id)
     if (!task) return null
-    const project = task.task_type !== 'routine' ? projects.find(p => p.id === task.project_id) : undefined
+    const project =
+      task.task_type !== 'routine' ? projects.find(p => p.id === task.project_id) : undefined
     return { task, project }
   }
 
   // 集中力レベルの色を取得（背景色用）
   const getFocusGradient = (level?: number): string => {
     if (!level) return 'bg-muted text-muted-foreground border-border'
-    if (level >= 8) return 'bg-primary text-primary-foreground border-primary'  // ゾーン（最高の集中）
-    if (level >= 7) return 'bg-foreground text-background border-foreground'  // 深い集中
-    if (level >= 6) return 'bg-foreground/80 text-background border-foreground/80'  // 集中
-    if (level >= 5) return 'bg-muted-foreground text-background border-muted-foreground'  // まあまあ
-    if (level >= 4) return 'bg-muted text-muted-foreground border-border'  // 普通
-    if (level >= 3) return 'bg-accent text-accent-foreground border-accent'  // 疲れ気味
-    if (level >= 2) return 'bg-card text-card-foreground border-border'  // ぼんやり
-    return 'bg-background text-foreground border-border'  // 眠い
+    if (level >= 8) return 'bg-primary text-primary-foreground border-primary' // ゾーン（最高の集中）
+    if (level >= 7) return 'bg-foreground text-background border-foreground' // 深い集中
+    if (level >= 6) return 'bg-foreground/80 text-background border-foreground/80' // 集中
+    if (level >= 5) return 'bg-muted-foreground text-background border-muted-foreground' // まあまあ
+    if (level >= 4) return 'bg-muted text-muted-foreground border-border' // 普通
+    if (level >= 3) return 'bg-accent text-accent-foreground border-accent' // 疲れ気味
+    if (level >= 2) return 'bg-card text-card-foreground border-border' // ぼんやり
+    return 'bg-background text-foreground border-border' // 眠い
   }
 
   // セッションの時間を計算
@@ -174,19 +175,19 @@ export function CombinedScheduleView({
     }
     return secondsToMinutes(session.duration_seconds)
   }
-  
+
   // 経過時間をHH:MM:SS形式でフォーマット
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     const secs = seconds % 60
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
     return `${minutes}:${secs.toString().padStart(2, '0')}`
   }
-  
+
   // セッションの実際の経過時間（秒）を取得
   const getSessionDurationInSeconds = (session: WorkSession): number => {
     if (!session.end_time) {
@@ -249,7 +250,7 @@ export function CombinedScheduleView({
   useEffect(() => {
     if (scrollContainerRef.current) {
       const savedPosition = localStorage.getItem(scrollPositionKey)
-      
+
       if (savedPosition) {
         // 保存された位置に復元
         scrollContainerRef.current.scrollTop = parseInt(savedPosition)
@@ -279,13 +280,13 @@ export function CombinedScheduleView({
       </div>
 
       {/* スケジュール本体 */}
-      <div 
-        ref={scrollContainerRef} 
-        className="relative overflow-y-auto overflow-x-hidden" 
-        style={{ 
+      <div
+        ref={scrollContainerRef}
+        className="relative overflow-y-auto overflow-x-hidden"
+        style={{
           height: 'calc(100% - 40px)',
           contain: 'layout style paint',
-          willChange: 'scroll-position'
+          willChange: 'scroll-position',
         }}
         onScroll={saveScrollPosition}
       >
@@ -295,7 +296,11 @@ export function CombinedScheduleView({
             const isPastHour = isToday && hour < currentHour
 
             return (
-              <div key={hour} className="relative h-[48px]" style={{ top: `${hour * 48}px`, position: 'absolute', width: '100%' }}>
+              <div
+                key={hour}
+                className="relative h-[48px]"
+                style={{ top: `${hour * 48}px`, position: 'absolute', width: '100%' }}
+              >
                 {/* 30分の補助線 */}
                 <div className="absolute w-full h-[12px] top-0" />
                 <div className="absolute w-full h-[12px] top-[12px]" />
@@ -303,15 +308,18 @@ export function CombinedScheduleView({
                 <div className="absolute w-full h-[12px] top-[36px]" />
 
                 {/* 過去の時間帯を薄く表示 */}
-                {isPastHour && (
-                  <div className="absolute inset-0 bg-muted/30 pointer-events-none" />
-                )}
+                {isPastHour && <div className="absolute inset-0 bg-muted/30 pointer-events-none" />}
               </div>
             )
           })}
         </div>
 
-        <div className="grid grid-cols-[48px_1fr_1px_1fr] relative max-w-full" style={{ height: '1152px' }}> {/* 24時間 × 48px */}
+        <div
+          className="grid grid-cols-[48px_1fr_1px_1fr] relative max-w-full"
+          style={{ height: '1152px' }}
+        >
+          {' '}
+          {/* 24時間 × 48px */}
           {/* 時間軸 */}
           <div className="sticky -left-2 bg-muted/30 border-r z-5 relative">
             {Array.from({ length: 24 }, (_, hour) => (
@@ -319,24 +327,25 @@ export function CombinedScheduleView({
                 {/* 時刻表示を時間の境界に配置 */}
                 {hour !== 0 && (
                   <div className="absolute -top-[13px] right-2 bg-muted/30 px-1">
-                    <span className="text-xs font-medium text-muted-foreground font-mono">{hour}:00</span>
+                    <span className="text-xs font-medium text-muted-foreground font-mono">
+                      {hour}:00
+                    </span>
                   </div>
                 )}
               </div>
             ))}
           </div>
-
           {/* 予定エリア */}
           <div className="relative bg-primary/5">
             {/* 時間ごとの境界線 */}
             {Array.from({ length: 24 }, (_, hour) => (
-              <div 
+              <div
                 key={`border-${hour}`}
                 className="absolute w-full h-[48px] border-b border-border pointer-events-none"
                 style={{ top: `${hour * 48}px`, zIndex: 15 }}
               />
             ))}
-            
+
             {/* 睡眠ブロックを背景として表示 */}
             {sleepBlocks.map((block, index) => {
               const dateStr = format(date, 'yyyy-MM-dd')
@@ -344,7 +353,7 @@ export function CombinedScheduleView({
 
               const startSlot = Math.floor(block.startMinute / 15)
               const endSlot = Math.ceil(block.endMinute / 15) // 終了時刻は切り上げ
-              const top = (block.startHour * 48) + (startSlot * 12)
+              const top = block.startHour * 48 + startSlot * 12
               const totalEndMinutes = block.endHour * 60 + block.endMinute
               const totalStartMinutes = block.startHour * 60 + block.startMinute
               const durationMinutes = totalEndMinutes - totalStartMinutes
@@ -359,13 +368,13 @@ export function CombinedScheduleView({
                     top: `${top}px`,
                     height: `${height}px`,
                     zIndex: 20,
-                    borderLeftColor: 'hsl(137, 8%, 15%)'
+                    borderLeftColor: 'hsl(137, 8%, 15%)',
                   }}
                 >
                   {/* 背景色と斜線パターン */}
-                  <div 
-                    className="absolute inset-0" 
-                    style={{ 
+                  <div
+                    className="absolute inset-0"
+                    style={{
                       backgroundColor: 'hsl(137, 5%, 82%)',
                       backgroundImage: `repeating-linear-gradient(
                         45deg,
@@ -373,8 +382,8 @@ export function CombinedScheduleView({
                         transparent 10px,
                         hsl(137, 6%, 65%) 10px,
                         hsl(137, 6%, 65%) 11px
-                      )`
-                    }} 
+                      )`,
+                    }}
                   />
                   <div className="relative flex items-center gap-1 px-2 py-1 text-xs text-foreground">
                     <Moon className="h-3 w-3" />
@@ -388,7 +397,7 @@ export function CombinedScheduleView({
             {isToday && (
               <div
                 className="absolute w-full h-0.5 bg-red-500 z-50"
-                style={{ top: `${(currentHour * 48) + (Math.floor(currentMinute / 15) * 12)}px` }}
+                style={{ top: `${currentHour * 48 + Math.floor(currentMinute / 15) * 12}px` }}
               >
                 <div className="absolute -left-2 -top-1 w-2 h-2 bg-red-500 rounded-full" />
               </div>
@@ -397,7 +406,10 @@ export function CombinedScheduleView({
             {/* タスク */}
             {tasks.map((task, index) => {
               const isActive = task.id === currentTaskId
-              const project = task.task_type !== 'routine' ? projects.find(p => p.id === task.project_id) : undefined
+              const project =
+                task.task_type !== 'routine'
+                  ? projects.find(p => p.id === task.project_id)
+                  : undefined
               const taskSessions = sessions.filter(s => s.small_task_id === task.id)
 
               return (
@@ -424,26 +436,24 @@ export function CombinedScheduleView({
               )
             })}
           </div>
-
           {/* 中央の区切り線 */}
           <div className="bg-border relative" />
-
           {/* 実績エリア */}
           <div className="relative bg-primary/5">
             {/* 時間ごとの境界線 */}
             {Array.from({ length: 24 }, (_, hour) => (
-              <div 
+              <div
                 key={`border-${hour}`}
                 className="absolute w-full h-[48px] border-b border-border pointer-events-none"
                 style={{ top: `${hour * 48}px`, zIndex: 15 }}
               />
             ))}
-            
+
             {/* 現在時刻ライン（実績側） */}
             {isToday && (
               <div
                 className="absolute w-full h-0.5 bg-red-500 z-50"
-                style={{ top: `${(currentHour * 48) + (Math.floor(currentMinute / 15) * 12)}px` }}
+                style={{ top: `${currentHour * 48 + Math.floor(currentMinute / 15) * 12}px` }}
               >
                 <div className="absolute -right-2 -top-1 w-2 h-2 bg-red-500 rounded-full" />
               </div>
@@ -459,21 +469,21 @@ export function CombinedScheduleView({
               const isJustStarted = duration < 5
 
               return (
-                      <div
-                        key={session.id}
-                        className={cn(
-                          'absolute left-0.5 right-4 rounded-lg p-2 transition-all cursor-pointer',
-                          'hover:shadow-md hover:scale-[1.02]',
-                          isActive && 'ring-2 ring-primary ring-offset-1',
-                          isActive && isJustStarted && 'animate-pulse'
-                        )}
-                        style={{
-                          top: `${getItemTop(session.start_time)}px`,
-                          height: `${getItemHeight(displayDuration)}px`,
-                          zIndex: isActive ? 20 : 20,
-                        }}
-                        onClick={() => handleSessionClick(session)}
-                      >
+                <div
+                  key={session.id}
+                  className={cn(
+                    'absolute left-0.5 right-4 rounded-lg p-2 transition-all cursor-pointer',
+                    'hover:shadow-md hover:scale-[1.02]',
+                    isActive && 'ring-2 ring-primary ring-offset-1',
+                    isActive && isJustStarted && 'animate-pulse'
+                  )}
+                  style={{
+                    top: `${getItemTop(session.start_time)}px`,
+                    height: `${getItemHeight(displayDuration)}px`,
+                    zIndex: isActive ? 20 : 20,
+                  }}
+                  onClick={() => handleSessionClick(session)}
+                >
                   <div
                     className={cn(
                       'h-full rounded-md p-2 overflow-hidden shadow-sm',
@@ -483,25 +493,34 @@ export function CombinedScheduleView({
                       !taskInfo && 'border-l-border bg-muted/50'
                     )}
                     style={{
-                      ...(taskInfo?.project?.color ? { 
-                        backgroundColor: adjustHSLForBackground(taskInfo.project.color),
-                        borderLeftColor: taskInfo.project.color 
-                      } : taskInfo ? {
-                        backgroundColor: 'hsl(137, 2%, 96%)',
-                        borderLeftColor: 'hsl(137, 8%, 15%)'
-                      } : {})
+                      ...(taskInfo?.project?.color
+                        ? {
+                            backgroundColor: adjustHSLForBackground(taskInfo.project.color),
+                            borderLeftColor: taskInfo.project.color,
+                          }
+                        : taskInfo
+                          ? {
+                              backgroundColor: 'hsl(137, 2%, 96%)',
+                              borderLeftColor: 'hsl(137, 8%, 15%)',
+                            }
+                          : {}),
                     }}
                   >
                     {taskInfo ? (
                       <>
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-[10px] leading-tight truncate">{taskInfo.task.name}</h4>
+                            <h4 className="font-medium text-[10px] leading-tight truncate">
+                              {taskInfo.task.name}
+                            </h4>
                             <p className="text-[10px] opacity-80">
                               {formatDuration(getSessionDurationInSeconds(session))}
                               <span className="ml-1">
-                                ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} - 
-                                {session.end_time ? format(parseISO(session.end_time), 'HH:mm', { locale: ja }) : '実行中'})
+                                ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} -
+                                {session.end_time
+                                  ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
+                                  : '実行中'}
+                                )
                               </span>
                             </p>
                           </div>
@@ -524,8 +543,11 @@ export function CombinedScheduleView({
                             <p className="text-[10px] opacity-80">
                               {formatDuration(getSessionDurationInSeconds(session))}
                               <span className="ml-1">
-                                ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} - 
-                                {session.end_time ? format(parseISO(session.end_time), 'HH:mm', { locale: ja }) : '実行中'})
+                                ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} -
+                                {session.end_time
+                                  ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
+                                  : '実行中'}
+                                )
                               </span>
                             </p>
                           </div>
@@ -541,8 +563,8 @@ export function CombinedScheduleView({
                     )}
                   </div>
                 </div>
-        )
-      })}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -553,9 +575,12 @@ export function CombinedScheduleView({
         onOpenChange={setIsEditDialogOpen}
         session={selectedSession}
         task={selectedSession ? tasks.find(t => t.id === selectedSession.small_task_id) : undefined}
-        project={selectedSession && selectedSession.small_task_id ?
-          projects.find(p => p.id === tasks.find(t => t.id === selectedSession.small_task_id)?.project_id) :
-          undefined
+        project={
+          selectedSession && selectedSession.small_task_id
+            ? projects.find(
+                p => p.id === tasks.find(t => t.id === selectedSession.small_task_id)?.project_id
+              )
+            : undefined
         }
         onUpdate={handleSessionUpdate}
         onDelete={handleSessionDelete}

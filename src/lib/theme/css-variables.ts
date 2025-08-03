@@ -11,22 +11,22 @@ import { lightColors, darkColors, getCSSVariableName, type SemanticColor } from 
 export const generateCSSVariables = (): string => {
   const rootVariables: string[] = []
   const darkVariables: string[] = []
-  
+
   // radius変数
   rootVariables.push('  --radius: 0.5rem;')
-  
+
   // ライトモードのセマンティックカラー
   Object.entries(lightColors).forEach(([key, value]) => {
     const varName = getCSSVariableName(key as SemanticColor)
     rootVariables.push(`  ${varName}: ${value};`)
   })
-  
+
   // ダークモードのセマンティックカラー
   Object.entries(darkColors).forEach(([key, value]) => {
     const varName = getCSSVariableName(key as SemanticColor)
     darkVariables.push(`  ${varName}: ${value};`)
   })
-  
+
   // CSS文字列の生成
   return `/* Auto-generated CSS variables from TypeScript color definitions */
 
@@ -44,12 +44,12 @@ ${darkVariables.join('\n')}
  */
 export const generateTailwindColors = () => {
   const colors: Record<string, string> = {}
-  
+
   // セマンティックカラーをTailwind設定に変換
-  Object.keys(lightColors).forEach((key) => {
+  Object.keys(lightColors).forEach(key => {
     colors[key] = `hsl(var(--${key}))`
   })
-  
+
   return colors
 }
 

@@ -37,7 +37,9 @@ export class DopamineEntryRepositoryImpl
         .and(entry => entry.timestamp >= startDate && entry.timestamp <= endDate)
         .toArray()
 
-      return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      return entries.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )
     } catch (error) {
       console.error('Failed to get dopamine entries by date range:', error)
       throw error
@@ -46,11 +48,7 @@ export class DopamineEntryRepositoryImpl
 
   async getLatestEntry(userId: string): Promise<DopamineEntry | undefined> {
     try {
-      const entries = await this.table
-        .where('user_id')
-        .equals(userId)
-        .reverse()
-        .sortBy('timestamp')
+      const entries = await this.table.where('user_id').equals(userId).reverse().sortBy('timestamp')
 
       return entries[0]
     } catch (error) {
@@ -62,12 +60,20 @@ export class DopamineEntryRepositoryImpl
   async getTodayEntries(userId: string): Promise<DopamineEntry[]> {
     try {
       const today = new Date()
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString()
+      const startOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      ).toISOString()
+      const endOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1
+      ).toISOString()
 
       return this.getByDateRange(userId, startOfDay, endOfDay)
     } catch (error) {
-      console.error('Failed to get today\'s dopamine entries:', error)
+      console.error("Failed to get today's dopamine entries:", error)
       throw error
     }
   }

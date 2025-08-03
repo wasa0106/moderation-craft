@@ -21,13 +21,13 @@ interface TaskMemoProps {
   isDirty?: boolean
 }
 
-export function TaskMemo({ 
-  value, 
-  onChange, 
+export function TaskMemo({
+  value,
+  onChange,
   onSave,
-  isSaving = false, 
+  isSaving = false,
   error = null,
-  isDirty = false
+  isDirty = false,
 }: TaskMemoProps) {
   // Ctrl+S / Cmd+S でも保存できるように
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -45,21 +45,23 @@ export function TaskMemo({
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">週次計画メモ</span>
           <div className="flex items-center gap-2">
-            <span className={cn(
-              "text-xs",
-              isDirty && "text-amber-600",
-              isSaving && "text-muted-foreground",
-              !isSaving && !isDirty && !error && "text-muted-foreground/60",
-              error && "text-destructive"
-            )}>
-              {isDirty && !isSaving && "未保存の変更"}
-              {isSaving && "保存中..."}
-              {!isSaving && !isDirty && !error && "保存済み"}
-              {error && "保存エラー"}
+            <span
+              className={cn(
+                'text-xs',
+                isDirty && 'text-amber-600',
+                isSaving && 'text-muted-foreground',
+                !isSaving && !isDirty && !error && 'text-muted-foreground/60',
+                error && 'text-destructive'
+              )}
+            >
+              {isDirty && !isSaving && '未保存の変更'}
+              {isSaving && '保存中...'}
+              {!isSaving && !isDirty && !error && '保存済み'}
+              {error && '保存エラー'}
             </span>
             <Button
               size="sm"
-              variant={isDirty ? "default" : "outline"}
+              variant={isDirty ? 'default' : 'outline'}
               onClick={onSave}
               disabled={!isDirty || isSaving}
               className="h-8"
@@ -71,14 +73,12 @@ export function TaskMemo({
         </div>
         <Textarea
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={e => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="今週の計画、意識したいこと、目標などを記入してください..."
           className="min-h-[300px] font-mono text-sm bg-surface-1 resize-y"
         />
-        <p className="text-xs text-muted-foreground">
-          Ctrl+S (Mac: Cmd+S) でも保存できます
-        </p>
+        <p className="text-xs text-muted-foreground">Ctrl+S (Mac: Cmd+S) でも保存できます</p>
       </div>
     </CardContent>
   )

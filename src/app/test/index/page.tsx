@@ -10,29 +10,29 @@ const testPages = [
     title: 'データベース動作確認',
     description: 'IndexedDBの基本的な動作を確認します',
     href: '/test',
-    icon: '🧪'
+    icon: '🧪',
   },
   {
     title: 'リポジトリテスト',
     description: '各リポジトリの同期機能をテストします',
     href: '/test/repositories',
-    icon: '🔄'
+    icon: '🔄',
   },
   {
     title: 'UPDATE/DELETE同期テスト',
     description: '更新・削除操作の同期をテストします',
     href: '/test/update-delete',
-    icon: '✏️'
-  }
+    icon: '✏️',
+  },
 ]
 
 export default function TestIndexPage() {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">テストページ一覧</h1>
-      
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {testPages.map((page) => (
+        {testPages.map(page => (
           <Card key={page.href} className="hover:shadow-sm transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

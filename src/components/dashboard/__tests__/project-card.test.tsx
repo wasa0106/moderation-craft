@@ -31,7 +31,7 @@ describe('ProjectCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupDefaultMocks()
-    
+
     // Mock API response for tasks
     mockFetch(`/api/small-tasks?project_id=${mockProject.id}`, {
       success: true,
@@ -63,7 +63,7 @@ describe('ProjectCard', () => {
           is_synced: true,
         },
       ],
-      count: 2
+      count: 2,
     })
   })
 

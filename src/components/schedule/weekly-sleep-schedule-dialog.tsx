@@ -171,11 +171,11 @@ export function WeeklySleepScheduleDialog({
 
     const newSchedules = weekSchedules.map((schedule, index) => {
       const previousSchedule = previousWeekSchedules[index]?.schedule
-      
+
       if (previousSchedule) {
         const startTime = new Date(previousSchedule.scheduled_start_time)
         const endTime = new Date(previousSchedule.scheduled_end_time)
-        
+
         return {
           ...schedule,
           bedtimeHour: startTime.getHours(),
@@ -191,10 +191,10 @@ export function WeeklySleepScheduleDialog({
           ),
         }
       }
-      
+
       return schedule
     })
-    
+
     setWeekSchedules(newSchedules)
   }
 
@@ -295,7 +295,9 @@ export function WeeklySleepScheduleDialog({
                   <div className="flex items-center gap-1">
                     <Select
                       value={schedule.bedtimeHour.toString()}
-                      onValueChange={value => updateSchedule(index, 'bedtimeHour', parseInt(value, 10))}
+                      onValueChange={value =>
+                        updateSchedule(index, 'bedtimeHour', parseInt(value, 10))
+                      }
                     >
                       <SelectTrigger className="w-16 h-7 text-sm">
                         <SelectValue />
@@ -311,7 +313,9 @@ export function WeeklySleepScheduleDialog({
                     <span className="text-sm">:</span>
                     <Select
                       value={schedule.bedtimeMinute.toString()}
-                      onValueChange={value => updateSchedule(index, 'bedtimeMinute', parseInt(value, 10))}
+                      onValueChange={value =>
+                        updateSchedule(index, 'bedtimeMinute', parseInt(value, 10))
+                      }
                     >
                       <SelectTrigger className="w-16 h-7 text-sm">
                         <SelectValue />
@@ -331,7 +335,9 @@ export function WeeklySleepScheduleDialog({
                   <div className="flex items-center gap-1">
                     <Select
                       value={schedule.wakeTimeHour.toString()}
-                      onValueChange={value => updateSchedule(index, 'wakeTimeHour', parseInt(value, 10))}
+                      onValueChange={value =>
+                        updateSchedule(index, 'wakeTimeHour', parseInt(value, 10))
+                      }
                     >
                       <SelectTrigger className="w-16 h-7 text-sm">
                         <SelectValue />
@@ -347,7 +353,9 @@ export function WeeklySleepScheduleDialog({
                     <span className="text-sm">:</span>
                     <Select
                       value={schedule.wakeTimeMinute.toString()}
-                      onValueChange={value => updateSchedule(index, 'wakeTimeMinute', parseInt(value, 10))}
+                      onValueChange={value =>
+                        updateSchedule(index, 'wakeTimeMinute', parseInt(value, 10))
+                      }
                     >
                       <SelectTrigger className="w-16 h-7 text-sm">
                         <SelectValue />
@@ -365,16 +373,17 @@ export function WeeklySleepScheduleDialog({
 
                 {/* 睡眠時間 */}
                 <div className="flex items-center justify-end gap-1">
-                  <span className={cn(
-                    "text-sm font-medium",
-                    schedule.duration < 360 && "text-destructive",
-                    schedule.duration > 600 && "text-destructive"
-                  )}>
+                  <span
+                    className={cn(
+                      'text-sm font-medium',
+                      schedule.duration < 360 && 'text-destructive',
+                      schedule.duration > 600 && 'text-destructive'
+                    )}
+                  >
                     {schedule.duration > 0 ? formatSleepDurationHHMM(schedule.duration) : 'エラー'}
                   </span>
-                  {(schedule.duration < 360 || schedule.duration > 600) && schedule.duration > 0 && (
-                    <AlertCircle className="h-3 w-3 text-destructive" />
-                  )}
+                  {(schedule.duration < 360 || schedule.duration > 600) &&
+                    schedule.duration > 0 && <AlertCircle className="h-3 w-3 text-destructive" />}
                 </div>
               </div>
             ))}

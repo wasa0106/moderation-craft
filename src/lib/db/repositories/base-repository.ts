@@ -95,14 +95,9 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         // SyncServiceを動的インポートして同期キューに追加
         const { SyncService } = await import('@/lib/sync/sync-service')
         const syncService = SyncService.getInstance()
-        
+
         // UPDATE操作を同期キューに追加
-        await syncService.addToSyncQueue(
-          this.entityType,
-          id,
-          'update',
-          updatedEntity
-        )
+        await syncService.addToSyncQueue(this.entityType, id, 'update', updatedEntity)
       }
 
       return updatedEntity
@@ -123,7 +118,7 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         // 削除前にエンティティ情報を同期キューに追加
         const { SyncService } = await import('@/lib/sync/sync-service')
         const syncService = SyncService.getInstance()
-        
+
         // DELETE操作を同期キューに追加（エンティティ情報を含める）
         await syncService.addToSyncQueue(
           this.entityType,
@@ -169,7 +164,6 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   }
 
   protected applyFilters(query: any, filters: Record<string, unknown>): any {
-     
     let filteredQuery = query
 
     Object.entries(filters).forEach(([key, value]) => {

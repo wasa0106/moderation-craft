@@ -40,10 +40,7 @@ export const handlers = [
   http.get(`${API_BASE_URL}/projects/:id`, ({ params }) => {
     const project = mockDatabase.projects.get(params.id as string)
     if (!project) {
-      return HttpResponse.json(
-        { success: false, error: 'Project not found' },
-        { status: 404 }
-      )
+      return HttpResponse.json({ success: false, error: 'Project not found' }, { status: 404 })
     }
     return HttpResponse.json({
       success: true,
@@ -52,7 +49,7 @@ export const handlers = [
   }),
 
   http.post(`${API_BASE_URL}/projects`, async ({ request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     const project = {
       id: generateMockId('proj'),
       user_id: 'test-user',
@@ -70,13 +67,10 @@ export const handlers = [
   }),
 
   http.put(`${API_BASE_URL}/projects/:id`, async ({ request, params }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     const existing = mockDatabase.projects.get(params.id as string)
     if (!existing) {
-      return HttpResponse.json(
-        { success: false, error: 'Project not found' },
-        { status: 404 }
-      )
+      return HttpResponse.json({ success: false, error: 'Project not found' }, { status: 404 })
     }
     const updated = {
       ...existing,
@@ -94,10 +88,7 @@ export const handlers = [
   http.delete(`${API_BASE_URL}/projects/:id`, ({ params }) => {
     const existed = mockDatabase.projects.has(params.id as string)
     if (!existed) {
-      return HttpResponse.json(
-        { success: false, error: 'Project not found' },
-        { status: 404 }
-      )
+      return HttpResponse.json({ success: false, error: 'Project not found' }, { status: 404 })
     }
     mockDatabase.projects.delete(params.id as string)
     return HttpResponse.json({
@@ -110,12 +101,12 @@ export const handlers = [
   http.get(`${API_BASE_URL}/small-tasks`, ({ request }) => {
     const url = new URL(request.url)
     const projectId = url.searchParams.get('project_id')
-    
+
     let tasks = Array.from(mockDatabase.smallTasks.values())
     if (projectId) {
       tasks = tasks.filter(task => task.project_id === projectId)
     }
-    
+
     return HttpResponse.json({
       success: true,
       tasks,
@@ -124,7 +115,7 @@ export const handlers = [
   }),
 
   http.post(`${API_BASE_URL}/small-tasks`, async ({ request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     const task = {
       id: generateMockId('task'),
       user_id: 'test-user',
@@ -144,29 +135,28 @@ export const handlers = [
   }),
 
   http.put(`${API_BASE_URL}/small-tasks/:id/status`, async ({ request, params }) => {
-    const body = await request.json() as { status: string, endActiveSession?: boolean }
+    const body = (await request.json()) as { status: string; endActiveSession?: boolean }
     const task = mockDatabase.smallTasks.get(params.id as string)
     if (!task) {
-      return HttpResponse.json(
-        { success: false, error: 'Task not found' },
-        { status: 404 }
-      )
+      return HttpResponse.json({ success: false, error: 'Task not found' }, { status: 404 })
     }
-    
+
     task.status = body.status
     task.updated_at = new Date().toISOString()
     task.version += 1
-    
+
     // End active session if requested
     if (body.endActiveSession) {
       const sessions = Array.from(mockDatabase.workSessions.values())
       const activeSession = sessions.find(s => s.small_task_id === params.id && !s.end_time)
       if (activeSession) {
         activeSession.end_time = new Date().toISOString()
-        activeSession.duration_seconds = Math.floor((Date.now() - new Date(activeSession.start_time).getTime()) / 1000)
+        activeSession.duration_seconds = Math.floor(
+          (Date.now() - new Date(activeSession.start_time).getTime()) / 1000
+        )
       }
     }
-    
+
     return HttpResponse.json({
       success: true,
       task,
@@ -177,12 +167,12 @@ export const handlers = [
   http.get(`${API_BASE_URL}/work-sessions`, ({ request }) => {
     const url = new URL(request.url)
     const taskId = url.searchParams.get('small_task_id')
-    
+
     let sessions = Array.from(mockDatabase.workSessions.values())
     if (taskId) {
       sessions = sessions.filter(session => session.small_task_id === taskId)
     }
-    
+
     return HttpResponse.json({
       success: true,
       sessions,
@@ -191,16 +181,18 @@ export const handlers = [
   }),
 
   http.post(`${API_BASE_URL}/work-sessions/start`, async ({ request }) => {
-    const body = await request.json() as { small_task_id: string }
-    
+    const body = (await request.json()) as { small_task_id: string }
+
     // End any active sessions
     const sessions = Array.from(mockDatabase.workSessions.values())
     const activeSession = sessions.find(s => !s.end_time)
     if (activeSession) {
       activeSession.end_time = new Date().toISOString()
-      activeSession.duration_seconds = Math.floor((Date.now() - new Date(activeSession.start_time).getTime()) / 1000)
+      activeSession.duration_seconds = Math.floor(
+        (Date.now() - new Date(activeSession.start_time).getTime()) / 1000
+      )
     }
-    
+
     const session = {
       id: generateMockId('session'),
       user_id: 'test-user',
@@ -213,7 +205,7 @@ export const handlers = [
       is_synced: false,
     }
     mockDatabase.workSessions.set(session.id, session)
-    
+
     return HttpResponse.json({
       success: true,
       session,
@@ -223,19 +215,18 @@ export const handlers = [
   http.post(`${API_BASE_URL}/work-sessions/:id/stop`, ({ params }) => {
     const session = mockDatabase.workSessions.get(params.id as string)
     if (!session) {
-      return HttpResponse.json(
-        { success: false, error: 'Session not found' },
-        { status: 404 }
-      )
+      return HttpResponse.json({ success: false, error: 'Session not found' }, { status: 404 })
     }
-    
+
     if (!session.end_time) {
       session.end_time = new Date().toISOString()
-      session.duration_seconds = Math.floor((Date.now() - new Date(session.start_time).getTime()) / 1000)
+      session.duration_seconds = Math.floor(
+        (Date.now() - new Date(session.start_time).getTime()) / 1000
+      )
       session.updated_at = new Date().toISOString()
       session.version += 1
     }
-    
+
     return HttpResponse.json({
       success: true,
       session,
@@ -255,7 +246,7 @@ export const handlers = [
       version: 1,
       is_synced: false,
     }
-    
+
     return HttpResponse.json({
       success: true,
       schedule,
@@ -263,9 +254,9 @@ export const handlers = [
   }),
 
   http.put(`${API_BASE_URL}/schedules/:weekOf`, async ({ request, params }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     const weekOf = params.weekOf as string
-    
+
     const schedule = {
       id: generateMockId('schedule'),
       user_id: 'test-user',
@@ -276,9 +267,9 @@ export const handlers = [
       is_synced: false,
       ...body,
     }
-    
+
     mockDatabase.schedules.set(weekOf, schedule)
-    
+
     return HttpResponse.json({
       success: true,
       schedule,
@@ -296,7 +287,7 @@ export const handlers = [
   }),
 
   http.post(`${API_BASE_URL}/goals`, async ({ request }) => {
-    const body = await request.json() as any
+    const body = (await request.json()) as any
     const goal = {
       id: generateMockId('goal'),
       user_id: 'test-user',
@@ -315,7 +306,7 @@ export const handlers = [
 
   // Reverse WBS AI suggestion endpoint
   http.post(`${API_BASE_URL}/reverse-wbs/suggest`, async ({ request }) => {
-    const body = await request.json() as { goal: string }
+    const body = (await request.json()) as { goal: string }
 
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -370,7 +361,7 @@ export const handlers = [
 
   // Reverse WBS validation endpoint
   http.post(`${API_BASE_URL}/reverse-wbs/validate`, async ({ request }) => {
-    const body = await request.json() as { tasks: any[], dependencies: any[] }
+    const body = (await request.json()) as { tasks: any[]; dependencies: any[] }
 
     // Mock validation response
     return HttpResponse.json({
@@ -382,7 +373,7 @@ export const handlers = [
 
   // Reverse WBS convert to project endpoint
   http.post(`${API_BASE_URL}/reverse-wbs/convert`, async ({ request }) => {
-    const body = await request.json() as { wbs: any }
+    const body = (await request.json()) as { wbs: any }
 
     // Mock conversion response
     return HttpResponse.json({
@@ -395,7 +386,7 @@ export const handlers = [
   // Sync API endpoint
   http.post(`${API_BASE_URL}/sync`, async ({ request }) => {
     const authHeader = request.headers.get('x-api-key')
-    
+
     // Check API key
     if (!authHeader) {
       return HttpResponse.json(
@@ -405,13 +396,10 @@ export const handlers = [
     }
 
     if (authHeader !== 'test-api-key') {
-      return HttpResponse.json(
-        { success: false, error: 'Invalid API key' },
-        { status: 401 }
-      )
+      return HttpResponse.json({ success: false, error: 'Invalid API key' }, { status: 401 })
     }
 
-    const body = await request.json() as { entity_type: string, payload: any }
+    const body = (await request.json()) as { entity_type: string; payload: any }
 
     // Validate required fields
     if (!body.entity_type || !body.payload) {

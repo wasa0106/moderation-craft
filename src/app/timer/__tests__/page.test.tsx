@@ -18,28 +18,28 @@ vi.mock('@/hooks/use-weekly-total')
 vi.mock('@/stores/timer-store')
 vi.mock('@/lib/db/repositories')
 vi.mock('@/components/timer/mood-dialog', () => ({
-  MoodDialog: ({ open, onOpenChange }: any) => 
-    open ? <div data-testid="mood-dialog">Mood Dialog</div> : null
+  MoodDialog: ({ open, onOpenChange }: any) =>
+    open ? <div data-testid="mood-dialog">Mood Dialog</div> : null,
 }))
 vi.mock('@/components/timer/dopamine-dialog', () => ({
-  DopamineDialog: ({ open, onOpenChange }: any) => 
-    open ? <div data-testid="dopamine-dialog">Dopamine Dialog</div> : null
+  DopamineDialog: ({ open, onOpenChange }: any) =>
+    open ? <div data-testid="dopamine-dialog">Dopamine Dialog</div> : null,
 }))
 vi.mock('@/components/timer/focus-dialog', () => ({
-  FocusDialog: ({ open, onOpenChange, onSubmit }: any) => 
+  FocusDialog: ({ open, onOpenChange, onSubmit }: any) =>
     open ? (
       <div data-testid="focus-dialog">
         <button onClick={() => onSubmit(4)}>Submit Focus</button>
       </div>
-    ) : null
+    ) : null,
 }))
 vi.mock('@/components/timer/unplanned-task-dialog', () => ({
-  UnplannedTaskDialog: ({ open, onOpenChange, onConfirm }: any) => 
+  UnplannedTaskDialog: ({ open, onOpenChange, onConfirm }: any) =>
     open ? (
       <div data-testid="unplanned-task-dialog">
         <button onClick={() => onConfirm('緊急タスク')}>Confirm Task</button>
       </div>
-    ) : null
+    ) : null,
 }))
 vi.mock('@/components/timer/combined-schedule-view', () => ({
   CombinedScheduleView: ({ tasks, sessions, onTaskClick, date }: any) => (
@@ -51,7 +51,7 @@ vi.mock('@/components/timer/combined-schedule-view', () => ({
         </div>
       ))}
     </div>
-  )
+  ),
 }))
 vi.mock('@/components/timer/work-progress-card', () => ({
   WorkProgressCard: ({ dayTasks, todaySessions, weeklyTotal, selectedDate }: any) => (
@@ -60,15 +60,22 @@ vi.mock('@/components/timer/work-progress-card', () => ({
       <div>Sessions: {todaySessions.length}</div>
       <div>Weekly Total: {weeklyTotal}</div>
     </div>
-  )
+  ),
 }))
 vi.mock('@/components/timer/timer-task-display', () => ({
-  TimerTaskDisplay: ({ smallTasks, projects, dayTasks, onUnplannedTaskClick, onTaskChange, unplannedTaskName }: any) => (
+  TimerTaskDisplay: ({
+    smallTasks,
+    projects,
+    dayTasks,
+    onUnplannedTaskClick,
+    onTaskChange,
+    unplannedTaskName,
+  }: any) => (
     <div data-testid="timer-task-display">
       <button onClick={onUnplannedTaskClick}>計画外タスク</button>
       {unplannedTaskName && <div>{unplannedTaskName}</div>}
     </div>
-  )
+  ),
 }))
 // Mock TimerControls separately to avoid require issues
 let mockIsRunning = false
@@ -85,7 +92,7 @@ vi.mock('@/components/timer/timer-controls', () => ({
         <button onClick={onDopamineClick}>Dopamine</button>
       </div>
     )
-  }
+  },
 }))
 
 // Import mocked modules
@@ -424,7 +431,9 @@ describe('TimerPage', () => {
       fireEvent.click(taskElement)
 
       expect(mockSetCurrentTask).toHaveBeenCalledWith(task)
-      expect(mockSetCurrentProject).toHaveBeenCalledWith(expect.objectContaining({ id: 'project-1' }))
+      expect(mockSetCurrentProject).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'project-1' })
+      )
       expect(mockStartTimer).toHaveBeenCalledWith({ taskId: 'task-1' })
     })
   })
@@ -490,10 +499,7 @@ describe('TimerPage', () => {
       // Wait for the useEffect to trigger
       await vi.runOnlyPendingTimersAsync()
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to load sessions:',
-        expect.any(Error)
-      )
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to load sessions:', expect.any(Error))
 
       consoleErrorSpy.mockRestore()
     })

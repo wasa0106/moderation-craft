@@ -34,7 +34,7 @@ vi.mock('../../database', () => {
       return fn()
     }),
   }
-  
+
   return {
     db: mockDbMethods,
     default: mockDbMethods,
@@ -57,7 +57,8 @@ class MockDatabase extends Dexie {
     super('MockDatabase')
     this.version(1).stores({
       test_entities: 'id, name, value, created_at, updated_at',
-      sync_queue: '++id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count',
+      sync_queue:
+        '++id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count',
     })
   }
 
@@ -82,7 +83,7 @@ class MockDatabase extends Dexie {
       updated_at: this.getCurrentTimestamp(),
     }
   }
-  
+
   // Override transaction to work with our mock
   transaction(...args: any[]): any {
     // For testing purposes, just execute the function
@@ -105,7 +106,7 @@ class TestRepository extends BaseRepository<TestEntity> {
     // Set the sync_queue reference in the mock db object
     mockDb.sync_queue = db.sync_queue
   }
-  
+
   // Override applyFilters to work with test mock
   protected applyFilters(query: any, filters: Record<string, unknown>): any {
     // For testing, just filter the array after fetching
@@ -127,7 +128,7 @@ class TestRepository extends BaseRepository<TestEntity> {
         }
       })
     }
-    
+
     // Override toArray for list method
     if (query.toArray) {
       const originalToArray = query.toArray.bind(query)
@@ -136,7 +137,7 @@ class TestRepository extends BaseRepository<TestEntity> {
         return results.filter(filterFn)
       }
     }
-    
+
     // Override count for count method
     if (query.count) {
       const originalCount = query.count.bind(query)
@@ -145,7 +146,7 @@ class TestRepository extends BaseRepository<TestEntity> {
         return results.filter(filterFn).length
       }
     }
-    
+
     // Override first for findOne method
     if (query.first) {
       const originalFirst = query.first.bind(query)
@@ -154,11 +155,10 @@ class TestRepository extends BaseRepository<TestEntity> {
         return results.filter(filterFn)[0]
       }
     }
-    
+
     return query
   }
 }
-
 
 describe('BaseRepository', () => {
   let mockDb: MockDatabase
@@ -172,12 +172,12 @@ describe('BaseRepository', () => {
     // Create new mock database and repository
     mockDb = new MockDatabase()
     await mockDb.open()
-    
+
     repository = new TestRepository(mockDb)
 
     // Get sync service mock
     syncServiceMock = { addToSyncQueue: mockAddToSyncQueue }
-    
+
     // Reset mock counts again
     vi.clearAllMocks()
   })
@@ -335,12 +335,7 @@ describe('BaseRepository', () => {
 
       await repository.delete(entity.id)
 
-      expect(mockAddToSyncQueue).toHaveBeenCalledWith(
-        'test_entity',
-        entity.id,
-        'delete',
-        entity
-      )
+      expect(mockAddToSyncQueue).toHaveBeenCalledWith('test_entity', entity.id, 'delete', entity)
     })
 
     it('should throw error if entity does not exist', async () => {
@@ -393,7 +388,7 @@ describe('BaseRepository', () => {
 
     it('should filter entities by range', async () => {
       const result = await repository.list({
-        value: { from: 150, to: 250 }
+        value: { from: 150, to: 250 },
       })
 
       expect(result).toHaveLength(1)
@@ -405,7 +400,7 @@ describe('BaseRepository', () => {
 
       const result = await repository.list({
         name: 'Item 2',
-        value: 200
+        value: 200,
       })
 
       expect(result).toHaveLength(1)
@@ -543,13 +538,13 @@ describe('BaseRepository', () => {
 
     it('should update timestamps for all updated entities', async () => {
       const originalTimestamps = entities.map(e => e.updated_at)
-      
+
       // Wait to ensure timestamp difference
       await new Promise(resolve => setTimeout(resolve, 10))
 
       const updates = entities.map(e => ({
         id: e.id,
-        data: { value: e.value + 50 }
+        data: { value: e.value + 50 },
       }))
 
       const result = await repository.bulkUpdate(updates)
@@ -581,15 +576,15 @@ describe('BaseRepository', () => {
     it('should handle errors during bulk update', async () => {
       // Create an entity first
       const entity = await repository.create({ name: 'Test', value: 100 })
-      
+
       // Mock the table update method to throw an error
       const originalUpdate = mockDb.test_entities.update
       mockDb.test_entities.update = vi.fn().mockRejectedValueOnce(new Error('Update error'))
 
-      await expect(repository.bulkUpdate([{ id: entity.id, data: { value: 200 } }])).rejects.toThrow(
-        'Failed to bulk update test_entity: Error: Update error'
-      )
-      
+      await expect(
+        repository.bulkUpdate([{ id: entity.id, data: { value: 200 } }])
+      ).rejects.toThrow('Failed to bulk update test_entity: Error: Update error')
+
       // Restore original update
       mockDb.test_entities.update = originalUpdate
     })
@@ -849,7 +844,7 @@ describe('BaseRepository', () => {
       // Create entities on different days
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
-      
+
       // Create entities manually with specific timestamps
       const yesterdayEntity: TestEntity = {
         id: crypto.randomUUID(),
@@ -858,7 +853,7 @@ describe('BaseRepository', () => {
         created_at: yesterday.toISOString(),
         updated_at: yesterday.toISOString(),
       }
-      
+
       const todayEntity1: TestEntity = {
         id: crypto.randomUUID(),
         name: 'Today Item 1',
@@ -866,7 +861,7 @@ describe('BaseRepository', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      
+
       const todayEntity2: TestEntity = {
         id: crypto.randomUUID(),
         name: 'Today Item 2',
@@ -874,7 +869,7 @@ describe('BaseRepository', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      
+
       await mockDb.test_entities.add(yesterdayEntity)
       await mockDb.test_entities.add(todayEntity1)
       await mockDb.test_entities.add(todayEntity2)
@@ -922,9 +917,7 @@ describe('BaseRepository', () => {
         onRevert
       )
 
-      expect(onUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ id: entity.id, value: 200 })
-      )
+      expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ id: entity.id, value: 200 }))
       expect(operation).toHaveBeenCalled()
       expect(result).toBe('success')
       expect(onRevert).not.toHaveBeenCalled()
@@ -937,13 +930,7 @@ describe('BaseRepository', () => {
       const operation = vi.fn().mockRejectedValue(new Error('Operation failed'))
 
       await expect(
-        repository.withOptimisticUpdate(
-          entity.id,
-          { value: 200 },
-          operation,
-          onUpdate,
-          onRevert
-        )
+        repository.withOptimisticUpdate(entity.id, { value: 200 }, operation, onUpdate, onRevert)
       ).rejects.toThrow('Operation failed')
 
       expect(onUpdate).toHaveBeenCalled()
@@ -1080,7 +1067,7 @@ describe('BaseRepository', () => {
     })
 
     it('should handle concurrent operations', async () => {
-      const operations = Array.from({ length: 10 }, (_, i) => 
+      const operations = Array.from({ length: 10 }, (_, i) =>
         repository.create({ name: `Item ${i}`, value: i * 100 })
       )
 
@@ -1117,7 +1104,7 @@ describe('BaseRepository', () => {
 
       // Restore original bulkAdd
       mockDb.sync_queue.bulkAdd = originalAdd
-      
+
       // Verify the entity still exists (error was handled properly)
       const entity2 = await repository.getById(entity.id)
       expect(entity2).toBeDefined()

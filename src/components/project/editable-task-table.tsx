@@ -87,9 +87,7 @@ const BufferedInput = memo(function BufferedInput({
   inputRef,
 }: BufferedInputProps) {
   // 内部状態は常に文字列として管理（数値入力でも）
-  const [localValue, setLocalValue] = useState(
-    type === 'number' ? String(value) : String(value)
-  )
+  const [localValue, setLocalValue] = useState(type === 'number' ? String(value) : String(value))
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 親コンポーネントの値が変更されたら同期
@@ -616,7 +614,6 @@ export function EditableTaskTable({
             </Button>
           )}
         </div>
-
       </div>
 
       {/* テーブル */}
@@ -695,7 +692,6 @@ export function EditableTaskTable({
           </div>
         </div>
       )}
-
     </div>
   )
 }

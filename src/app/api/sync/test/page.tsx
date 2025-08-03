@@ -39,8 +39,8 @@ export default function SyncTestPage() {
         },
         body: JSON.stringify({
           entity_type: 'work_session',
-          payload: session
-        })
+          payload: session,
+        }),
       })
 
       const data = await response.json()
@@ -55,14 +55,14 @@ export default function SyncTestPage() {
         try {
           // 手動テストデータの場合はIDがtest-で始まる
           const isTestData = data.syncedEntityId.startsWith('test-')
-          
+
           if (!isTestData) {
             await workSessionRepository.update(data.syncedEntityId, {
-              is_synced: true
+              is_synced: true,
             })
             toast.success('IndexedDBの同期フラグを更新しました')
             console.log('IndexedDB更新成功:', data.syncedEntityId)
-            
+
             // React Queryのキャッシュを更新
             queryClient.invalidateQueries({ queryKey: ['workSessions'] })
           } else {
@@ -72,27 +72,34 @@ export default function SyncTestPage() {
           console.error('IndexedDB更新エラー:', updateError)
           // エラーメッセージを詳細に
           if (updateError instanceof Error && updateError.message.includes('not found')) {
-            toast.warning('セッションがIndexedDBに存在しないため、同期フラグの更新をスキップしました')
+            toast.warning(
+              'セッションがIndexedDBに存在しないため、同期フラグの更新をスキップしました'
+            )
           } else {
             toast.error('IndexedDBの更新に失敗しました')
           }
         }
       }
 
-      setResults(prev => [...prev, {
-        id: session.id,
-        success: true,
-        response: data
-      }])
-
+      setResults(prev => [
+        ...prev,
+        {
+          id: session.id,
+          success: true,
+          response: data,
+        },
+      ])
     } catch (error: any) {
       console.error('同期エラー:', error)
       setError(error.message)
-      setResults(prev => [...prev, {
-        id: session.id,
-        success: false,
-        error: error.message
-      }])
+      setResults(prev => [
+        ...prev,
+        {
+          id: session.id,
+          success: false,
+          error: error.message,
+        },
+      ])
     } finally {
       setSyncing(false)
     }
@@ -116,22 +123,21 @@ export default function SyncTestPage() {
           <p className="text-muted-foreground">今日のセッションがありません</p>
         ) : (
           <div className="space-y-2">
-            {sessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between p-2 border rounded">
+            {sessions.map(session => (
+              <div
+                key={session.id}
+                className="flex items-center justify-between p-2 border rounded"
+              >
                 <div>
                   <p className="font-medium">
-                    {format(new Date(session.start_time), 'HH:mm')} - 
+                    {format(new Date(session.start_time), 'HH:mm')} -
                     {session.end_time ? format(new Date(session.end_time), 'HH:mm') : '進行中'}
                     {session.is_synced && (
                       <span className="ml-2 text-xs text-green-600">✓ 同期済み</span>
                     )}
                   </p>
                 </div>
-                <Button
-                  onClick={() => testSyncWorkSession(session)}
-                  disabled={syncing}
-                  size="sm"
-                >
+                <Button onClick={() => testSyncWorkSession(session)} disabled={syncing} size="sm">
                   {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : '同期テスト'}
                 </Button>
               </div>
@@ -140,11 +146,7 @@ export default function SyncTestPage() {
         )}
 
         {sessions.length > 0 && (
-          <Button
-            onClick={testAllSessions}
-            disabled={syncing}
-            className="w-full mt-4"
-          >
+          <Button onClick={testAllSessions} disabled={syncing} className="w-full mt-4">
             {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             すべて同期テスト
           </Button>
@@ -185,9 +187,7 @@ export default function SyncTestPage() {
                     </details>
                   </div>
                 )}
-                {!result.success && (
-                  <p className="text-sm text-red-600 mt-1">{result.error}</p>
-                )}
+                {!result.success && <p className="text-sm text-red-600 mt-1">{result.error}</p>}
               </div>
             ))}
           </div>
@@ -210,7 +210,7 @@ export default function SyncTestPage() {
               small_task_id: null,
               is_synced: false,
               created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             }
             testSyncWorkSession(testSession)
           }}

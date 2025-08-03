@@ -17,22 +17,22 @@ const useTimer = vi.fn(() => {
       mockElapsedTime++
     }, 1000)
   }
-  
+
   const formattedTime = (() => {
     const hours = Math.floor(mockElapsedTime / 3600)
     const minutes = Math.floor((mockElapsedTime % 3600) / 60)
     const seconds = mockElapsedTime % 60
-    
+
     if (hours > 0) {
       return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
     }
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   })()
-  
-  const progressPercentage = mockCurrentTask 
+
+  const progressPercentage = mockCurrentTask
     ? (mockElapsedTime / 60 / mockCurrentTask.estimated_minutes) * 100
     : 0
-  
+
   return {
     isRunning: mockIsRunning,
     elapsedTime: mockElapsedTime,
@@ -129,7 +129,7 @@ describe('useTimer', () => {
 
     // Force re-render to get updated state
     const { result: updatedResult } = renderHook(() => useTimer())
-    
+
     expect(updatedResult.current.isRunning).toBe(true)
     expect(updatedResult.current.currentTask?.id).toBe(mockTask.id)
     expect(updatedResult.current.currentSession).toBeTruthy()
@@ -276,9 +276,9 @@ describe('useTimer', () => {
     // Mock API to return error
     const mockErrorResponse = vi.fn().mockResolvedValue({
       success: false,
-      error: 'Server error'
+      error: 'Server error',
     })
-    
+
     useTimer.mockReturnValueOnce({
       ...useTimer(),
       startTimer: mockErrorResponse,
@@ -350,9 +350,9 @@ describe('useTimer', () => {
       is_synced: true,
     }
 
-    seedMockDatabase({ 
+    seedMockDatabase({
       smallTasks: [mockTask],
-      workSessions: [existingSession]
+      workSessions: [existingSession],
     })
 
     const { result } = renderHook(() => useTimer())

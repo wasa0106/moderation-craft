@@ -63,9 +63,9 @@ describe('ProjectForm', () => {
         name: 'New Test Project',
         goal: 'Complete all test tasks',
         deadline: '2025-12-31',
-      }
+      },
     })
-    
+
     render(<ProjectForm onSuccess={mockOnSuccess} />)
 
     // Fill in form fields
@@ -85,10 +85,7 @@ describe('ProjectForm', () => {
 
   it('handles API errors gracefully', async () => {
     // Mock API to return error
-    mockFetch('/api/projects', 
-      { success: false, error: 'Server error' },
-      { status: 500 }
-    )
+    mockFetch('/api/projects', { success: false, error: 'Server error' }, { status: 500 })
 
     render(<ProjectForm />)
 
@@ -178,7 +175,7 @@ describe('ProjectForm', () => {
     render(<ProjectForm />)
 
     const goalInput = screen.getByLabelText('目標')
-    
+
     // Type in goal field
     await user.type(goalInput, 'This is a test goal')
 

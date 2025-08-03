@@ -42,9 +42,7 @@ export function FocusDialog({ open, onOpenChange, onSubmit }: FocusDialogProps) 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>集中力レベルを記録</DialogTitle>
-          <DialogDescription>
-            作業中の集中度を9段階で評価してください
-          </DialogDescription>
+          <DialogDescription>作業中の集中度を9段階で評価してください</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -54,7 +52,7 @@ export function FocusDialog({ open, onOpenChange, onSubmit }: FocusDialogProps) 
               {focusLevels.map(level => {
                 const Icon = level.icon
                 const isSelected = selectedFocus === level.value
-                
+
                 return (
                   <button
                     key={level.value}
@@ -66,26 +64,28 @@ export function FocusDialog({ open, onOpenChange, onSubmit }: FocusDialogProps) 
                     className={cn(
                       'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all',
                       'hover:bg-muted/50',
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-background'
+                      isSelected ? 'border-primary bg-primary/5' : 'border-border bg-background'
                     )}
                   >
-                    <Icon className={cn(
-                      'h-8 w-8',
-                      isSelected
-                        ? 'text-primary'
-                        : level.value <= 3
-                        ? 'text-muted-foreground'
-                        : level.value <= 6
-                        ? 'text-foreground'
-                        : 'text-foreground'
-                    )} />
+                    <Icon
+                      className={cn(
+                        'h-8 w-8',
+                        isSelected
+                          ? 'text-primary'
+                          : level.value <= 3
+                            ? 'text-muted-foreground'
+                            : level.value <= 6
+                              ? 'text-foreground'
+                              : 'text-foreground'
+                      )}
+                    />
                     <span className="text-xs font-medium">{level.label}</span>
-                    <span className={cn(
-                      'text-lg font-bold',
-                      isSelected ? 'text-primary' : 'text-muted-foreground'
-                    )}>
+                    <span
+                      className={cn(
+                        'text-lg font-bold',
+                        isSelected ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                    >
                       {level.value}
                     </span>
                   </button>

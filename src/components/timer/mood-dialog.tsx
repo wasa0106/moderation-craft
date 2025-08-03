@@ -16,7 +16,18 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { moodEntryRepository } from '@/lib/db/repositories'
 import { CreateMoodEntryData } from '@/types'
-import { Smile, Frown, Meh, Heart, Angry, Sparkles, Brain, Zap, CloudRain, CheckCircle } from 'lucide-react'
+import {
+  Smile,
+  Frown,
+  Meh,
+  Heart,
+  Angry,
+  Sparkles,
+  Brain,
+  Zap,
+  CloudRain,
+  CheckCircle,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SyncService } from '@/lib/sync/sync-service'
 import { toast } from 'sonner'
@@ -60,17 +71,17 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
 
       // IndexedDBに保存
       const entry = await moodEntryRepository.create(data)
-      
+
       // 同期キューに追加（オンライン復帰時に自動同期）
       await syncService.addToSyncQueue('mood_entry', entry.id, 'create', entry)
-      
+
       // 成功状態を表示
       setIsSuccess(true)
       toast.success('感情を記録しました', {
         description: `気分レベル: ${selectedMood}`,
         icon: <CheckCircle className="w-4 h-4" />,
       })
-      
+
       // 少し待ってからダイアログを閉じる
       setTimeout(() => {
         setSelectedMood(null)
@@ -103,9 +114,7 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>今の気分を記録</DialogTitle>
-          <DialogDescription>
-            現在の感情レベルを選択してください
-          </DialogDescription>
+          <DialogDescription>現在の感情レベルを選択してください</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -116,7 +125,7 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
               {moodLevels.map(level => {
                 const Icon = level.icon
                 const isSelected = selectedMood === level.value
-                
+
                 return (
                   <button
                     key={level.value}
@@ -124,21 +133,21 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
                     className={cn(
                       'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all',
                       'hover:bg-muted/50',
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-background'
+                      isSelected ? 'border-primary bg-primary/5' : 'border-border bg-background'
                     )}
                   >
-                    <Icon className={cn(
-                      'h-8 w-8',
-                      isSelected
-                        ? 'text-primary'
-                        : level.value <= 3
-                        ? 'text-muted-foreground'
-                        : level.value <= 6
-                        ? 'text-foreground'
-                        : 'text-foreground'
-                    )} />
+                    <Icon
+                      className={cn(
+                        'h-8 w-8',
+                        isSelected
+                          ? 'text-primary'
+                          : level.value <= 3
+                            ? 'text-muted-foreground'
+                            : level.value <= 6
+                              ? 'text-foreground'
+                              : 'text-foreground'
+                      )}
+                    />
                     <span className="text-xs font-medium">{level.label}</span>
                   </button>
                 )
@@ -153,7 +162,7 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
               id="mood-notes"
               placeholder="今の気分について詳しく記録できます..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={e => setNotes(e.target.value)}
               rows={3}
             />
           </div>
@@ -163,8 +172,8 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
             キャンセル
           </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={!selectedMood || isSubmitting || isSuccess}
             className={cn(isSuccess && 'bg-primary hover:bg-primary/90')}
           >

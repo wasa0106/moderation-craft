@@ -16,20 +16,19 @@ import { AlertTriangle } from 'lucide-react'
 export interface GanttTask extends Task {
   week_start: number
   week_end: number
-  weeklyHours: Map<number, number>  // 週ごとの実際の配分時間
+  weeklyHours: Map<number, number> // 週ごとの実際の配分時間
 }
-
 
 interface GanttChartProps {
   // 既存のprops（後方互換性）
   tasks?: Task[]
-  weeklyAvailableHours?: number  // 非推奨、後方互換性のためオプショナルに
-  weeklyAllocations?: WeeklyAllocation[]  // 非推奨、後方互換性のためオプショナルに
+  weeklyAvailableHours?: number // 非推奨、後方互換性のためオプショナルに
+  weeklyAllocations?: WeeklyAllocation[] // 非推奨、後方互換性のためオプショナルに
   onTaskUpdate?: (taskId: string, weekStart: number, weekEnd: number) => void
-  
+
   // 新しいprops（BigTasksベース）
   bigTasks?: BigTask[]
-  
+
   // 共通props
   startDate: Date
   endDate: Date
@@ -63,7 +62,7 @@ export function GanttChart({
     const endWeek = startOfWeek(endDate, { weekStartsOn: 1 })
     // 週の差を計算し、+1で両端を含める
     const projectWeeks = differenceInWeeks(endWeek, startWeek) + 1
-    
+
     if (ganttTasks.length === 0) {
       return Math.max(1, projectWeeks)
     }
@@ -80,7 +79,7 @@ export function GanttChart({
   const tasksByCategory = useMemo(() => {
     // まずorder順でソート
     const sortedTasks = [...ganttTasks].sort((a, b) => a.order - b.order)
-    
+
     // カテゴリの最初の出現順序を記録
     const categoryFirstAppearance = new Map<string, number>()
     sortedTasks.forEach((task, index) => {
@@ -89,7 +88,7 @@ export function GanttChart({
         categoryFirstAppearance.set(category, index)
       }
     })
-    
+
     // カテゴリごとにグループ化
     const grouped = new Map<string, GanttTask[]>()
     sortedTasks.forEach(task => {
@@ -101,8 +100,8 @@ export function GanttChart({
     })
 
     // カテゴリの初出順でソート（EditableTaskTableの順序を維持）
-    return Array.from(grouped.entries()).sort(([a], [b]) => 
-      categoryFirstAppearance.get(a)! - categoryFirstAppearance.get(b)!
+    return Array.from(grouped.entries()).sort(
+      ([a], [b]) => categoryFirstAppearance.get(a)! - categoryFirstAppearance.get(b)!
     )
   }, [ganttTasks])
 
@@ -114,19 +113,19 @@ export function GanttChart({
         // 開始日と終了日から週番号を計算
         const taskStartDate = dateUtils.toJSTDate(bigTask.start_date)
         const taskEndDate = dateUtils.toJSTDate(bigTask.end_date)
-        
+
         const weekStart = dateUtils.getWeekNumber(taskStartDate, startDate)
         const weekEnd = dateUtils.getWeekNumber(taskEndDate, startDate)
-        
+
         // 週ごとの時間配分を計算（均等配分）
         const weekCount = weekEnd - weekStart + 1
         const hoursPerWeek = bigTask.estimated_hours / weekCount
         const weeklyHours = new Map<number, number>()
-        
+
         for (let w = weekStart; w <= weekEnd; w++) {
           weeklyHours.set(w, hoursPerWeek)
         }
-        
+
         return {
           id: bigTask.id,
           name: bigTask.name,
@@ -135,14 +134,14 @@ export function GanttChart({
           order: index,
           week_start: weekStart,
           week_end: weekEnd,
-          weeklyHours
+          weeklyHours,
         }
       })
-      
+
       setGanttTasks(ganttTasksFromBigTasks)
       return
     }
-    
+
     // 既存のtasksベースの実装（後方互換性）
     if (!tasks || tasks.length === 0) {
       setGanttTasks([])
@@ -173,7 +172,7 @@ export function GanttChart({
 
         // タスクの週数を計算
         const weeksNeeded = Math.max(1, Math.ceil(task.estimatedHours / fixedWeeklyHours))
-        
+
         // タスクを配置
         for (let w = 0; w < weeksNeeded; w++) {
           const weekIndex = bestWeek + w
@@ -188,7 +187,7 @@ export function GanttChart({
         for (let w = 0; w < weeksNeeded; w++) {
           taskWeeklyHours.set(bestWeek + w, hoursPerWeek)
         }
-        
+
         allocated.push({
           ...task,
           week_start: bestWeek,
@@ -203,7 +202,7 @@ export function GanttChart({
 
     const allocated: GanttTask[] = []
     const weekHours: Map<number, number> = new Map()
-    
+
     // 週ごとの利用可能時間をマップに格納
     const weekCapacities = new Map<number, number>()
     weeklyAllocations.forEach((allocation, index) => {
@@ -212,7 +211,7 @@ export function GanttChart({
 
     // タスクをorder順でソート（入力順序を維持）
     const sortedTasks = [...tasks].sort((a, b) => a.order - b.order)
-    
+
     // 現在の週のインデックス（タスクを順次配置）
     let currentWeekIndex = 0
     let remainingWeekHours = weekCapacities.get(0) || 0
@@ -222,24 +221,24 @@ export function GanttChart({
       const taskStartWeek = currentWeekIndex
       let taskEndWeek = currentWeekIndex
       const taskWeeklyHours = new Map<number, number>()
-      
+
       // タスクを週に配分
       while (remainingTaskHours > 0 && currentWeekIndex < weeklyAllocations.length) {
         const availableHours = remainingWeekHours
         const hoursToAllocate = Math.min(remainingTaskHours, availableHours)
-        
+
         if (hoursToAllocate > 0) {
           const currentHours = weekHours.get(currentWeekIndex) || 0
           weekHours.set(currentWeekIndex, currentHours + hoursToAllocate)
-          
+
           // タスクの週ごとの時間を記録
           taskWeeklyHours.set(currentWeekIndex, hoursToAllocate)
-          
+
           remainingTaskHours -= hoursToAllocate
           remainingWeekHours -= hoursToAllocate
           taskEndWeek = currentWeekIndex
         }
-        
+
         // 現在の週の容量を使い切った場合、次の週へ
         if (remainingWeekHours === 0 || hoursToAllocate === 0) {
           currentWeekIndex++
@@ -248,7 +247,7 @@ export function GanttChart({
           }
         }
       }
-      
+
       // タスクの配置情報を記録
       allocated.push({
         ...task,
@@ -256,7 +255,7 @@ export function GanttChart({
         week_end: taskEndWeek,
         weeklyHours: taskWeeklyHours,
       })
-      
+
       // 全てのタスクを配置できなかった場合の処理
       if (remainingTaskHours > 0) {
         console.warn(`タスク「${task.name}」の${remainingTaskHours}時間分が配置できませんでした`)
@@ -282,7 +281,7 @@ export function GanttChart({
     return workload
   }, [ganttTasks, actualTotalWeeks])
 
-  if (!tasks && !bigTasks || (tasks?.length === 0 && bigTasks?.length === 0)) {
+  if ((!tasks && !bigTasks) || (tasks?.length === 0 && bigTasks?.length === 0)) {
     return null
   }
 
@@ -300,7 +299,8 @@ export function GanttChart({
                   時間
                 </th>
                 {weeks.map((week, i) => {
-                  const weekCapacity = weeklyAllocations?.[i]?.availableHours || weeklyAvailableHours || 40
+                  const weekCapacity =
+                    weeklyAllocations?.[i]?.availableHours || weeklyAvailableHours || 40
                   return (
                     <th
                       key={i}
@@ -350,7 +350,10 @@ export function GanttChart({
                         const isInRange = weekIndex >= task.week_start && weekIndex <= task.week_end
                         const isStart = weekIndex === task.week_start
                         const isEnd = weekIndex === task.week_end
-                        const weekCapacity = weeklyAllocations?.[weekIndex]?.availableHours || weeklyAvailableHours || 40
+                        const weekCapacity =
+                          weeklyAllocations?.[weekIndex]?.availableHours ||
+                          weeklyAvailableHours ||
+                          40
                         const isOverCapacity = weeklyWorkload[weekIndex] > weekCapacity
                         const isAfterProjectEnd = weekIndex > projectEndWeekIndex
 
@@ -389,7 +392,12 @@ export function GanttChart({
                                 <AlertTriangle className="h-3 w-3 text-destructive" />
                                 <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-popover text-popover-foreground text-xs rounded px-2 py-1 whitespace-nowrap z-50 border">
                                   超過:{' '}
-                                  {(weeklyWorkload[weekIndex] - (weeklyAllocations?.[weekIndex]?.availableHours || weeklyAvailableHours || 40)).toFixed(1)}
+                                  {(
+                                    weeklyWorkload[weekIndex] -
+                                    (weeklyAllocations?.[weekIndex]?.availableHours ||
+                                      weeklyAvailableHours ||
+                                      40)
+                                  ).toFixed(1)}
                                   時間
                                 </div>
                               </div>

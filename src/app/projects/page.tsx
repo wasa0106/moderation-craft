@@ -62,7 +62,9 @@ export default function ProjectsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">プロジェクト管理</h1>
-          <p className="text-muted-foreground mt-2">プロジェクトを作成・管理して目標を達成しましょう</p>
+          <p className="text-muted-foreground mt-2">
+            プロジェクトを作成・管理して目標を達成しましょう
+          </p>
         </div>
         <Link href="/projects/new">
           <Button size="lg" className="flex items-center gap-2">
@@ -76,7 +78,9 @@ export default function ProjectsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">総プロジェクト数</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              総プロジェクト数
+            </CardTitle>
             <FolderOpen className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>

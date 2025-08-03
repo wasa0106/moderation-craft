@@ -13,7 +13,9 @@ export function generateMockId(prefix: string = 'mock'): string {
 /**
  * Create a mock goal
  */
-export function createMockGoal(overrides: Partial<{ text: string; category: string; deadline: string }> = {}) {
+export function createMockGoal(
+  overrides: Partial<{ text: string; category: string; deadline: string }> = {}
+) {
   return {
     text: 'Webアプリケーションを3ヶ月で開発する',
     category: 'development',

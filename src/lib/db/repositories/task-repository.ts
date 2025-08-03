@@ -34,7 +34,6 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
     }
   }
 
-
   async getByStatus(projectId: string, status: BigTask['status']): Promise<BigTask[]> {
     try {
       return await this.table
@@ -68,7 +67,6 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
       throw new Error(`Failed to get big tasks by user: ${error}`)
     }
   }
-
 
   async updateTaskStatus(taskId: string, status: BigTask['status']): Promise<BigTask> {
     try {
@@ -168,13 +166,13 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
         .and(task => {
           // start_dateとend_dateが存在しない場合は後方互換性のためスキップ
           if (!task.start_date || !task.end_date) return false
-          
+
           // タスクの期間が指定された日付範囲と重なるかチェック
           const taskStart = dateUtils.toJSTDate(task.start_date).getTime()
           const taskEnd = dateUtils.toJSTDate(task.end_date).getTime()
           const rangeStart = dateUtils.toJSTDate(startDate).getTime()
           const rangeEnd = dateUtils.toJSTDate(endDate).getTime()
-          
+
           // タスクが日付範囲と重なる場合
           return taskStart <= rangeEnd && taskEnd >= rangeStart
         })
@@ -217,27 +215,27 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
       // startDateとendDateをISO形式の日時に変換
       const startDateTime = `${startDate}T00:00:00.000Z`
       const endDateTime = `${endDate}T23:59:59.999Z`
-      
+
       console.log('getByDateRange:', {
         userId,
         startDate,
         endDate,
         startDateTime,
-        endDateTime
+        endDateTime,
       })
-      
+
       const tasks = await this.table
         .where('user_id')
         .equals(userId)
         .and(task => {
           // scheduled_startがnullまたは空文字の場合はスキップ
           if (!task.scheduled_start) return false
-          
+
           // ISO形式の日時として比較
           return task.scheduled_start >= startDateTime && task.scheduled_start <= endDateTime
         })
         .sortBy('scheduled_start')
-        
+
       console.log(`Found ${tasks.length} tasks for date range`)
       return tasks
     } catch (error) {
@@ -262,10 +260,10 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
     try {
       const tasks = await this.table.where('user_id').equals(userId).toArray()
       const sessions = await db.work_sessions.where('user_id').equals(userId).toArray()
-      
+
       // Filter tasks that have active sessions
       const activeTasks = tasks.filter(task => isTaskActive(task.id, sessions))
-      
+
       // Sort by the start time of the active session
       return activeTasks.sort((a, b) => {
         const aSession = sessions.find(s => s.small_task_id === a.id && !s.end_time)
@@ -281,18 +279,20 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
     try {
       const tasks = await this.table.where('user_id').equals(userId).toArray()
       const sessions = await db.work_sessions.where('user_id').equals(userId).toArray()
-      
+
       // Filter tasks that have completed sessions
       const completedTasks = tasks.filter(task => isTaskCompleted(task.id, sessions))
-      
+
       // Sort by the latest end time
       return completedTasks.sort((a, b) => {
-        const aEndTime = sessions
-          .filter(s => s.small_task_id === a.id && s.end_time)
-          .sort((x, y) => (y.end_time || '').localeCompare(x.end_time || ''))[0]?.end_time || ''
-        const bEndTime = sessions
-          .filter(s => s.small_task_id === b.id && s.end_time)
-          .sort((x, y) => (y.end_time || '').localeCompare(x.end_time || ''))[0]?.end_time || ''
+        const aEndTime =
+          sessions
+            .filter(s => s.small_task_id === a.id && s.end_time)
+            .sort((x, y) => (y.end_time || '').localeCompare(x.end_time || ''))[0]?.end_time || ''
+        const bEndTime =
+          sessions
+            .filter(s => s.small_task_id === b.id && s.end_time)
+            .sort((x, y) => (y.end_time || '').localeCompare(x.end_time || ''))[0]?.end_time || ''
         return bEndTime.localeCompare(aEndTime)
       })
     } catch (error) {
@@ -309,10 +309,10 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
         .equals(userId)
         .and(session => session.focus_level !== undefined && session.focus_level >= minFocusLevel)
         .toArray()
-      
+
       // Get unique task IDs from sessions with high focus level
       const taskIds = new Set(sessions.map(s => s.small_task_id).filter(Boolean))
-      
+
       return tasks
         .filter(task => taskIds.has(task.id))
         .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
@@ -330,10 +330,10 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
         .and(task => task.scheduled_end < now)
         .toArray()
       const sessions = await db.work_sessions.where('user_id').equals(userId).toArray()
-      
+
       // Filter out completed tasks
       const overdueTasks = tasks.filter(task => !isTaskCompleted(task.id, sessions))
-      
+
       return overdueTasks.sort((a, b) => a.scheduled_end.localeCompare(b.scheduled_end))
     } catch (error) {
       throw new Error(`Failed to get overdue tasks: ${error}`)
@@ -348,16 +348,16 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
     try {
       const tasks = await this.table.where('user_id').equals(userId).toArray()
       const sessions = await db.work_sessions.where('user_id').equals(userId).toArray()
-      
+
       // Calculate variance ratio based on sessions
       const tasksWithVariance = tasks.filter(task => {
         const totalMinutes = getTaskTotalMinutes(task.id, sessions)
         if (totalMinutes === 0) return false
-        
+
         const varianceRatio = totalMinutes / task.estimated_minutes
         return varianceRatio >= minRatio && varianceRatio <= maxRatio
       })
-      
+
       return tasksWithVariance.sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     } catch (error) {
       throw new Error(`Failed to get tasks by variance ratio: ${error}`)
@@ -366,7 +366,9 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
 
   // Deprecated: Use WorkSessionRepository.startSession instead
   async startTask(taskId: string, startTime?: string): Promise<SmallTask> {
-    console.warn('SmallTaskRepository.startTask is deprecated. Use WorkSessionRepository.startSession instead.')
+    console.warn(
+      'SmallTaskRepository.startTask is deprecated. Use WorkSessionRepository.startSession instead.'
+    )
     const task = await this.getById(taskId)
     if (!task) throw new Error('Task not found')
     return task
@@ -374,7 +376,9 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
 
   // Deprecated: Use WorkSessionRepository.endSession instead
   async completeTask(taskId: string, endTime?: string, focusLevel?: number): Promise<SmallTask> {
-    console.warn('SmallTaskRepository.completeTask is deprecated. Use WorkSessionRepository.endSession instead.')
+    console.warn(
+      'SmallTaskRepository.completeTask is deprecated. Use WorkSessionRepository.endSession instead.'
+    )
     const task = await this.getById(taskId)
     if (!task) throw new Error('Task not found')
     return task
@@ -451,7 +455,7 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
           const taskFocusLevels = taskSessions
             .filter(s => s.focus_level !== undefined)
             .map(s => s.focus_level as number)
-          
+
           if (taskFocusLevels.length > 0) {
             acc.focusLevelSum += taskFocusLevels.reduce((sum, level) => sum + level, 0)
             acc.focusLevelCount += taskFocusLevels.length
@@ -501,13 +505,15 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
     userId: string,
     startDate?: string,
     endDate?: string
-  ): Promise<{
-    task: SmallTask
-    sessions: WorkSession[]
-    totalMinutes: number
-    isActive: boolean
-    isCompleted: boolean
-  }[]> {
+  ): Promise<
+    {
+      task: SmallTask
+      sessions: WorkSession[]
+      totalMinutes: number
+      isActive: boolean
+      isCompleted: boolean
+    }[]
+  > {
     try {
       let tasks: SmallTask[]
       if (startDate && endDate) {
@@ -517,7 +523,7 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
       }
 
       const sessions = await db.work_sessions.where('user_id').equals(userId).toArray()
-      
+
       return enrichTasksWithSessions(tasks, sessions)
     } catch (error) {
       throw new Error(`Failed to get tasks with sessions: ${error}`)
@@ -538,7 +544,7 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
           .equals(taskId)
           .and(session => !session.end_time)
           .toArray()
-        
+
         if (sessions.length > 0) {
           const now = new Date().toISOString()
           for (const session of sessions) {

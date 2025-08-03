@@ -20,11 +20,7 @@ import { CombinedScheduleView } from '@/components/timer/combined-schedule-view'
 import { WorkProgressCard } from '@/components/timer/work-progress-card'
 import { TimerTaskDisplay, TimerTaskDisplayRef } from '@/components/timer/timer-task-display'
 import { TimerControls } from '@/components/timer/timer-controls'
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format, addDays, subDays, isToday } from 'date-fns'
 import { ja } from 'date-fns/locale'
 
@@ -32,13 +28,8 @@ export default function TimerPage() {
   const { projects } = useProjects('current-user')
   const { startTimer, endTimer } = useTimer('current-user')
 
-  const {
-    isRunning,
-    activeSession,
-    currentTask,
-    setCurrentTask,
-    setCurrentProject,
-  } = useTimerStore()
+  const { isRunning, activeSession, currentTask, setCurrentTask, setCurrentProject } =
+    useTimerStore()
 
   const [showMoodDialog, setShowMoodDialog] = useState(false)
   const [showDopamineDialog, setShowDopamineDialog] = useState(false)
@@ -47,7 +38,6 @@ export default function TimerPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [showUnplannedDialog, setShowUnplannedDialog] = useState(false)
   const timerTaskDisplayRef = useRef<TimerTaskDisplayRef>(null)
-
 
   // 日付範囲を計算（選択日の前後7日間のタスクを取得）
   const startDate = subDays(selectedDate, 7)
@@ -67,10 +57,7 @@ export default function TimerPage() {
   const loadSessions = useCallback(async () => {
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd')
-      const sessions = await workSessionRepository.getSessionsForDate(
-        'current-user',
-        dateString
-      )
+      const sessions = await workSessionRepository.getSessionsForDate('current-user', dateString)
       setTodaySessions(sessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)
@@ -124,7 +111,6 @@ export default function TimerPage() {
     )
   })
 
-
   // タスクに紐づくプロジェクトを取得
   const getProjectForTask = (task: SmallTask): Project | undefined => {
     return projects.find(p => p.id === task.project_id)
@@ -165,7 +151,7 @@ export default function TimerPage() {
   const handleFocusSubmit = (focusLevel: number) => {
     endTimer({ focusLevel })
     setShowFocusDialog(false)
-    
+
     // タスク選択をクリア
     setCurrentTask(null)
     setCurrentProject(null)
@@ -175,7 +161,6 @@ export default function TimerPage() {
       loadSessions()
     }, 100)
   }
-
 
   const handleUnplannedTaskConfirm = async (taskData: UnplannedTaskData) => {
     try {
@@ -214,10 +199,10 @@ export default function TimerPage() {
                 projects={projects}
                 dayTasks={dayTasks}
                 onUnplannedTaskClick={() => setShowUnplannedDialog(true)}
-                onTaskChange={async (task) => {
+                onTaskChange={async task => {
                   if (isRunning && activeSession && task) {
                     await workSessionRepository.update(activeSession.id, {
-                      small_task_id: task.id
+                      small_task_id: task.id,
                     })
                     await loadSessions()
                   }
@@ -246,7 +231,7 @@ export default function TimerPage() {
               sessions={todaySessions}
               projects={projects}
               currentTaskId={currentTask?.id}
-              onTaskClick={(task) => {
+              onTaskClick={task => {
                 if (!isRunning && isToday(selectedDate)) {
                   handleStartTimer(task)
                 }
@@ -303,11 +288,7 @@ export default function TimerPage() {
       </div>
 
       {/* ダイアログ */}
-      <MoodDialog
-        open={showMoodDialog}
-        onOpenChange={setShowMoodDialog}
-        userId="current-user"
-      />
+      <MoodDialog open={showMoodDialog} onOpenChange={setShowMoodDialog} userId="current-user" />
 
       <DopamineDialog
         open={showDopamineDialog}

@@ -39,7 +39,7 @@ export default function ReportsPage() {
   const { projects } = useProjects('current-user')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('current-month')
   const [selectedProject, setSelectedProject] = useState<string>('all')
-  
+
   const { bigTasks } = useBigTasks(selectedProject === 'all' ? '' : selectedProject)
   const { smallTasks } = useSmallTasks(selectedProject === 'all' ? '' : selectedProject)
   const { sessions } = useWorkSessions('current-user')
@@ -76,7 +76,7 @@ export default function ReportsPage() {
   const filteredSmallTasks = smallTasks.filter(task => {
     // ルーチンタスクはレポートから除外
     if (task.task_type === 'routine' || task.is_reportable === false) return false
-    
+
     const bigTask = bigTasks.find(bt => bt.id === task.big_task_id)
     if (!bigTask) return false
 
@@ -111,19 +111,19 @@ export default function ReportsPage() {
     completed: filteredSmallTasks.filter(t => t.status === 'completed'),
     cancelled: filteredSmallTasks.filter(t => t.status === 'cancelled'),
   }
-  
+
   // pendingタスクの詳細分析
   const pendingDetails = {
     notStarted: tasksByStatus.pending.filter(t => getTaskTotalMinutes(t.id, sessions) === 0),
     inProgress: tasksByStatus.pending.filter(t => isTaskActive(t.id, sessions)),
-    paused: tasksByStatus.pending.filter(t => 
-      getTaskTotalMinutes(t.id, sessions) > 0 && !isTaskActive(t.id, sessions)
+    paused: tasksByStatus.pending.filter(
+      t => getTaskTotalMinutes(t.id, sessions) > 0 && !isTaskActive(t.id, sessions)
     ),
   }
-  
+
   // キャンセルされたタスクの作業時間
   const cancelledTaskMinutes = tasksByStatus.cancelled.reduce(
-    (sum, t) => sum + getTaskTotalMinutes(t.id, sessions), 
+    (sum, t) => sum + getTaskTotalMinutes(t.id, sessions),
     0
   )
 
@@ -134,18 +134,27 @@ export default function ReportsPage() {
     cancelled: tasksByStatus.cancelled.length,
     emergency: filteredSmallTasks.filter(t => t.is_emergency).length,
     totalEstimatedMinutes: filteredSmallTasks.reduce((sum, t) => sum + t.estimated_minutes, 0),
-    totalActualMinutes: filteredSmallTasks.reduce((sum, t) => sum + getTaskTotalMinutes(t.id, sessions), 0),
+    totalActualMinutes: filteredSmallTasks.reduce(
+      (sum, t) => sum + getTaskTotalMinutes(t.id, sessions),
+      0
+    ),
     overdue: filteredSmallTasks.filter(t => {
       const taskEnd = parseISO(t.scheduled_end)
       return taskEnd < new Date() && (t.status || 'pending') === 'pending'
     }).length,
     // 新しい指標
-    completionRate: tasksByStatus.pending.length + tasksByStatus.completed.length > 0
-      ? Math.round((tasksByStatus.completed.length / (tasksByStatus.pending.length + tasksByStatus.completed.length)) * 100)
-      : 0,
-    cancellationRate: filteredSmallTasks.length > 0
-      ? Math.round((tasksByStatus.cancelled.length / filteredSmallTasks.length) * 100)
-      : 0,
+    completionRate:
+      tasksByStatus.pending.length + tasksByStatus.completed.length > 0
+        ? Math.round(
+            (tasksByStatus.completed.length /
+              (tasksByStatus.pending.length + tasksByStatus.completed.length)) *
+              100
+          )
+        : 0,
+    cancellationRate:
+      filteredSmallTasks.length > 0
+        ? Math.round((tasksByStatus.cancelled.length / filteredSmallTasks.length) * 100)
+        : 0,
     wastedMinutes: cancelledTaskMinutes,
     // pendingの内訳
     pendingNotStarted: pendingDetails.notStarted.length,
@@ -237,7 +246,6 @@ export default function ReportsPage() {
       ? Math.round((accurateEstimates / timeVarianceAnalysis.length) * 100)
       : 0
 
-
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       {/* Header */}
@@ -300,7 +308,9 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">プロジェクト完了率</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              プロジェクト完了率
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className={`text-3xl font-bold ${getCompletionColorClass(projectCompletionRate)}`}>
@@ -315,7 +325,9 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">大タスク完了率</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              大タスク完了率
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className={`text-3xl font-bold ${getCompletionColorClass(bigTaskCompletionRate)}`}>
@@ -330,10 +342,14 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">小タスク完了率</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              小タスク完了率
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${getCompletionColorClass(smallTaskCompletionRate)}`}>
+            <div
+              className={`text-3xl font-bold ${getCompletionColorClass(smallTaskCompletionRate)}`}
+            >
               {smallTaskCompletionRate}%
             </div>
             <div className="text-sm text-muted-foreground">
@@ -454,7 +470,8 @@ export default function ReportsPage() {
                     <div className="flex justify-between items-center text-warning">
                       <span className="text-sm">不要タスクの作業時間</span>
                       <span className="font-bold">
-                        {Math.round(smallTaskStats.wastedMinutes / 60)}h {smallTaskStats.wastedMinutes % 60}m
+                        {Math.round(smallTaskStats.wastedMinutes / 60)}h{' '}
+                        {smallTaskStats.wastedMinutes % 60}m
                       </span>
                     </div>
                   )}
@@ -475,7 +492,9 @@ export default function ReportsPage() {
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm">大タスク時間効率</span>
-                      <span className={`font-bold ${getEfficiencyColorClass(bigTaskTimeEfficiency)}`}>
+                      <span
+                        className={`font-bold ${getEfficiencyColorClass(bigTaskTimeEfficiency)}`}
+                      >
                         {bigTaskTimeEfficiency}%
                       </span>
                     </div>
@@ -488,7 +507,9 @@ export default function ReportsPage() {
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm">小タスク時間効率</span>
-                      <span className={`font-bold ${getEfficiencyColorClass(smallTaskTimeEfficiency)}`}>
+                      <span
+                        className={`font-bold ${getEfficiencyColorClass(smallTaskTimeEfficiency)}`}
+                      >
                         {smallTaskTimeEfficiency}%
                       </span>
                     </div>
@@ -601,7 +622,9 @@ export default function ReportsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>待機中:</span>
-                        <span className="font-medium text-muted-foreground">{bigTaskStats.pending}</span>
+                        <span className="font-medium text-muted-foreground">
+                          {bigTaskStats.pending}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -611,17 +634,19 @@ export default function ReportsPage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>完了:</span>
-                        <span className="font-medium text-primary">
-                          {smallTaskStats.completed}
-                        </span>
+                        <span className="font-medium text-primary">{smallTaskStats.completed}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>未完了:</span>
-                        <span className="font-medium text-muted-foreground">{smallTaskStats.pending}</span>
+                        <span className="font-medium text-muted-foreground">
+                          {smallTaskStats.pending}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>緊急:</span>
-                        <span className="font-medium text-destructive">{smallTaskStats.emergency}</span>
+                        <span className="font-medium text-destructive">
+                          {smallTaskStats.emergency}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>期限超過:</span>
@@ -689,7 +714,9 @@ export default function ReportsPage() {
                           <CheckCircle2 className="h-4 w-4 text-primary" />
                           <span className="font-medium text-primary">問題なし</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">現在、緊急の課題はありません</p>
+                        <p className="text-sm text-muted-foreground">
+                          現在、緊急の課題はありません
+                        </p>
                       </div>
                     )}
                 </div>

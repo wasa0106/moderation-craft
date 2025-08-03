@@ -7,7 +7,10 @@ import { BaseRepository } from './base-repository'
 import { ScheduleMemo, ScheduleMemoRepository as IScheduleMemoRepository } from '@/types'
 import { db } from '../database'
 
-export class ScheduleMemoRepositoryImpl extends BaseRepository<ScheduleMemo> implements IScheduleMemoRepository {
+export class ScheduleMemoRepositoryImpl
+  extends BaseRepository<ScheduleMemo>
+  implements IScheduleMemoRepository
+{
   protected table = db.schedule_memos
   protected entityType = 'schedule_memo'
 
@@ -28,7 +31,11 @@ export class ScheduleMemoRepositoryImpl extends BaseRepository<ScheduleMemo> imp
   /**
    * Create or update schedule memo for a specific week
    */
-  async upsertByWeek(userId: string, weekStartDate: string, content: string): Promise<ScheduleMemo> {
+  async upsertByWeek(
+    userId: string,
+    weekStartDate: string,
+    content: string
+  ): Promise<ScheduleMemo> {
     try {
       // Check if memo already exists
       const existingMemo = await this.getByWeek(userId, weekStartDate)
@@ -41,7 +48,7 @@ export class ScheduleMemoRepositoryImpl extends BaseRepository<ScheduleMemo> imp
         return await this.create({
           user_id: userId,
           week_start_date: weekStartDate,
-          content
+          content,
         })
       }
     } catch (error) {
@@ -70,16 +77,11 @@ export class ScheduleMemoRepositoryImpl extends BaseRepository<ScheduleMemo> imp
    */
   async searchByContent(userId: string, query: string): Promise<ScheduleMemo[]> {
     try {
-      const allMemos = await this.table
-        .where('user_id')
-        .equals(userId)
-        .toArray()
+      const allMemos = await this.table.where('user_id').equals(userId).toArray()
 
       // Case-insensitive search
       const lowerQuery = query.toLowerCase()
-      return allMemos.filter(memo => 
-        memo.content.toLowerCase().includes(lowerQuery)
-      )
+      return allMemos.filter(memo => memo.content.toLowerCase().includes(lowerQuery))
     } catch (error) {
       throw new Error(`Failed to search schedule memos: ${error}`)
     }

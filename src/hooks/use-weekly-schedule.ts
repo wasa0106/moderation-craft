@@ -49,7 +49,6 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     return projects.filter(p => p.status === 'active')
   }, [projects])
 
-
   const currentWeekBigTasks = useMemo(() => {
     if (projects.length === 0) return []
 
@@ -59,13 +58,14 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 })
 
     // 日付範囲でフィルタリング
-    const filtered = filterTasksByDateRange(bigTasks, weekStart)
-      .filter(task => existingProjectIds.has(task.project_id)) // 存在するプロジェクトのタスクのみ
-    
+    const filtered = filterTasksByDateRange(bigTasks, weekStart).filter(task =>
+      existingProjectIds.has(task.project_id)
+    ) // 存在するプロジェクトのタスクのみ
+
     const results = selectedProjectId
       ? filtered.filter(task => task.project_id === selectedProjectId)
       : filtered
-    
+
     return results
   }, [bigTasks, selectedWeek, selectedProjectId, projects])
 
@@ -79,13 +79,14 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     const nextWeekStart = startOfWeek(nextWeek, { weekStartsOn: 1 })
 
     // 日付範囲でフィルタリング
-    const filtered = filterTasksByDateRange(bigTasks, nextWeekStart)
-      .filter(task => existingProjectIds.has(task.project_id)) // 存在するプロジェクトのタスクのみ
-    
+    const filtered = filterTasksByDateRange(bigTasks, nextWeekStart).filter(task =>
+      existingProjectIds.has(task.project_id)
+    ) // 存在するプロジェクトのタスクのみ
+
     const results = selectedProjectId
       ? filtered.filter(task => task.project_id === selectedProjectId)
       : filtered
-    
+
     return results
   }, [bigTasks, selectedWeek, selectedProjectId, projects])
 
@@ -106,10 +107,12 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
           projectName: project?.name || '',
           taskName: task.name,
           tags: task.tags || [],
-          color: project?.color || getProjectColor(
-            task.project_id || '',
-            activeProjects.findIndex(p => p.id === task.project_id)
-          ),
+          color:
+            project?.color ||
+            getProjectColor(
+              task.project_id || '',
+              activeProjects.findIndex(p => p.id === task.project_id)
+            ),
         }
       })
   }, [weekTasks, projects, bigTasks, activeProjects])

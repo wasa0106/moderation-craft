@@ -53,23 +53,20 @@ export class SyncQueueRepository
       const items = await this.table
         .where('entity_type')
         .equals(entityType)
-        .and(item => 
-          item.entity_id === entityId && 
-          item.operation_type === operationType
-        )
+        .and(item => item.entity_id === entityId && item.operation_type === operationType)
         .toArray()
-      
+
       // pending または processing のものを優先的に返す
-      const activeItem = items.find(item => 
-        item.status === 'pending' || item.status === 'processing'
+      const activeItem = items.find(
+        item => item.status === 'pending' || item.status === 'processing'
       )
-      
+
       if (activeItem) return activeItem
-      
+
       // 次に failed のものを返す
       const failedItem = items.find(item => item.status === 'failed')
       if (failedItem) return failedItem
-      
+
       // 最後に completed のものを返す（通常はないはず）
       return items.find(item => item.status === 'completed')
     } catch (error) {
@@ -96,14 +93,14 @@ export class SyncQueueRepository
         attempt_count: 0,
         last_attempted: undefined,
         error_message: undefined,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
-      
+
       // 新しいデータがある場合は更新
       if (newData) {
         updates.data = JSON.stringify(newData)
       }
-      
+
       await this.table.update(id, updates)
       console.log(`Reset failed sync queue item: ${id}`)
     } catch (error) {

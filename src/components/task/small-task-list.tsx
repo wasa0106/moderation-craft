@@ -52,9 +52,7 @@ export function SmallTaskList({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium">{task.name}</h3>
-                <Badge
-                  variant={isTaskCompleted(task.id, sessions) ? 'default' : 'outline'}
-                >
+                <Badge variant={isTaskCompleted(task.id, sessions) ? 'default' : 'outline'}>
                   {isTaskCompleted(task.id, sessions) ? '完了' : '未完了'}
                 </Badge>
                 {task.is_emergency && <Badge variant="destructive">緊急</Badge>}
@@ -64,7 +62,9 @@ export function SmallTaskList({
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">{getBigTaskName(task.big_task_id || '')}</p>
+              <p className="text-sm text-muted-foreground">
+                {getBigTaskName(task.big_task_id || '')}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {format(parseISO(task.scheduled_start), 'MM/dd HH:mm', { locale: ja })} -
                 {format(parseISO(task.scheduled_end), 'HH:mm', { locale: ja })}

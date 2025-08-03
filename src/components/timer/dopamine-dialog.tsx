@@ -45,7 +45,7 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
       }
 
       await dopamineEntryRepository.create(data)
-      
+
       // リセット
       setEventDescription('')
       setNotes('')
@@ -65,18 +65,14 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
             <Sparkles className="h-5 w-5 text-primary" />
             ドーパミンイベントを記録
           </DialogTitle>
-          <DialogDescription>
-            嬉しかったことや達成感を感じた瞬間を記録しましょう
-          </DialogDescription>
+          <DialogDescription>嬉しかったことや達成感を感じた瞬間を記録しましょう</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* 発生時刻 */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>
-              {format(timestamp, 'yyyy年MM月dd日 HH:mm', { locale: ja })}
-            </span>
+            <span>{format(timestamp, 'yyyy年MM月dd日 HH:mm', { locale: ja })}</span>
           </div>
 
           {/* イベント説明 */}
@@ -88,7 +84,7 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
               id="event-description"
               placeholder="例: 難しいバグを解決できた！新しい機能が完成した！など"
               value={eventDescription}
-              onChange={(e) => setEventDescription(e.target.value)}
+              onChange={e => setEventDescription(e.target.value)}
               rows={3}
               className="resize-none"
               autoFocus
@@ -102,7 +98,7 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
               id="dopamine-notes"
               placeholder="その時の気持ちや詳しい状況など..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={e => setNotes(e.target.value)}
               rows={2}
               className="resize-none"
             />
@@ -113,10 +109,7 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={!eventDescription.trim() || isSubmitting}
-          >
+          <Button onClick={handleSubmit} disabled={!eventDescription.trim() || isSubmitting}>
             {isSubmitting ? '保存中...' : '保存'}
           </Button>
         </DialogFooter>

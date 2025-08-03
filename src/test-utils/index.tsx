@@ -47,7 +47,13 @@ export function createTestQueryClient() {
 /**
  * All the providers for testing
  */
-function AllTheProviders({ children, queryClient }: { children: React.ReactNode; queryClient: QueryClient }) {
+function AllTheProviders({
+  children,
+  queryClient,
+}: {
+  children: React.ReactNode
+  queryClient: QueryClient
+}) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
@@ -81,7 +87,7 @@ export function render(ui: React.ReactElement, options?: CustomRenderOptions) {
 /**
  * Render hook with providers
  */
-export async function renderHook<TProps, TResult>(
+export function renderHook<TProps, TResult>(
   hook: (props: TProps) => TResult,
   options?: CustomRenderOptions
 ) {
@@ -91,7 +97,8 @@ export async function renderHook<TProps, TResult>(
     return <AllTheProviders queryClient={queryClient}>{children}</AllTheProviders>
   }
 
-  const { renderHook: rtlRenderHook } = await import('@testing-library/react')
+  // Import renderHook from testing library react hooks
+  const { renderHook: rtlRenderHook } = require('@testing-library/react')
   return {
     ...rtlRenderHook(hook, { wrapper: Wrapper, ...renderOptions }),
     queryClient,
@@ -108,11 +115,8 @@ export function createUser() {
 /**
  * Wait for async operations with a custom timeout
  */
-export async function waitFor(
-  callback: () => void | Promise<void>,
-  options = { timeout: 5000 }
-) {
-  const { waitFor: rtlWaitFor } = await import('@testing-library/react')
+export async function waitFor(callback: () => void | Promise<void>, options = { timeout: 5000 }) {
+  const { waitFor: rtlWaitFor } = require('@testing-library/react')
   return rtlWaitFor(callback, options)
 }
 
@@ -157,17 +161,14 @@ export async function waitForLoadingToFinish(
   screen: typeof import('@testing-library/react').screen,
   options = { timeout: 4000 }
 ) {
-  await waitFor(
-    () => {
-      const loaders = [
-        ...screen.queryAllByTestId(/loading/i),
-        ...screen.queryAllByText(/loading/i),
-        ...screen.queryAllByRole('progressbar'),
-      ]
-      expect(loaders).toHaveLength(0)
-    },
-    options
-  )
+  await waitFor(() => {
+    const loaders = [
+      ...screen.queryAllByTestId(/loading/i),
+      ...screen.queryAllByText(/loading/i),
+      ...screen.queryAllByRole('progressbar'),
+    ]
+    expect(loaders).toHaveLength(0)
+  }, options)
 }
 
 // Re-export everything from @testing-library/react

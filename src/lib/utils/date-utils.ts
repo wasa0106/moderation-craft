@@ -50,5 +50,5 @@ export const dateUtils = {
     const projectStartWeek = startOfWeek(projectStartDate, { weekStartsOn: 1 })
     const targetWeek = startOfWeek(date, { weekStartsOn: 1 })
     return Math.floor(differenceInWeeks(targetWeek, projectStartWeek))
-  }
+  },
 }

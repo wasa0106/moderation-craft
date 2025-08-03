@@ -29,9 +29,9 @@ export interface BigTask extends DatabaseEntity {
   actual_hours: number
   status: 'pending' | 'active' | 'completed' | 'cancelled'
   priority?: 'low' | 'medium' | 'high' | 'urgent'
-  category?: string       // 開発、設計、テスト、その他
-  start_date: string      // YYYY-MM-DD形式
-  end_date: string        // YYYY-MM-DD形式
+  category?: string // 開発、設計、テスト、その他
+  start_date: string // YYYY-MM-DD形式
+  end_date: string // YYYY-MM-DD形式
   description?: string
 }
 
@@ -96,34 +96,34 @@ export interface CategoryColor extends DatabaseEntity {
 
 export interface ScheduleMemo extends DatabaseEntity {
   user_id: string
-  week_start_date: string  // YYYY-MM-DD形式（週の開始日：月曜日）
-  content: string         // マークダウン形式のメモ内容
+  week_start_date: string // YYYY-MM-DD形式（週の開始日：月曜日）
+  content: string // マークダウン形式のメモ内容
 }
 
 export interface SleepSchedule extends DatabaseEntity {
   user_id: string
-  date_of_sleep: string  // 起床日（YYYY-MM-DD）※Fitbit形式
-  
+  date_of_sleep: string // 起床日（YYYY-MM-DD）※Fitbit形式
+
   // 予定時刻（ISO 8601形式）
-  scheduled_start_time: string  // 就寝時刻
-  scheduled_end_time: string    // 起床時刻
+  scheduled_start_time: string // 就寝時刻
+  scheduled_end_time: string // 起床時刻
   scheduled_duration_minutes: number
-  
+
   // 実績（Fitbitから取得）
-  actual_start_time?: string    // 実際の就寝時刻
-  actual_end_time?: string      // 実際の起床時刻
+  actual_start_time?: string // 実際の就寝時刻
+  actual_end_time?: string // 実際の起床時刻
   actual_duration_minutes?: number
-  
+
   // Fitbitデータ
-  minutes_asleep?: number       // 実際に眠っていた時間
-  minutes_awake?: number        // 覚醒していた時間
-  time_in_bed?: number         // ベッドにいた総時間
-  sleep_efficiency?: number     // 睡眠効率（0-100）
-  
+  minutes_asleep?: number // 実際に眠っていた時間
+  minutes_awake?: number // 覚醒していた時間
+  time_in_bed?: number // ベッドにいた総時間
+  sleep_efficiency?: number // 睡眠効率（0-100）
+
   // データソース管理
   actual_data_source?: 'manual' | 'fitbit' | 'import'
   actual_data_synced_at?: string
-  
+
   notes?: string
 }
 
@@ -432,7 +432,11 @@ export interface ScheduleMemoRepository extends RepositoryInterface<ScheduleMemo
 export interface SleepScheduleRepository extends RepositoryInterface<SleepSchedule> {
   getByDateOfSleep(userId: string, dateOfSleep: string): Promise<SleepSchedule | undefined>
   getByDateRange(userId: string, startDate: string, endDate: string): Promise<SleepSchedule[]>
-  upsertByDateOfSleep(userId: string, dateOfSleep: string, data: Partial<SleepSchedule>): Promise<SleepSchedule>
+  upsertByDateOfSleep(
+    userId: string,
+    dateOfSleep: string,
+    data: Partial<SleepSchedule>
+  ): Promise<SleepSchedule>
   getRecentSchedules(userId: string, limit?: number): Promise<SleepSchedule[]>
 }
 

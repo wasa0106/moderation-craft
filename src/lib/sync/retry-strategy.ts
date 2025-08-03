@@ -15,20 +15,22 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   baseDelayMs: 1000,
   maxDelayMs: 30000,
   backoffMultiplier: 2,
-  jitterEnabled: true
+  jitterEnabled: true,
 }
 
 /**
  * エラータイプの判定
  */
-export function categorizeError(error: any): 'NETWORK' | 'AUTH' | 'RATE_LIMIT' | 'SERVER' | 'CLIENT' | 'UNKNOWN' {
+export function categorizeError(
+  error: any
+): 'NETWORK' | 'AUTH' | 'RATE_LIMIT' | 'SERVER' | 'CLIENT' | 'UNKNOWN' {
   if (!error) return 'UNKNOWN'
-  
+
   // ネットワークエラー
   if (error.name === 'NetworkError' || error.message?.includes('fetch')) {
     return 'NETWORK'
   }
-  
+
   // HTTPステータスコードでの判定
   const status = error.status || error.response?.status
   if (status) {
@@ -37,22 +39,26 @@ export function categorizeError(error: any): 'NETWORK' | 'AUTH' | 'RATE_LIMIT' |
     if (status >= 500) return 'SERVER'
     if (status >= 400) return 'CLIENT'
   }
-  
+
   // DynamoDBエラー
   if (error.__type?.includes('AccessDeniedException')) return 'AUTH'
   if (error.__type?.includes('ProvisionedThroughputExceededException')) return 'RATE_LIMIT'
-  
+
   return 'UNKNOWN'
 }
 
 /**
  * リトライ可能かどうかを判定
  */
-export function isRetryable(errorType: string, attemptNumber: number, config: RetryConfig): boolean {
+export function isRetryable(
+  errorType: string,
+  attemptNumber: number,
+  config: RetryConfig
+): boolean {
   if (attemptNumber >= config.maxAttempts) {
     return false
   }
-  
+
   switch (errorType) {
     case 'NETWORK':
     case 'RATE_LIMIT':
@@ -83,19 +89,19 @@ export function calculateRetryDelay(
     const waitTime = rateLimitResetTime - Date.now()
     return Math.max(waitTime, config.baseDelayMs)
   }
-  
+
   // 指数バックオフ
   let delay = config.baseDelayMs * Math.pow(config.backoffMultiplier, attemptNumber - 1)
-  
+
   // 最大遅延時間を超えないようにする
   delay = Math.min(delay, config.maxDelayMs)
-  
+
   // ジッターを追加（競合を避けるため）
   if (config.jitterEnabled) {
     const jitter = Math.random() * delay * 0.3 // 最大30%のジッター
     delay = delay + jitter
   }
-  
+
   return Math.round(delay)
 }
 
@@ -106,32 +112,32 @@ export class CircuitBreaker {
   private failureCount = 0
   private lastFailureTime = 0
   private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED'
-  
+
   constructor(
     private failureThreshold = 5,
     private resetTimeMs = 60000, // 1分
     private halfOpenRequests = 3
   ) {}
-  
+
   recordSuccess() {
     this.failureCount = 0
     this.state = 'CLOSED'
   }
-  
+
   recordFailure() {
     this.failureCount++
     this.lastFailureTime = Date.now()
-    
+
     if (this.failureCount >= this.failureThreshold) {
       this.state = 'OPEN'
     }
   }
-  
+
   canAttempt(): boolean {
     if (this.state === 'CLOSED') {
       return true
     }
-    
+
     if (this.state === 'OPEN') {
       // リセット時間が経過したか確認
       if (Date.now() - this.lastFailureTime > this.resetTimeMs) {
@@ -140,11 +146,11 @@ export class CircuitBreaker {
       }
       return false
     }
-    
+
     // HALF_OPEN状態では限定的にリクエストを許可
     return this.failureCount < this.halfOpenRequests
   }
-  
+
   getState() {
     return this.state
   }
@@ -167,41 +173,41 @@ export class RetryStatsCollector {
     successfulAttempts: 0,
     failedAttempts: 0,
     averageRetryCount: 0,
-    errorTypeDistribution: {}
+    errorTypeDistribution: {},
   }
-  
+
   private retryCountSum = 0
   private operationCount = 0
-  
+
   recordAttempt(errorType: string | null, retryCount: number, success: boolean) {
     this.stats.totalAttempts++
-    
+
     if (success) {
       this.stats.successfulAttempts++
     } else {
       this.stats.failedAttempts++
       if (errorType) {
-        this.stats.errorTypeDistribution[errorType] = 
+        this.stats.errorTypeDistribution[errorType] =
           (this.stats.errorTypeDistribution[errorType] || 0) + 1
       }
     }
-    
+
     this.retryCountSum += retryCount
     this.operationCount++
     this.stats.averageRetryCount = this.retryCountSum / this.operationCount
   }
-  
+
   getStats(): RetryStats {
     return { ...this.stats }
   }
-  
+
   reset() {
     this.stats = {
       totalAttempts: 0,
       successfulAttempts: 0,
       failedAttempts: 0,
       averageRetryCount: 0,
-      errorTypeDistribution: {}
+      errorTypeDistribution: {},
     }
     this.retryCountSum = 0
     this.operationCount = 0

@@ -1,20 +1,13 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import {
-  Timer,
-  FolderOpen,
-  Calendar,
-  FileText,
-  Settings,
-  Home,
-} from "lucide-react"
-import type { NavItem, User } from "./types"
+import * as React from 'react'
+import { Timer, FolderOpen, Calendar, FileText, Home } from 'lucide-react'
+import type { NavItem, User } from './types'
 
-import { NavMain } from "@/components/layout/sidebar/nav-main"
-import { NavUser } from "@/components/layout/sidebar/nav-user"
-import { SyncStatusIndicator } from "@/components/sync/sync-status-indicator"
-import { cn } from "@/lib/utils"
+import { NavMain } from '@/components/layout/sidebar/nav-main'
+import { NavUser } from '@/components/layout/sidebar/nav-user'
+import { SyncStatusIndicator } from '@/components/sync/sync-status-indicator'
+import { cn } from '@/lib/utils'
 import {
   Sidebar,
   SidebarContent,
@@ -23,42 +16,42 @@ import {
   SidebarRail,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar'
 
 // ナビゲーションアイテムの定義
 const navMain: NavItem[] = [
   {
-    title: "タイマー",
-    url: "/timer",
+    title: 'タイマー',
+    url: '/timer',
     icon: Timer,
   },
   {
-    title: "プロジェクト",
-    url: "/projects",
+    title: 'プロジェクト',
+    url: '/projects',
     icon: FolderOpen,
   },
   {
-    title: "スケジュール",
-    url: "/schedule",
+    title: 'スケジュール',
+    url: '/schedule',
     icon: Calendar,
   },
   {
-    title: "レポート",
-    url: "/reports",
+    title: 'レポート',
+    url: '/reports',
     icon: FileText,
   },
 ]
 
 // デフォルトユーザー情報（後で認証システムから取得）
 const defaultUser: User = {
-  name: "ユーザー",
-  email: "user@example.com",
-  avatar: "/avatar.png",
+  name: 'ユーザー',
+  email: 'user@example.com',
+  avatar: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y',
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile, state } = useSidebar()
-  
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -67,19 +60,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shrink-0">
               <Home className="size-4" />
             </div>
-            <div className={cn(
-              "flex flex-col gap-0.5 leading-none overflow-hidden transition-all duration-200",
-              state === "collapsed" ? "w-0 opacity-0" : "w-auto opacity-100"
-            )}>
+            <div
+              className={cn(
+                'flex flex-col gap-0.5 leading-none overflow-hidden transition-all duration-200',
+                state === 'collapsed' ? 'w-0 opacity-0' : 'w-auto opacity-100'
+              )}
+            >
               <span className="font-semibold truncate">ModerationCraft</span>
               <span className="text-xs text-muted-foreground truncate">v1.0</span>
             </div>
           </div>
           {isMobile && (
-            <SidebarTrigger className={cn(
-              "-mr-1 transition-opacity duration-200",
-              state === "collapsed" ? "opacity-0 pointer-events-none" : "opacity-100"
-            )} />
+            <SidebarTrigger
+              className={cn(
+                '-mr-1 transition-opacity duration-200',
+                state === 'collapsed' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              )}
+            />
           )}
         </div>
       </SidebarHeader>

@@ -21,7 +21,6 @@ export function isTaskInWeek(task: BigTask, weekStart: Date): boolean {
   )
 }
 
-
 /**
  * 週番号の表示を日付範囲表示に変換
  */

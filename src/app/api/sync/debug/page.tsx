@@ -44,7 +44,7 @@ export default function SyncDebugPage() {
 
   const clearAllItems = async () => {
     if (!confirm('すべてのキューアイテムを削除しますか？')) return
-    
+
     try {
       setLoading(true)
       for (const item of queueItems) {
@@ -71,9 +71,9 @@ export default function SyncDebugPage() {
             <Button onClick={loadQueueItems} variant="outline" size="sm">
               更新
             </Button>
-            <Button 
-              onClick={clearAllItems} 
-              variant="destructive" 
+            <Button
+              onClick={clearAllItems}
+              variant="destructive"
               size="sm"
               disabled={loading || queueItems.length === 0}
             >
@@ -86,7 +86,7 @@ export default function SyncDebugPage() {
           <p className="text-muted-foreground">キューは空です</p>
         ) : (
           <div className="space-y-2">
-            {queueItems.map((item) => (
+            {queueItems.map(item => (
               <div key={item.id} className="p-3 border rounded">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -96,13 +96,9 @@ export default function SyncDebugPage() {
                     <p className="text-xs text-muted-foreground">
                       ID: {item.entity_id} | Status: {item.status}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      試行回数: {item.attempt_count}
-                    </p>
+                    <p className="text-xs text-muted-foreground">試行回数: {item.attempt_count}</p>
                     {item.error_message && (
-                      <p className="text-xs text-red-600 mt-1">
-                        エラー: {item.error_message}
-                      </p>
+                      <p className="text-xs text-red-600 mt-1">エラー: {item.error_message}</p>
                     )}
                     <details className="mt-2">
                       <summary className="text-xs text-blue-600 cursor-pointer">
@@ -113,11 +109,7 @@ export default function SyncDebugPage() {
                       </pre>
                     </details>
                   </div>
-                  <Button
-                    onClick={() => deleteItem(item.id)}
-                    variant="ghost"
-                    size="sm"
-                  >
+                  <Button onClick={() => deleteItem(item.id)} variant="ghost" size="sm">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

@@ -17,9 +17,9 @@ export interface Task {
 }
 
 export interface DailyAllocation {
-  date: string           // YYYY-MM-DD形式
-  dayOfWeek: number      // 0-6（日-土）
-  isWorkday: boolean     // 作業日かどうか
+  date: string // YYYY-MM-DD形式
+  dayOfWeek: number // 0-6（日-土）
+  isWorkday: boolean // 作業日かどうか
   availableHours: number // その日の作業可能時間
   allocatedTasks: Array<{
     taskId: string
@@ -73,7 +73,7 @@ interface ProjectCreationState {
   // タスク配分
   dailyAllocations: DailyAllocation[]
   taskSchedules: Map<string, { startDate: string; endDate: string }>
-  weeklyAllocations: WeeklyAllocation[]  // 後方互換性のため残す
+  weeklyAllocations: WeeklyAllocation[] // 後方互換性のため残す
   isOverCapacity: boolean
 
   // UI状態
@@ -228,9 +228,7 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           tasks: state.tasks.map(task => (task.id === id ? { ...task, ...updates } : task)),
           totalTaskHours: state.tasks
             .map(task =>
-              task.id === id
-                ? updates.estimatedHours ?? task.estimatedHours
-                : task.estimatedHours
+              task.id === id ? (updates.estimatedHours ?? task.estimatedHours) : task.estimatedHours
             )
             .reduce((sum, hours) => sum + hours, 0),
         }))
@@ -287,9 +285,7 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
 
       updateTaskCategory: (taskId, category) => {
         set(state => ({
-          tasks: state.tasks.map(task =>
-            task.id === taskId ? { ...task, category } : task
-          ),
+          tasks: state.tasks.map(task => (task.id === taskId ? { ...task, category } : task)),
         }))
       },
 
@@ -304,29 +300,30 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       // 計算
       calculateWeeklyHours: () => {
         const { weekdayWorkDays, weekendWorkDays, weekdayHoursPerDay, weekendHoursPerDay } = get()
-        const weeklyHours = weekdayWorkDays * weekdayHoursPerDay + weekendWorkDays * weekendHoursPerDay
+        const weeklyHours =
+          weekdayWorkDays * weekdayHoursPerDay + weekendWorkDays * weekendHoursPerDay
         set({ weeklyAvailableHours: weeklyHours })
       },
 
       calculateTotalWeeks: () => {
         const { startDate, endDate } = get()
         const weeks = differenceInWeeks(endDate, startDate) + 1
-        set({ 
+        set({
           totalWeeks: Math.max(1, weeks),
-          totalAvailableHours: Math.max(1, weeks) * get().weeklyAvailableHours
+          totalAvailableHours: Math.max(1, weeks) * get().weeklyAvailableHours,
         })
       },
 
       calculateTaskAllocation: () => {
-        const { 
-          tasks, 
-          startDate, 
-          endDate, 
-          weekdayWorkDays, 
+        const {
+          tasks,
+          startDate,
+          endDate,
+          weekdayWorkDays,
           weekendWorkDays,
           weekdayHoursPerDay,
           weekendHoursPerDay,
-          totalWeeks
+          totalWeeks,
         } = get()
 
         set({ isCalculating: true })
@@ -335,11 +332,11 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           // 有効なタスクのみ取得
           const validTasks = tasks.filter(task => task.name && task.estimatedHours > 0)
           if (validTasks.length === 0) {
-            set({ 
-              dailyAllocations: [], 
+            set({
+              dailyAllocations: [],
               taskSchedules: new Map(),
               isOverCapacity: false,
-              isCalculating: false 
+              isCalculating: false,
             })
             return
           }
@@ -352,12 +349,16 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           while (currentDate.getTime() <= endDateMillis) {
             const dayOfWeek = currentDate.getDay()
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-            const isWorkday = isWeekend 
-              ? weekendWorkDays > 0 && dayOfWeek === 0 ? true : weekendWorkDays === 2
-              : weekdayWorkDays > (5 - dayOfWeek)
+            const isWorkday = isWeekend
+              ? weekendWorkDays > 0 && dayOfWeek === 0
+                ? true
+                : weekendWorkDays === 2
+              : weekdayWorkDays > 5 - dayOfWeek
 
             const availableHours = isWorkday
-              ? (isWeekend ? weekendHoursPerDay : weekdayHoursPerDay)
+              ? isWeekend
+                ? weekendHoursPerDay
+                : weekdayHoursPerDay
               : 0
 
             dailyAllocations.push({
@@ -367,7 +368,7 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
               availableHours,
               allocatedTasks: [],
               totalAllocatedHours: 0,
-              utilizationRate: 0
+              utilizationRate: 0,
             })
 
             currentDate.setDate(currentDate.getDate() + 1)
@@ -384,19 +385,19 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
 
             while (remainingTaskHours > 0 && currentDayIndex < dailyAllocations.length) {
               const day = dailyAllocations[currentDayIndex]
-              
+
               if (day.isWorkday && remainingHoursInDay > 0) {
                 const hoursToAllocate = Math.min(remainingTaskHours, remainingHoursInDay)
-                
+
                 day.allocatedTasks.push({
                   taskId: task.id,
                   taskName: task.name,
-                  allocatedHours: hoursToAllocate
+                  allocatedHours: hoursToAllocate,
                 })
-                
+
                 day.totalAllocatedHours += hoursToAllocate
                 day.utilizationRate = (day.totalAllocatedHours / day.availableHours) * 100
-                
+
                 remainingTaskHours -= hoursToAllocate
                 remainingHoursInDay -= hoursToAllocate
               }
@@ -415,29 +416,35 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
               const endIndex = Math.min(currentDayIndex, dailyAllocations.length - 1)
               taskSchedules.set(task.id, {
                 startDate: dailyAllocations[taskStartIndex].date,
-                endDate: dailyAllocations[endIndex].date
+                endDate: dailyAllocations[endIndex].date,
               })
             }
           }
 
           // 総タスク時間を計算
           const totalTaskHours = validTasks.reduce((sum, task) => sum + task.estimatedHours, 0)
-          const totalAvailableHours = dailyAllocations.reduce((sum, day) => sum + day.availableHours, 0)
+          const totalAvailableHours = dailyAllocations.reduce(
+            (sum, day) => sum + day.availableHours,
+            0
+          )
           const isOverCapacity = totalTaskHours > totalAvailableHours
 
-          set({ 
+          set({
             dailyAllocations,
             taskSchedules,
             totalTaskHours,
             totalAvailableHours,
             isOverCapacity,
-            isCalculating: false
+            isCalculating: false,
           })
 
           // 週次アロケーションも更新（後方互換性のため）
-          const weeklyAllocations = generateWeeklyAllocations(dailyAllocations, startDate, totalWeeks)
+          const weeklyAllocations = generateWeeklyAllocations(
+            dailyAllocations,
+            startDate,
+            totalWeeks
+          )
           set({ weeklyAllocations })
-
         } catch (error) {
           console.error('タスク配分計算エラー:', error)
           set({ isCalculating: false })
@@ -487,7 +494,7 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           ...initialState,
           startDate: new Date(),
           endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
-          projectCategories: ['企画・設計', 'デザイン', '実装', 'テスト', 'デプロイ']
+          projectCategories: ['企画・設計', 'デザイン', '実装', 'テスト', 'デプロイ'],
         })
       },
     }),
@@ -499,15 +506,17 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
 
 // 週次アロケーションを生成（後方互換性のため）
 function generateWeeklyAllocations(
-  dailyAllocations: DailyAllocation[], 
+  dailyAllocations: DailyAllocation[],
   startDate: Date,
   totalWeeks: number
 ): WeeklyAllocation[] {
   const weeklyAllocations: WeeklyAllocation[] = []
-  
+
   // 週の情報を生成
   const currentWeekStart = getWeekStart(startDate)
-  const endDateMillis = new Date(dailyAllocations[dailyAllocations.length - 1]?.date || startDate).getTime()
+  const endDateMillis = new Date(
+    dailyAllocations[dailyAllocations.length - 1]?.date || startDate
+  ).getTime()
 
   let weekIndex = 0
   const currentWeek = new Date(currentWeekStart)
@@ -533,14 +542,16 @@ function generateWeeklyAllocations(
         } else {
           allocatedTasks.set(task.taskId, {
             name: task.taskName,
-            hours: task.allocatedHours
+            hours: task.allocatedHours,
           })
         }
       })
     })
 
-    const totalAllocatedHours = Array.from(allocatedTasks.values())
-      .reduce((sum, task) => sum + task.hours, 0)
+    const totalAllocatedHours = Array.from(allocatedTasks.values()).reduce(
+      (sum, task) => sum + task.hours,
+      0
+    )
 
     weeklyAllocations.push({
       weekNumber: weekIndex + 1,
@@ -551,10 +562,11 @@ function generateWeeklyAllocations(
         taskId: id,
         taskName: data.name,
         allocatedHours: data.hours,
-        isPartial: false
+        isPartial: false,
       })),
       totalAllocatedHours,
-      utilizationRate: weeklyAvailableHours > 0 ? (totalAllocatedHours / weeklyAvailableHours) * 100 : 0
+      utilizationRate:
+        weeklyAvailableHours > 0 ? (totalAllocatedHours / weeklyAvailableHours) * 100 : 0,
     })
 
     currentWeek.setDate(currentWeek.getDate() + 7)

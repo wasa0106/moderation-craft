@@ -26,10 +26,7 @@ class SleepScheduleRepositoryImpl
    * 特定の起床日の睡眠スケジュールを取得
    */
   async getByDateOfSleep(userId: string, dateOfSleep: string): Promise<SleepSchedule | undefined> {
-    return await this.table
-      .where('[user_id+date_of_sleep]')
-      .equals([userId, dateOfSleep])
-      .first()
+    return await this.table.where('[user_id+date_of_sleep]').equals([userId, dateOfSleep]).first()
   }
 
   /**
@@ -56,11 +53,11 @@ class SleepScheduleRepositoryImpl
     data: Partial<SleepSchedule>
   ): Promise<SleepSchedule> {
     const existing = await this.getByDateOfSleep(userId, dateOfSleep)
-    
+
     if (existing) {
       // 更新時は睡眠時間を再計算
       const updatedData = { ...data }
-      
+
       // 時刻が変更された場合は睡眠時間を再計算
       if (updatedData.scheduled_start_time && updatedData.scheduled_end_time) {
         const startTime = new Date(updatedData.scheduled_start_time)
@@ -69,7 +66,7 @@ class SleepScheduleRepositoryImpl
           (endTime.getTime() - startTime.getTime()) / (1000 * 60)
         )
       }
-      
+
       return await this.update(existing.id, updatedData)
     } else {
       // 新規作成
@@ -81,7 +78,7 @@ class SleepScheduleRepositoryImpl
         scheduled_duration_minutes: 0, // フックで計算される
         notes: data.notes,
       }
-      
+
       return await this.create(createData)
     }
   }
@@ -134,7 +131,7 @@ class SleepScheduleRepositoryImpl
     if (data.actual_data_source && !data.actual_data_synced_at) {
       data.actual_data_synced_at = new Date().toISOString()
     }
-    
+
     return await this.update(scheduleId, data)
   }
 }

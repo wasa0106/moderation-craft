@@ -34,8 +34,10 @@ describe('TaskMemo', () => {
     const onChange = vi.fn()
     const onSave = vi.fn()
     render(<TaskMemo value="" onChange={onChange} onSave={onSave} />)
-    
-    const textarea = screen.getByPlaceholderText('今週の計画、意識したいこと、目標などを記入してください...')
+
+    const textarea = screen.getByPlaceholderText(
+      '今週の計画、意識したいこと、目標などを記入してください...'
+    )
     expect(textarea).toBeInTheDocument()
     expect(textarea).toHaveClass('min-h-[300px]', 'font-mono', 'text-sm')
   })
@@ -45,8 +47,10 @@ describe('TaskMemo', () => {
     const onSave = vi.fn()
     const initialValue = 'テストメモの内容'
     render(<TaskMemo value={initialValue} onChange={onChange} onSave={onSave} />)
-    
-    const textarea = screen.getByPlaceholderText('今週の計画、意識したいこと、目標などを記入してください...')
+
+    const textarea = screen.getByPlaceholderText(
+      '今週の計画、意識したいこと、目標などを記入してください...'
+    )
     expect(textarea).toHaveValue(initialValue)
   })
 
@@ -54,12 +58,14 @@ describe('TaskMemo', () => {
     const onChange = vi.fn()
     const onSave = vi.fn()
     render(<TaskMemo value="" onChange={onChange} onSave={onSave} />)
-    
-    const textarea = screen.getByPlaceholderText('今週の計画、意識したいこと、目標などを記入してください...')
+
+    const textarea = screen.getByPlaceholderText(
+      '今週の計画、意識したいこと、目標などを記入してください...'
+    )
     const newValue = '新しいメモの内容'
-    
+
     fireEvent.change(textarea, { target: { value: newValue } })
-    
+
     expect(onChange).toHaveBeenCalledWith(newValue)
     expect(onChange).toHaveBeenCalledTimes(1)
   })
@@ -68,10 +74,10 @@ describe('TaskMemo', () => {
     const onChange = vi.fn()
     const onSave = vi.fn()
     render(<TaskMemo value="テスト" onChange={onChange} onSave={onSave} isDirty={true} />)
-    
+
     const saveButton = screen.getByRole('button', { name: /保存/ })
     fireEvent.click(saveButton)
-    
+
     expect(onSave).toHaveBeenCalledTimes(1)
   })
 
@@ -79,7 +85,7 @@ describe('TaskMemo', () => {
     const onChange = vi.fn()
     const onSave = vi.fn()
     render(<TaskMemo value="" onChange={onChange} onSave={onSave} isDirty={false} />)
-    
+
     const saveButton = screen.getByRole('button', { name: /保存/ })
     expect(saveButton).toBeDisabled()
   })
@@ -88,27 +94,30 @@ describe('TaskMemo', () => {
     const onChange = vi.fn()
     const onSave = vi.fn()
     render(<TaskMemo value="テスト" onChange={onChange} onSave={onSave} isDirty={true} />)
-    
-    const textarea = screen.getByPlaceholderText('今週の計画、意識したいこと、目標などを記入してください...')
-    
+
+    const textarea = screen.getByPlaceholderText(
+      '今週の計画、意識したいこと、目標などを記入してください...'
+    )
+
     // Ctrl+S
     fireEvent.keyDown(textarea, { key: 's', ctrlKey: true })
     expect(onSave).toHaveBeenCalledTimes(1)
-    
+
     // Cmd+S
     fireEvent.keyDown(textarea, { key: 's', metaKey: true })
     expect(onSave).toHaveBeenCalledTimes(2)
   })
 
-
   it('保存中は保存ボタンが無効化される', () => {
     const onChange = vi.fn()
     const onSave = vi.fn()
-    render(<TaskMemo value="テスト" onChange={onChange} onSave={onSave} isDirty={true} isSaving={true} />)
-    
+    render(
+      <TaskMemo value="テスト" onChange={onChange} onSave={onSave} isDirty={true} isSaving={true} />
+    )
+
     const saveButton = screen.getByRole('button', { name: /保存/ })
     expect(saveButton).toBeDisabled()
-    
+
     // 保存中のテキストが表示される
     expect(screen.getByText('保存中...')).toBeInTheDocument()
   })

@@ -14,11 +14,7 @@ import { smallTaskRepository } from '@/lib/db/repositories'
 import { useToast } from '@/hooks/use-toast'
 import { useState } from 'react'
 import { format } from 'date-fns'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 interface TaskCardProps {
   task: SmallTask
@@ -48,84 +44,90 @@ function TaskCardComponent({
   const { toast } = useToast()
   const [isUpdating, setIsUpdating] = useState(false)
   const [popoverOpen, setPopoverOpen] = useState(false)
-  
+
   const displayInfo = getTaskDisplayInfo(task, sessions)
   const status = task.status || 'pending'
-  
+
   // HSLカラーを調整する関数（彩度18%、明度82%に設定）
   const adjustHSLForBackground = (hslColor: string): string => {
     const match = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
     if (!match) return hslColor
-    
+
     const [, hue] = match
     return `hsl(${hue}, 18%, 82%)`
   }
-  
+
   // タスクのカードスタイルを取得
   const getCardStyle = (): { className: string; style?: React.CSSProperties } => {
     // キャンセルの場合
-    if (status === 'cancelled') return { className: 'bg-muted/10 text-muted-foreground border-0 border-l-4 border-l-muted-foreground/20' }
-    
+    if (status === 'cancelled')
+      return {
+        className:
+          'bg-muted/10 text-muted-foreground border-0 border-l-4 border-l-muted-foreground/20',
+      }
+
     // 作業中の場合
-    if (displayInfo.hasActiveSession) return { className: 'bg-primary text-primary-foreground border-0 border-l-4 border-l-primary-foreground' }
-    
+    if (displayInfo.hasActiveSession)
+      return {
+        className:
+          'bg-primary text-primary-foreground border-0 border-l-4 border-l-primary-foreground',
+      }
+
     // プロジェクトカラーがある場合
     if (project?.color) {
       // 完了状態の場合は元の色を使用
       if (status === 'completed') {
         return {
           className: 'text-white border-0 border-l-4',
-          style: { 
+          style: {
             backgroundColor: project.color,
-            borderLeftColor: project.color
-          }
+            borderLeftColor: project.color,
+          },
         }
       }
       // 通常状態の場合は調整した色を使用
       return {
         className: 'text-foreground border-0 border-l-4',
-        style: { 
+        style: {
           backgroundColor: adjustHSLForBackground(project.color),
-          borderLeftColor: project.color
-        }
+          borderLeftColor: project.color,
+        },
       }
     }
-    
+
     // 完了状態でプロジェクトがない場合
     if (status === 'completed') {
-      return { 
+      return {
         className: 'text-foreground border-0 border-l-4',
-        style: { 
+        style: {
           backgroundColor: 'hsl(137, 2%, 96%)',
-          borderLeftColor: 'hsl(137, 8%, 15%)'
-        }
+          borderLeftColor: 'hsl(137, 8%, 15%)',
+        },
       }
     }
-    
+
     // デフォルト（通常状態でプロジェクトがない）
-    return { 
+    return {
       className: 'border-0 border-l-4',
-      style: { 
+      style: {
         backgroundColor: 'hsl(137, 2%, 96%)',
-        borderLeftColor: 'hsl(137, 8%, 15%)'
-      }
+        borderLeftColor: 'hsl(137, 8%, 15%)',
+      },
     }
   }
-  
+
   const handleStatusChange = async (newStatus: 'completed' | 'cancelled') => {
     setIsUpdating(true)
     try {
-      await smallTaskRepository.updateTaskStatus(
-        task.id,
-        newStatus,
-        { endActiveSession: newStatus === 'completed' && displayInfo.hasActiveSession }
-      )
-      
+      await smallTaskRepository.updateTaskStatus(task.id, newStatus, {
+        endActiveSession: newStatus === 'completed' && displayInfo.hasActiveSession,
+      })
+
       toast({
         title: newStatus === 'completed' ? 'タスクを完了しました' : 'タスクを不要にしました',
         description: task.name,
       })
-      
+
       setPopoverOpen(false)
       onStatusChange?.()
     } catch (error) {
@@ -139,17 +141,17 @@ function TaskCardComponent({
       setIsUpdating(false)
     }
   }
-  
+
   const handleRevertStatus = async () => {
     setIsUpdating(true)
     try {
       await smallTaskRepository.updateTaskStatus(task.id, 'pending')
-      
+
       toast({
         title: 'タスクを未完了に戻しました',
         description: task.name,
       })
-      
+
       setPopoverOpen(false)
       onStatusChange?.()
     } catch (error) {
@@ -163,12 +165,12 @@ function TaskCardComponent({
       setIsUpdating(false)
     }
   }
-  
+
   const handleStartTask = () => {
     setPopoverOpen(false)
     onStartTask?.()
   }
-  
+
   // タスクの長さに基づいてパディングとフォントサイズを調整
   // タスクの長さに基づいてパディングとフォントサイズを調整
   const getDynamicStyles = () => {
@@ -201,7 +203,7 @@ function TaskCardComponent({
       }
     }
   }
-  
+
   // 時刻表示をフォーマット
   const formatTimeRange = (short = false) => {
     const start = new Date(task.scheduled_start)
@@ -211,14 +213,14 @@ function TaskCardComponent({
     }
     return `${format(start, 'HH:mm')} ~ ${format(end, 'HH:mm')}`
   }
-  
+
   const styles = getDynamicStyles()
   const cardStyle = getCardStyle()
-  
+
   // レイアウトを決定（タスクの長さとタスク名の長さに基づく）
   const shouldShowTimeOnSecondLine = task.estimated_minutes > 45
   const shouldShowTime = task.name.length <= 20 || shouldShowTimeOnSecondLine
-  
+
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
@@ -234,19 +236,55 @@ function TaskCardComponent({
             cardStyle.className
           )}
           style={{ ...cardStyle.style, ...style }}
-          onClick={(e) => {
+          onClick={e => {
             if (!showButtons) {
               e.stopPropagation()
               onClick?.()
             }
           }}
         >
-        {shouldShowTimeOnSecondLine ? (
-          // 2行表示パターン（高さが十分な場合）
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-start justify-between gap-1">
-              <div className="flex-1 min-w-0">
-                <h4 className={cn("font-medium truncate", styles.titleSize)}>{task.name}</h4>
+          {shouldShowTimeOnSecondLine ? (
+            // 2行表示パターン（高さが十分な場合）
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-start justify-between gap-1">
+                <div className="flex-1 min-w-0">
+                  <h4 className={cn('font-medium truncate', styles.titleSize)}>{task.name}</h4>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  {task.is_emergency && (
+                    <Badge variant="destructive" className={styles.badgeSize}>
+                      緊急
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div
+                className={cn(
+                  status === 'completed' && project?.color ? 'text-white' : 'text-muted-foreground',
+                  styles.timeSize
+                )}
+              >
+                {formatTimeRange()}
+              </div>
+            </div>
+          ) : (
+            // 1行表示パターン（高さが不足の場合）
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex-1 min-w-0 flex items-center gap-1">
+                <h4 className={cn('font-medium truncate', styles.titleSize)}>{task.name}</h4>
+                {shouldShowTime && (
+                  <span
+                    className={cn(
+                      status === 'completed' && project?.color
+                        ? 'text-white'
+                        : 'text-muted-foreground',
+                      'whitespace-nowrap',
+                      styles.timeSize
+                    )}
+                  >
+                    {formatTimeRange(true)}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-0.5">
                 {task.is_emergency && (
@@ -256,41 +294,11 @@ function TaskCardComponent({
                 )}
               </div>
             </div>
-            <div className={cn(
-              status === 'completed' && project?.color ? "text-white" : "text-muted-foreground",
-              styles.timeSize
-            )}>
-              {formatTimeRange()}
-            </div>
-          </div>
-        ) : (
-          // 1行表示パターン（高さが不足の場合）
-          <div className="flex items-center justify-between gap-1">
-            <div className="flex-1 min-w-0 flex items-center gap-1">
-              <h4 className={cn("font-medium truncate", styles.titleSize)}>{task.name}</h4>
-              {shouldShowTime && (
-                <span className={cn(
-                  status === 'completed' && project?.color ? "text-white" : "text-muted-foreground",
-                  "whitespace-nowrap",
-                  styles.timeSize
-                )}>
-                  {formatTimeRange(true)}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-0.5">
-              {task.is_emergency && (
-                <Badge variant="destructive" className={styles.badgeSize}>
-                  緊急
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
+          )}
         </Card>
       </PopoverTrigger>
       {showButtons && (
-        <PopoverContent className="w-56" align="start" onClick={(e) => e.stopPropagation()}>
+        <PopoverContent className="w-56" align="start" onClick={e => e.stopPropagation()}>
           <div className="flex flex-col gap-2">
             {status === 'pending' && (
               <>

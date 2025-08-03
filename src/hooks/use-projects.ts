@@ -24,7 +24,7 @@ export function useProjects(userId: string) {
     queryFn: async () => {
       console.log('useProjects queryFn called with userId:', userId)
       console.log('Query key:', queryKeys.projectsByUser(userId))
-      
+
       try {
         const projects = await projectRepository.getByUserId(userId)
         console.log('Projects fetched from repository:', projects)

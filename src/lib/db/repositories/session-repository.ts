@@ -51,12 +51,9 @@ export class WorkSessionRepository
         console.warn('Invalid userId provided to getActiveSession:', userId)
         return undefined
       }
-      
-      const sessions = await this.table
-        .where('user_id')
-        .equals(userId)
-        .toArray()
-      
+
+      const sessions = await this.table.where('user_id').equals(userId).toArray()
+
       // アクティブなセッション（開始時刻があり、終了時刻がない）を探す
       return sessions.find(session => session.start_time && !session.end_time)
     } catch (error) {
@@ -78,7 +75,7 @@ export class WorkSessionRepository
       // ローカルタイムゾーンでの日付の開始と終了を計算
       const localStartOfDay = new Date(`${date}T00:00:00`)
       const localEndOfDay = new Date(`${date}T23:59:59.999`)
-      
+
       // UTC形式に変換
       const startOfDay = localStartOfDay.toISOString()
       const endOfDay = localEndOfDay.toISOString()
@@ -131,7 +128,8 @@ export class WorkSessionRepository
         .and(session => {
           if (maxDurationSeconds !== undefined) {
             return (
-              session.duration_seconds >= minDurationSeconds && session.duration_seconds <= maxDurationSeconds
+              session.duration_seconds >= minDurationSeconds &&
+              session.duration_seconds <= maxDurationSeconds
             )
           }
           return session.duration_seconds >= minDurationSeconds
@@ -164,7 +162,11 @@ export class WorkSessionRepository
     }
   }
 
-  async endSession(sessionId: string, endTime?: string, focusLevel?: number): Promise<WorkSession | null> {
+  async endSession(
+    sessionId: string,
+    endTime?: string,
+    focusLevel?: number
+  ): Promise<WorkSession | null> {
     try {
       const session = await this.getById(sessionId)
       if (!session) {
@@ -176,7 +178,8 @@ export class WorkSessionRepository
       }
 
       const actualEndTime = endTime || new Date().toISOString()
-      const durationMilliseconds = new Date(actualEndTime).getTime() - new Date(session.start_time).getTime()
+      const durationMilliseconds =
+        new Date(actualEndTime).getTime() - new Date(session.start_time).getTime()
       const durationSeconds = Math.floor(durationMilliseconds / 1000)
 
       // 2分（120秒）以下の場合はセッションを削除
@@ -349,7 +352,8 @@ export class WorkSessionRepository
       return {
         totalSessions: stats.totalSessions,
         totalDuration: Math.floor(stats.totalDuration / 60), // 分単位で返す
-        averageDuration: stats.totalSessions > 0 ? Math.floor(stats.totalDuration / stats.totalSessions / 60) : 0,
+        averageDuration:
+          stats.totalSessions > 0 ? Math.floor(stats.totalDuration / stats.totalSessions / 60) : 0,
         averageFocusLevel:
           stats.focusLevelCount > 0 ? stats.focusLevelSum / stats.focusLevelCount : 0,
         sessionsWithTasks: stats.sessionsWithTasks,
@@ -420,16 +424,16 @@ export class WorkSessionRepository
       throw new Error(`Failed to get weekly total minutes: ${error}`)
     }
   }
-  
+
   async getWeeklyTotalSeconds(userId: string, date: Date = new Date()): Promise<number> {
     try {
       // 指定日の週の開始日（月曜日）と終了日（日曜日）を取得
       const weekStart = startOfWeek(date, { weekStartsOn: 1 }) // 1 = Monday
       const weekEnd = endOfWeek(date, { weekStartsOn: 1 })
-      
+
       const startStr = weekStart.toISOString()
       const endStr = weekEnd.toISOString()
-      
+
       // 週の範囲内のセッションを取得
       const sessions = await this.table
         .where('user_id')
@@ -439,7 +443,7 @@ export class WorkSessionRepository
           return sessionStart >= startStr && sessionStart <= endStr
         })
         .toArray()
-      
+
       // 完了したセッションの合計時間を計算（秒単位）
       return sessions
         .filter(session => session.end_time)

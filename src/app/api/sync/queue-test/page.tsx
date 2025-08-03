@@ -21,7 +21,7 @@ export default function QueueTestPage() {
         user_id: 'test-user',
         start_time: new Date().toISOString(),
         duration_minutes: 10,
-        is_synced: false
+        is_synced: false,
       }
 
       const queueItem = {
@@ -32,14 +32,14 @@ export default function QueueTestPage() {
         data: JSON.stringify(testData),
         status: 'pending' as const,
         attempt_count: 0,
-        version: 1
+        version: 1,
       }
 
       console.log('Creating queue item:', queueItem)
-      
+
       const created = await syncQueueRepository.create(queueItem)
       console.log('Created item:', created)
-      
+
       setResult(created)
       toast.success('キューアイテムを作成しました')
     } catch (error) {
@@ -67,9 +67,7 @@ export default function QueueTestPage() {
       <Card className="p-4 mb-6">
         <h2 className="text-lg font-semibold mb-4">基本テスト</h2>
         <div className="flex gap-2">
-          <Button onClick={testCreateQueueItem}>
-            テストアイテムを作成
-          </Button>
+          <Button onClick={testCreateQueueItem}>テストアイテムを作成</Button>
           <Button onClick={testReadQueueItems} variant="outline">
             全アイテムを取得
           </Button>

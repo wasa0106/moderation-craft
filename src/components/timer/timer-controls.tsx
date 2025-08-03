@@ -33,11 +33,7 @@ export function TimerControls({
   return (
     <div className="flex items-center gap-6">
       {/* タイマー表示 */}
-      {isRunning && (
-        <div className="text-2xl font-mono font-bold mr-2">
-          {formatElapsedTime()}
-        </div>
-      )}
+      {isRunning && <div className="text-2xl font-mono font-bold mr-2">{formatElapsedTime()}</div>}
 
       {/* タイマーコントロール */}
       {!isRunning ? (
@@ -50,7 +46,12 @@ export function TimerControls({
           開始
         </Button>
       ) : (
-        <Button onClick={onStopTimer} variant="destructive" size="sm" className="gap-2 hover:bg-surface-2">
+        <Button
+          onClick={onStopTimer}
+          variant="destructive"
+          size="sm"
+          className="gap-2 hover:bg-surface-2"
+        >
           <Square className="h-4 w-4" />
           停止
         </Button>

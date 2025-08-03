@@ -67,7 +67,11 @@ describe('TaskCard', () => {
     vi.clearAllMocks()
     mockConfirm.mockReturnValue(true)
     ;(useToast as MockedFunction<typeof useToast>).mockReturnValue({ toast: mockToast })
-    ;(smallTaskRepository.updateTaskStatus as MockedFunction<typeof smallTaskRepository.updateTaskStatus>).mockResolvedValue(undefined)
+    ;(
+      smallTaskRepository.updateTaskStatus as MockedFunction<
+        typeof smallTaskRepository.updateTaskStatus
+      >
+    ).mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -80,26 +84,14 @@ describe('TaskCard', () => {
 
   describe('Rendering', () => {
     it('renders task name correctly', () => {
-      render(
-        <TaskCard
-          task={baseTask}
-          project={baseProject}
-          sessions={baseSessions}
-        />
-      )
+      render(<TaskCard task={baseTask} project={baseProject} sessions={baseSessions} />)
 
       expect(screen.getByText('Test Task')).toBeInTheDocument()
     })
 
     it('renders project name for tasks > 30 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 45 }
-      render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
-      )
+      render(<TaskCard task={task} project={baseProject} sessions={baseSessions} />)
 
       // プロジェクト名は現在の実装では表示されない
       expect(screen.queryByText('Test Project')).not.toBeInTheDocument()
@@ -107,38 +99,20 @@ describe('TaskCard', () => {
 
     it('does not render project name for tasks <= 30 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 30 }
-      render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
-      )
+      render(<TaskCard task={task} project={baseProject} sessions={baseSessions} />)
 
       expect(screen.queryByText('Test Project')).not.toBeInTheDocument()
     })
 
     it('renders emergency badge when task is emergency', () => {
       const task = { ...baseTask, is_emergency: true }
-      render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
-      )
+      render(<TaskCard task={task} project={baseProject} sessions={baseSessions} />)
 
       expect(screen.getByText('緊急')).toBeInTheDocument()
     })
 
     it('does not render emergency badge for non-emergency tasks', () => {
-      render(
-        <TaskCard
-          task={baseTask}
-          project={baseProject}
-          sessions={baseSessions}
-        />
-      )
+      render(<TaskCard task={baseTask} project={baseProject} sessions={baseSessions} />)
 
       expect(screen.queryByText('緊急')).not.toBeInTheDocument()
     })
@@ -148,11 +122,7 @@ describe('TaskCard', () => {
     it('applies compact styles for tasks <= 30 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 30 }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -162,11 +132,7 @@ describe('TaskCard', () => {
     it('applies medium styles for tasks <= 60 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 60 }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -176,11 +142,7 @@ describe('TaskCard', () => {
     it('applies normal styles for tasks > 60 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 90 }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -190,12 +152,7 @@ describe('TaskCard', () => {
     it('applies compact prop override regardless of duration', () => {
       const task = { ...baseTask, estimated_minutes: 90 }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-          compact={true}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} compact={true} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -214,11 +171,7 @@ describe('TaskCard', () => {
       projectWithColors.forEach(({ color, expected }) => {
         const project = { ...baseProject, color }
         const { container } = render(
-          <TaskCard
-            task={baseTask}
-            project={project}
-            sessions={baseSessions}
-          />
+          <TaskCard task={baseTask} project={project} sessions={baseSessions} />
         )
 
         const card = container.firstChild as HTMLElement
@@ -231,11 +184,7 @@ describe('TaskCard', () => {
     it('applies project color background for pending tasks with project', () => {
       const projectWithColor = { ...baseProject, color: 'hsl(217, 91%, 60%)' }
       const { container } = render(
-        <TaskCard
-          task={baseTask}
-          project={projectWithColor}
-          sessions={baseSessions}
-        />
+        <TaskCard task={baseTask} project={projectWithColor} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -257,11 +206,7 @@ describe('TaskCard', () => {
       }
 
       const { container } = render(
-        <TaskCard
-          task={baseTask}
-          project={baseProject}
-          sessions={[activeSession]}
-        />
+        <TaskCard task={baseTask} project={baseProject} sessions={[activeSession]} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -272,11 +217,7 @@ describe('TaskCard', () => {
     it('applies default style for pending tasks without project color', () => {
       const projectNoColor = { ...baseProject, color: undefined }
       const { container } = render(
-        <TaskCard
-          task={baseTask}
-          project={projectNoColor}
-          sessions={baseSessions}
-        />
+        <TaskCard task={baseTask} project={projectNoColor} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -288,11 +229,7 @@ describe('TaskCard', () => {
     it('applies muted background for completed tasks', () => {
       const task = { ...baseTask, status: 'completed' as SmallTaskStatus }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -304,11 +241,7 @@ describe('TaskCard', () => {
     it('applies muted/50 background for cancelled tasks', () => {
       const task = { ...baseTask, status: 'cancelled' as SmallTaskStatus }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -322,12 +255,7 @@ describe('TaskCard', () => {
     it('shows action buttons for pending tasks > 45 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 60 }
       render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-          showButtons={true}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} showButtons={true} />
       )
 
       expect(screen.getByText('完了')).toBeInTheDocument()
@@ -337,12 +265,7 @@ describe('TaskCard', () => {
     it('does not show action buttons for pending tasks <= 45 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 45 }
       render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-          showButtons={true}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} showButtons={true} />
       )
 
       expect(screen.queryByText('完了')).not.toBeInTheDocument()
@@ -352,12 +275,7 @@ describe('TaskCard', () => {
     it('shows revert button for completed tasks > 45 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 60, status: 'completed' as SmallTaskStatus }
       render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-          showButtons={true}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} showButtons={true} />
       )
 
       expect(screen.getByText('元に戻す')).toBeInTheDocument()
@@ -366,12 +284,7 @@ describe('TaskCard', () => {
     it('shows revert button for cancelled tasks > 45 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 60, status: 'cancelled' as SmallTaskStatus }
       render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-          showButtons={true}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} showButtons={true} />
       )
 
       expect(screen.getByText('元に戻す')).toBeInTheDocument()
@@ -380,12 +293,7 @@ describe('TaskCard', () => {
     it('does not show buttons when showButtons is false', () => {
       const task = { ...baseTask, estimated_minutes: 60 }
       render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-          showButtons={false}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} showButtons={false} />
       )
 
       expect(screen.queryByText('完了')).not.toBeInTheDocument()
@@ -409,13 +317,7 @@ describe('TaskCard', () => {
         version: 1,
       }
 
-      render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={[completedSession]}
-        />
-      )
+      render(<TaskCard task={task} project={baseProject} sessions={[completedSession]} />)
 
       expect(screen.getByText('30/90分')).toBeInTheDocument()
     })
@@ -435,39 +337,21 @@ describe('TaskCard', () => {
         version: 1,
       }
 
-      render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={[completedSession]}
-        />
-      )
+      render(<TaskCard task={task} project={baseProject} sessions={[completedSession]} />)
 
       expect(screen.queryByText('30/60分')).not.toBeInTheDocument()
     })
 
     it('shows estimated minutes for tasks > 30 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 45 }
-      render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
-      )
+      render(<TaskCard task={task} project={baseProject} sessions={baseSessions} />)
 
       expect(screen.getByText('45分')).toBeInTheDocument()
     })
 
     it('does not show estimated minutes for tasks <= 30 minutes', () => {
       const task = { ...baseTask, estimated_minutes: 30 }
-      render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
-      )
+      render(<TaskCard task={task} project={baseProject} sessions={baseSessions} />)
 
       expect(screen.queryByText('30分')).not.toBeInTheDocument()
     })
@@ -490,13 +374,11 @@ describe('TaskCard', () => {
       fireEvent.click(completeButton)
 
       expect(mockConfirm).toHaveBeenCalledWith('「Test Task」を完了にしますか？')
-      
+
       await waitFor(() => {
-        expect(smallTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
-          'task-1',
-          'completed',
-          { endActiveSession: false }
-        )
+        expect(smallTaskRepository.updateTaskStatus).toHaveBeenCalledWith('task-1', 'completed', {
+          endActiveSession: false,
+        })
       })
 
       expect(mockToast).toHaveBeenCalledWith({
@@ -521,14 +403,14 @@ describe('TaskCard', () => {
       const cancelButton = screen.getByText('不要')
       fireEvent.click(cancelButton)
 
-      expect(mockConfirm).toHaveBeenCalledWith('「Test Task」を不要にしますか？\n作業履歴は保持されます。')
-      
+      expect(mockConfirm).toHaveBeenCalledWith(
+        '「Test Task」を不要にしますか？\n作業履歴は保持されます。'
+      )
+
       await waitFor(() => {
-        expect(smallTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
-          'task-1',
-          'cancelled',
-          { endActiveSession: false }
-        )
+        expect(smallTaskRepository.updateTaskStatus).toHaveBeenCalledWith('task-1', 'cancelled', {
+          endActiveSession: false,
+        })
       })
 
       expect(mockToast).toHaveBeenCalledWith({
@@ -566,11 +448,9 @@ describe('TaskCard', () => {
       fireEvent.click(completeButton)
 
       await waitFor(() => {
-        expect(smallTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
-          'task-1',
-          'completed',
-          { endActiveSession: true }
-        )
+        expect(smallTaskRepository.updateTaskStatus).toHaveBeenCalledWith('task-1', 'completed', {
+          endActiveSession: true,
+        })
       })
     })
 
@@ -590,7 +470,7 @@ describe('TaskCard', () => {
       fireEvent.click(revertButton)
 
       expect(mockConfirm).toHaveBeenCalledWith('「Test Task」を未完了に戻しますか？')
-      
+
       await waitFor(() => {
         expect(smallTaskRepository.updateTaskStatus).toHaveBeenCalledWith('task-1', 'pending')
       })
@@ -604,7 +484,7 @@ describe('TaskCard', () => {
 
     it('does not change status when confirmation is cancelled', async () => {
       mockConfirm.mockReturnValue(false)
-      
+
       const task = { ...baseTask, estimated_minutes: 60 }
       render(
         <TaskCard
@@ -628,8 +508,12 @@ describe('TaskCard', () => {
   describe('Error Handling', () => {
     it('shows error toast when status update fails', async () => {
       const error = new Error('Update failed')
-      ;(smallTaskRepository.updateTaskStatus as MockedFunction<typeof smallTaskRepository.updateTaskStatus>).mockRejectedValue(error)
-      
+      ;(
+        smallTaskRepository.updateTaskStatus as MockedFunction<
+          typeof smallTaskRepository.updateTaskStatus
+        >
+      ).mockRejectedValue(error)
+
       const task = { ...baseTask, estimated_minutes: 60 }
       render(
         <TaskCard
@@ -658,8 +542,12 @@ describe('TaskCard', () => {
 
     it('shows error toast when status revert fails', async () => {
       const error = new Error('Revert failed')
-      ;(smallTaskRepository.updateTaskStatus as MockedFunction<typeof smallTaskRepository.updateTaskStatus>).mockRejectedValue(error)
-      
+      ;(
+        smallTaskRepository.updateTaskStatus as MockedFunction<
+          typeof smallTaskRepository.updateTaskStatus
+        >
+      ).mockRejectedValue(error)
+
       const task = { ...baseTask, estimated_minutes: 60, status: 'completed' as SmallTaskStatus }
       render(
         <TaskCard
@@ -739,11 +627,7 @@ describe('TaskCard', () => {
 
     it('does not apply cursor-pointer class when onClick is not provided', () => {
       const { container } = render(
-        <TaskCard
-          task={baseTask}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={baseTask} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -754,12 +638,7 @@ describe('TaskCard', () => {
   describe('Visual States', () => {
     it('applies active ring when isActive is true', () => {
       const { container } = render(
-        <TaskCard
-          task={baseTask}
-          project={baseProject}
-          sessions={baseSessions}
-          isActive={true}
-        />
+        <TaskCard task={baseTask} project={baseProject} sessions={baseSessions} isActive={true} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -769,11 +648,7 @@ describe('TaskCard', () => {
     it('applies opacity for completed tasks', () => {
       const task = { ...baseTask, status: 'completed' as SmallTaskStatus }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -783,11 +658,7 @@ describe('TaskCard', () => {
     it('applies opacity for cancelled tasks', () => {
       const task = { ...baseTask, status: 'cancelled' as SmallTaskStatus }
       const { container } = render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -808,11 +679,7 @@ describe('TaskCard', () => {
       }
 
       const { container } = render(
-        <TaskCard
-          task={baseTask}
-          project={baseProject}
-          sessions={[activeSession]}
-        />
+        <TaskCard task={baseTask} project={baseProject} sessions={[activeSession]} />
       )
 
       const card = container.firstChild as HTMLElement
@@ -822,12 +689,7 @@ describe('TaskCard', () => {
     it('disables buttons during update operations', async () => {
       const task = { ...baseTask, estimated_minutes: 60 }
       render(
-        <TaskCard
-          task={task}
-          project={baseProject}
-          sessions={baseSessions}
-          showButtons={true}
-        />
+        <TaskCard task={task} project={baseProject} sessions={baseSessions} showButtons={true} />
       )
 
       const completeButton = screen.getByText('完了')

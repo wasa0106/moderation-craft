@@ -298,13 +298,8 @@ export function WBSReferencePanel({
                                 const progress = calculateProgress(task)
 
                                 return (
-                                  <TableRow
-                                    key={`current-${task.id}`}
-                                    className="hover:bg-accent"
-                                  >
-                                    <TableCell className="text-sm">
-                                      {task.name}
-                                    </TableCell>
+                                  <TableRow key={`current-${task.id}`} className="hover:bg-accent">
+                                    <TableCell className="text-sm">{task.name}</TableCell>
                                     <TableCell>
                                       {task.category && (
                                         <Badge className="text-xs bg-primary/10 text-primary border-primary/20">
@@ -318,7 +313,9 @@ export function WBSReferencePanel({
                                     <TableCell className="text-center">
                                       <div className="flex items-center justify-center gap-1">
                                         <Progress value={progress} className="w-12 h-1.5" />
-                                        <span className="text-xs text-muted-foreground">{progress}%</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {progress}%
+                                        </span>
                                       </div>
                                     </TableCell>
                                     <TableCell className="text-center">
@@ -358,10 +355,7 @@ export function WBSReferencePanel({
                                 </TableCell>
                               </TableRow>
                               {nextWeekTasks.map(task => (
-                                <TableRow
-                                  key={`next-${task.id}`}
-                                  className="hover:bg-accent"
-                                >
+                                <TableRow key={`next-${task.id}`} className="hover:bg-accent">
                                   <TableCell className="text-sm">{task.name}</TableCell>
                                   <TableCell>
                                     {task.category && (

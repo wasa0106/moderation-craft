@@ -15,11 +15,5 @@ worker.events.on('request:start', ({ request }) => {
 })
 
 worker.events.on('response:mocked', ({ request, response }) => {
-  console.log(
-    'MSW mocked response:',
-    request.method,
-    request.url,
-    'with status',
-    response.status
-  )
+  console.log('MSW mocked response:', request.method, request.url, 'with status', response.status)
 })

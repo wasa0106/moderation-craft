@@ -14,7 +14,7 @@ const syncService = SyncService.getInstance()
 // 特定の起床日の睡眠スケジュールを取得
 export function useSleepSchedule(userId: string, dateOfSleep: Date) {
   const dateStr = format(dateOfSleep, 'yyyy-MM-dd')
-  
+
   return useQuery({
     queryKey: ['sleep-schedule', userId, dateStr],
     queryFn: async () => {
@@ -31,18 +31,18 @@ export function useWeeklySleepSchedules(userId: string, weekDate: Date) {
   const weekEndPlus = addDays(weekStart, 7) // 次週の月曜日
   const startStr = format(weekStart, 'yyyy-MM-dd')
   const endStr = format(weekEndPlus, 'yyyy-MM-dd')
-  
+
   return useQuery({
     queryKey: ['sleep-schedules', userId, 'week', startStr, endStr],
     queryFn: async () => {
       const schedules = await sleepScheduleRepository.getByDateRange(userId, startStr, endStr)
-      
+
       // 週の各日に対してスケジュールマップを作成
       const scheduleMap = new Map<string, SleepSchedule>()
       schedules.forEach(schedule => {
         scheduleMap.set(schedule.date_of_sleep, schedule)
       })
-      
+
       // 週の全日分のデータを生成（存在しない日はnull）
       // 月曜日から次週の月曜日まで（8日分）
       const weekData = []
@@ -52,10 +52,10 @@ export function useWeeklySleepSchedules(userId: string, weekDate: Date) {
         weekData.push({
           date: dateStr,
           dateOfSleep: dateStr,
-          schedule: scheduleMap.get(dateStr) || null
+          schedule: scheduleMap.get(dateStr) || null,
         })
       }
-      
+
       return weekData
     },
   })
@@ -65,27 +65,33 @@ export function useWeeklySleepSchedules(userId: string, weekDate: Date) {
 export function useSleepScheduleMutation(userId: string) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  
+
   const mutation = useMutation({
-    mutationFn: async ({ dateOfSleep, data }: { dateOfSleep: string; data: Partial<SleepSchedule> }) => {
+    mutationFn: async ({
+      dateOfSleep,
+      data,
+    }: {
+      dateOfSleep: string
+      data: Partial<SleepSchedule>
+    }) => {
       const schedule = await sleepScheduleRepository.upsertByDateOfSleep(userId, dateOfSleep, data)
-      
+
       // 同期キューに追加
       await syncService.addToSyncQueue('sleep_schedule', schedule.id, 'update', schedule)
-      
+
       return schedule
     },
     onSuccess: (schedule, { dateOfSleep }) => {
       // キャッシュを更新
       queryClient.invalidateQueries({ queryKey: ['sleep-schedule', userId, dateOfSleep] })
       queryClient.invalidateQueries({ queryKey: ['sleep-schedules', userId] })
-      
+
       toast({
         title: '睡眠予定を保存しました',
         description: `${dateOfSleep}の睡眠予定を更新しました`,
       })
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Failed to save sleep schedule:', error)
       toast({
         title: 'エラー',
@@ -94,7 +100,7 @@ export function useSleepScheduleMutation(userId: string) {
       })
     },
   })
-  
+
   return mutation
 }
 
@@ -102,20 +108,24 @@ export function useSleepScheduleMutation(userId: string) {
 export function useBulkSleepScheduleMutation(userId: string) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  
+
   const mutation = useMutation({
     mutationFn: async (schedules: Array<{ dateOfSleep: string; data: Partial<SleepSchedule> }>) => {
       const results = await Promise.all(
         schedules.map(async ({ dateOfSleep, data }) => {
-          const schedule = await sleepScheduleRepository.upsertByDateOfSleep(userId, dateOfSleep, data)
-          
+          const schedule = await sleepScheduleRepository.upsertByDateOfSleep(
+            userId,
+            dateOfSleep,
+            data
+          )
+
           // 同期キューに追加
           await syncService.addToSyncQueue('sleep_schedule', schedule.id, 'update', schedule)
-          
+
           return schedule
         })
       )
-      
+
       return results
     },
     onSuccess: (_, schedules) => {
@@ -124,13 +134,13 @@ export function useBulkSleepScheduleMutation(userId: string) {
         queryClient.invalidateQueries({ queryKey: ['sleep-schedule', userId, dateOfSleep] })
       })
       queryClient.invalidateQueries({ queryKey: ['sleep-schedules', userId] })
-      
+
       toast({
         title: '週間睡眠予定を保存しました',
         description: `${schedules.length}日分の睡眠予定を更新しました`,
       })
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Failed to save bulk sleep schedules:', error)
       toast({
         title: 'エラー',
@@ -139,7 +149,7 @@ export function useBulkSleepScheduleMutation(userId: string) {
       })
     },
   })
-  
+
   return mutation
 }
 
@@ -147,11 +157,11 @@ export function useBulkSleepScheduleMutation(userId: string) {
 export function useDeleteSleepSchedule(userId: string) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  
+
   const mutation = useMutation({
     mutationFn: async (scheduleId: string) => {
       await sleepScheduleRepository.delete(scheduleId)
-      
+
       // 同期キューに追加
       await syncService.addToSyncQueue('sleep_schedule', scheduleId, 'delete')
     },
@@ -159,12 +169,12 @@ export function useDeleteSleepSchedule(userId: string) {
       // キャッシュを無効化
       queryClient.invalidateQueries({ queryKey: ['sleep-schedule', userId] })
       queryClient.invalidateQueries({ queryKey: ['sleep-schedules', userId] })
-      
+
       toast({
         title: '睡眠予定を削除しました',
       })
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Failed to delete sleep schedule:', error)
       toast({
         title: 'エラー',
@@ -173,25 +183,25 @@ export function useDeleteSleepSchedule(userId: string) {
       })
     },
   })
-  
+
   return mutation
 }
 
 // 睡眠ブロックの生成（UI表示用）
 export function generateSleepBlocks(schedule: SleepSchedule) {
   const blocks = []
-  
+
   const startTime = new Date(schedule.scheduled_start_time)
   const endTime = new Date(schedule.scheduled_end_time)
-  
+
   const startDateStr = format(startTime, 'yyyy-MM-dd')
   const endDateStr = format(endTime, 'yyyy-MM-dd')
-  
+
   const startHour = startTime.getHours()
   const startMinute = startTime.getMinutes()
   const endHour = endTime.getHours()
   const endMinute = endTime.getMinutes()
-  
+
   // 同じ日の場合
   if (startDateStr === endDateStr) {
     blocks.push({
@@ -215,7 +225,7 @@ export function generateSleepBlocks(schedule: SleepSchedule) {
       type: 'sleep-start' as const,
       schedule,
     })
-    
+
     // 起床日の早朝部分
     blocks.push({
       date: endDateStr,
@@ -227,7 +237,7 @@ export function generateSleepBlocks(schedule: SleepSchedule) {
       schedule,
     })
   }
-  
+
   return blocks
 }
 

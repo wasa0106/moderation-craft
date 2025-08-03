@@ -12,7 +12,7 @@ export function useWeeklyTotal(userId: string, date: Date = new Date()) {
   const [baseWeeklySeconds, setBaseWeeklySeconds] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const { isRunning, startTime } = useTimerStore()
-  
+
   // 週の合計時間を取得
   const loadWeeklyTotal = useCallback(async () => {
     try {
@@ -26,28 +26,27 @@ export function useWeeklyTotal(userId: string, date: Date = new Date()) {
       setIsLoading(false)
     }
   }, [userId, date])
-  
+
   // 初期読み込みとタイマー状態変更時の更新
   useEffect(() => {
     loadWeeklyTotal()
   }, [loadWeeklyTotal, isRunning])
-  
+
   // タイマー実行中のリアルタイム更新
   useEffect(() => {
     if (!isRunning || !startTime) return
-    
+
     const interval = setInterval(() => {
       // 現在のセッション時間を計算（秒単位）
       const currentSessionSeconds = Math.floor((Date.now() - startTime.getTime()) / 1000)
-      
+
       // baseWeeklySecondsに現在のセッション時間を加算
       setWeeklyTotalSeconds(baseWeeklySeconds + currentSessionSeconds)
     }, 1000) // 1秒ごとに更新
-    
+
     return () => clearInterval(interval)
   }, [isRunning, startTime, baseWeeklySeconds])
-  
-  
+
   return {
     weeklyTotalSeconds,
     weeklyTotalFormatted: formatSecondsToTime(weeklyTotalSeconds),

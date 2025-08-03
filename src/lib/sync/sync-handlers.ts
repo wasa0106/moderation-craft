@@ -28,7 +28,7 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
   const project = request.payload
   console.log('syncProject呼び出し:', request.operation, project.id)
   console.log('DynamoDBテーブル名:', TABLE_NAME)
-  
+
   switch (request.operation) {
     case 'CREATE':
     case 'UPDATE':
@@ -36,30 +36,33 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
       const item = {
         PK: `USER#${project.user_id}`,
         SK: `PROJECT#${project.id}`,
-        
+
         // GSI2用のキー（ユーザーデータ検索用）
-        GSI2PK: project.status === 'active' ? `ACTIVE#${project.user_id}` : `USER#${project.user_id}`,
+        GSI2PK:
+          project.status === 'active' ? `ACTIVE#${project.user_id}` : `USER#${project.user_id}`,
         GSI2SK: `PROJECT#${project.id}`,
-        
+
         // GSI用のキー（管理用）
         entity_type: 'project',
         created_at: project.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(), // 更新時は常に現在時刻
-        
-        ...project
+
+        ...project,
       }
 
       console.log('DynamoDB PutCommand実行:', {
         TableName: TABLE_NAME,
         PK: item.PK,
-        SK: item.SK
+        SK: item.SK,
       })
-      
-      await dynamoDb.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item
-      }))
-      
+
+      await dynamoDb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: item,
+        })
+      )
+
       console.log('DynamoDB PutCommand成功')
 
       return {
@@ -67,24 +70,26 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
         message: `Projectを${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
         syncedItem: item,
         syncedEntityId: project.id,
-        syncedEntityType: 'project'
+        syncedEntityType: 'project',
       }
 
     case 'DELETE':
       // DynamoDBから削除
-      await dynamoDb.send(new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: `USER#${project.user_id}`,
-          SK: `PROJECT#${project.id}`
-        }
-      }))
+      await dynamoDb.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `USER#${project.user_id}`,
+            SK: `PROJECT#${project.id}`,
+          },
+        })
+      )
 
       return {
         success: true,
         message: 'Projectを削除しました',
         syncedEntityId: project.id,
-        syncedEntityType: 'project'
+        syncedEntityType: 'project',
       }
 
     default:
@@ -95,55 +100,62 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
 /**
  * タスクの同期処理
  */
-export async function syncTask(request: SyncRequest, taskType: 'big_task' | 'small_task'): Promise<SyncResult> {
+export async function syncTask(
+  request: SyncRequest,
+  taskType: 'big_task' | 'small_task'
+): Promise<SyncResult> {
   const task = request.payload
   const prefix = taskType === 'big_task' ? 'BIGTASK' : 'SMALLTASK'
-  
+
   switch (request.operation) {
     case 'CREATE':
     case 'UPDATE':
       const item = {
         PK: `USER#${task.user_id}`,
         SK: `${prefix}#${task.id}`,
-        
+
         // GSI用のキー
         user_time_pk: task.project_id ? `PROJECT#${task.project_id}` : undefined,
         user_time_sk: `${prefix}#${task.id}`,
-        
+
         entity_type: taskType,
         created_at: task.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        
-        ...task
+
+        ...task,
       }
 
-      await dynamoDb.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item
-      }))
+      await dynamoDb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: item,
+        })
+      )
 
       return {
         success: true,
         message: `${taskType}を${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
         syncedItem: item,
         syncedEntityId: task.id,
-        syncedEntityType: taskType
+        syncedEntityType: taskType,
       }
 
     case 'DELETE':
-      await dynamoDb.send(new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: `USER#${task.user_id}`,
-          SK: `${prefix}#${task.id}`
-        }
-      }))
+      await dynamoDb.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `USER#${task.user_id}`,
+            SK: `${prefix}#${task.id}`,
+          },
+        })
+      )
 
       return {
         success: true,
         message: `${taskType}を削除しました`,
         syncedEntityId: task.id,
-        syncedEntityType: taskType
+        syncedEntityType: taskType,
       }
 
     default:
@@ -156,51 +168,60 @@ export async function syncTask(request: SyncRequest, taskType: 'big_task' | 'sma
  */
 export async function syncWorkSession(request: SyncRequest): Promise<SyncResult> {
   const workSession = request.payload
-  
+
   switch (request.operation) {
     case 'CREATE':
     case 'UPDATE':
       const item = {
         PK: keyPatterns.workSession.pk(workSession.user_id, workSession.start_time.split('T')[0]),
         SK: keyPatterns.workSession.sk(workSession.id),
-        
-        user_time_pk: workSession.small_task_id ? keyPatterns.workSession.gsi1pk(workSession.small_task_id) : undefined,
+
+        user_time_pk: workSession.small_task_id
+          ? keyPatterns.workSession.gsi1pk(workSession.small_task_id)
+          : undefined,
         user_time_sk: keyPatterns.workSession.gsi1sk(workSession.id),
-        
+
         entity_type: 'work_session',
         created_at: workSession.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        
-        ...workSession
+
+        ...workSession,
       }
 
-      await dynamoDb.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item
-      }))
+      await dynamoDb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: item,
+        })
+      )
 
       return {
         success: true,
         message: `WorkSessionを${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
         syncedItem: item,
         syncedEntityId: workSession.id,
-        syncedEntityType: 'work_session'
+        syncedEntityType: 'work_session',
       }
 
     case 'DELETE':
-      await dynamoDb.send(new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: keyPatterns.workSession.pk(workSession.user_id, workSession.start_time.split('T')[0]),
-          SK: keyPatterns.workSession.sk(workSession.id)
-        }
-      }))
+      await dynamoDb.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: keyPatterns.workSession.pk(
+              workSession.user_id,
+              workSession.start_time.split('T')[0]
+            ),
+            SK: keyPatterns.workSession.sk(workSession.id),
+          },
+        })
+      )
 
       return {
         success: true,
         message: 'WorkSessionを削除しました',
         syncedEntityId: workSession.id,
-        syncedEntityType: 'work_session'
+        syncedEntityType: 'work_session',
       }
 
     default:
@@ -211,55 +232,62 @@ export async function syncWorkSession(request: SyncRequest): Promise<SyncResult>
 /**
  * MoodEntry/DopamineEntryの同期処理
  */
-export async function syncEntry(request: SyncRequest, entryType: 'mood_entry' | 'dopamine_entry'): Promise<SyncResult> {
+export async function syncEntry(
+  request: SyncRequest,
+  entryType: 'mood_entry' | 'dopamine_entry'
+): Promise<SyncResult> {
   const entry = request.payload
   const prefix = entryType === 'mood_entry' ? 'MOOD' : 'DOPAMINE'
   const gsiPrefix = entryType === 'mood_entry' ? 'MOOD' : 'DOPAMINE'
-  
+
   switch (request.operation) {
     case 'CREATE':
     case 'UPDATE':
       const item = {
         PK: `USER#${entry.user_id}`,
         SK: `${prefix}#${entry.id}`,
-        
+
         user_time_pk: `${gsiPrefix}#${entry.user_id}`,
         user_time_sk: `DATE#${entry.timestamp}`,
-        
+
         entity_type: entryType,
         created_at: entry.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        
-        ...entry
+
+        ...entry,
       }
 
-      await dynamoDb.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item
-      }))
+      await dynamoDb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: item,
+        })
+      )
 
       return {
         success: true,
         message: `${entryType}を${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
         syncedItem: item,
         syncedEntityId: entry.id,
-        syncedEntityType: entryType
+        syncedEntityType: entryType,
       }
 
     case 'DELETE':
-      await dynamoDb.send(new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: `USER#${entry.user_id}`,
-          SK: `${prefix}#${entry.id}`
-        }
-      }))
+      await dynamoDb.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `USER#${entry.user_id}`,
+            SK: `${prefix}#${entry.id}`,
+          },
+        })
+      )
 
       return {
         success: true,
         message: `${entryType}を削除しました`,
         syncedEntityId: entry.id,
-        syncedEntityType: entryType
+        syncedEntityType: entryType,
       }
 
     default:
@@ -273,52 +301,56 @@ export async function syncEntry(request: SyncRequest, entryType: 'mood_entry' | 
 export async function syncScheduleMemo(request: SyncRequest): Promise<SyncResult> {
   const memo = request.payload
   console.log('syncScheduleMemo呼び出し:', request.operation, memo.id)
-  
+
   switch (request.operation) {
     case 'CREATE':
     case 'UPDATE':
       const item = {
         PK: `USER#${memo.user_id}`,
         SK: `SCHEDULEMEMO#${memo.week_start_date}`,
-        
+
         // GSI2用のキー（週単位での検索用）
         GSI2PK: `SCHEDULEMEMO#${memo.user_id}`,
         GSI2SK: `WEEK#${memo.week_start_date}`,
-        
+
         entity_type: 'schedule_memo',
         created_at: memo.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        
-        ...memo
+
+        ...memo,
       }
 
-      await dynamoDb.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item
-      }))
+      await dynamoDb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: item,
+        })
+      )
 
       return {
         success: true,
         message: `ScheduleMemoを${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
         syncedItem: item,
         syncedEntityId: memo.id,
-        syncedEntityType: 'schedule_memo'
+        syncedEntityType: 'schedule_memo',
       }
 
     case 'DELETE':
-      await dynamoDb.send(new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: `USER#${memo.user_id}`,
-          SK: `SCHEDULEMEMO#${memo.week_start_date}`
-        }
-      }))
+      await dynamoDb.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `USER#${memo.user_id}`,
+            SK: `SCHEDULEMEMO#${memo.week_start_date}`,
+          },
+        })
+      )
 
       return {
         success: true,
         message: 'ScheduleMemoを削除しました',
         syncedEntityId: memo.id,
-        syncedEntityType: 'schedule_memo'
+        syncedEntityType: 'schedule_memo',
       }
 
     default:
@@ -332,53 +364,57 @@ export async function syncScheduleMemo(request: SyncRequest): Promise<SyncResult
 export async function syncSleepSchedule(request: SyncRequest): Promise<SyncResult> {
   const sleepSchedule = request.payload
   console.log('syncSleepSchedule呼び出し:', request.operation, sleepSchedule.id)
-  
+
   switch (request.operation) {
     case 'CREATE':
     case 'UPDATE':
       const item = {
         PK: `USER#${sleepSchedule.user_id}`,
         SK: `SLEEP#${sleepSchedule.date_of_sleep}#${sleepSchedule.id}`,
-        
+
         // GSI2用のキー（ユーザーデータ検索用）
         GSI2PK: `USER#${sleepSchedule.user_id}`,
         GSI2SK: `SLEEP#${sleepSchedule.date_of_sleep}`,
-        
+
         // 管理用フィールド
         entity_type: 'sleep_schedule',
         created_at: sleepSchedule.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        
-        ...sleepSchedule
+
+        ...sleepSchedule,
       }
-      
-      await dynamoDb.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item
-      }))
-      
+
+      await dynamoDb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: item,
+        })
+      )
+
       return {
         success: true,
         message: `睡眠スケジュールを${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
         syncedItem: item,
         syncedEntityId: sleepSchedule.id,
-        syncedEntityType: 'sleep_schedule'
+        syncedEntityType: 'sleep_schedule',
       }
 
     case 'DELETE':
-      await dynamoDb.send(new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: `USER#${sleepSchedule.user_id}`,
-          SK: `SLEEP#${sleepSchedule.date_of_sleep}#${sleepSchedule.id}`
-        }
-      }))
+      await dynamoDb.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `USER#${sleepSchedule.user_id}`,
+            SK: `SLEEP#${sleepSchedule.date_of_sleep}#${sleepSchedule.id}`,
+          },
+        })
+      )
 
       return {
         success: true,
         message: '睡眠スケジュールを削除しました',
         syncedEntityId: sleepSchedule.id,
-        syncedEntityType: 'sleep_schedule'
+        syncedEntityType: 'sleep_schedule',
       }
 
     default:

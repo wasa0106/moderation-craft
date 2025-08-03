@@ -21,9 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <ThemeProvider defaultTheme="system" storageKey="moderation-craft-theme">
           <QueryProvider>
-            <SyncProvider 
-              syncIntervalMs={30000}  // 30秒ごとに同期
-              enableAutoSync={true}   // 自動同期を有効化
+            <SyncProvider
+              syncIntervalMs={30000} // 30秒ごとに同期
+              enableAutoSync={true} // 自動同期を有効化
             >
               <DebugProvider>
                 <MainLayout>{children}</MainLayout>

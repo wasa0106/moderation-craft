@@ -21,7 +21,6 @@ export const getCompletionColorClass = (rate: number): string => {
   return 'text-destructive'
 }
 
-
 /**
  * HEX色をRGBに変換するヘルパー関数
  */
@@ -42,10 +41,10 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
 export const getContrastTextColor = (backgroundColor: string): string => {
   const rgb = hexToRgb(backgroundColor)
   if (!rgb) return '#1F2328' // デフォルトはダークテキスト
-  
+
   // 明度を計算
   const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255
-  
+
   // 明度が0.5以上ならダークテキスト、未満ならライトテキスト
   return luminance > 0.5 ? '#1F2328' : '#F0F2F5'
 }

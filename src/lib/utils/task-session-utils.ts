@@ -39,7 +39,7 @@ export function getTaskStartTime(taskId: string, sessions: WorkSession[]): strin
   const taskSessions = sessions
     .filter(session => session.small_task_id === taskId && session.start_time)
     .sort((a, b) => a.start_time.localeCompare(b.start_time))
-  
+
   return taskSessions[0]?.start_time
 }
 
@@ -50,14 +50,17 @@ export function getTaskEndTime(taskId: string, sessions: WorkSession[]): string 
   const completedSessions = sessions
     .filter(session => session.small_task_id === taskId && session.end_time)
     .sort((a, b) => (b.end_time || '').localeCompare(a.end_time || ''))
-  
+
   return completedSessions[0]?.end_time
 }
 
 /**
  * Get the active session for a task
  */
-export function getTaskActiveSession(taskId: string, sessions: WorkSession[]): WorkSession | undefined {
+export function getTaskActiveSession(
+  taskId: string,
+  sessions: WorkSession[]
+): WorkSession | undefined {
   return sessions.find(
     session => session.small_task_id === taskId && session.start_time && !session.end_time
   )
@@ -110,33 +113,35 @@ export interface TaskDisplayInfo {
   totalMinutes: number
 }
 
-export function getTaskDisplayInfo(
-  task: SmallTask,
-  sessions: WorkSession[]
-): TaskDisplayInfo {
+export function getTaskDisplayInfo(task: SmallTask, sessions: WorkSession[]): TaskDisplayInfo {
   const totalMinutes = getTaskTotalMinutes(task.id, sessions)
   const hasActiveSession = isTaskActive(task.id, sessions)
   const status = task.status || 'pending'
-  
+
   // Status text based on task state
   const statusTextMap = {
     pending: hasActiveSession ? '作業中' : totalMinutes > 0 ? '一時中断' : '未着手',
     completed: '完了',
     cancelled: '不要',
   }
-  
+
   // Color classes based on status and session state
   const colorClassMap = {
-    pending: hasActiveSession ? 'bg-primary' : totalMinutes > 0 ? 'bg-muted-foreground' : 'bg-muted',
+    pending: hasActiveSession
+      ? 'bg-primary'
+      : totalMinutes > 0
+        ? 'bg-muted-foreground'
+        : 'bg-muted',
     completed: 'bg-muted',
     cancelled: 'bg-muted/50',
   }
-  
+
   return {
     statusText: statusTextMap[status],
-    progressText: status === 'pending' && totalMinutes > 0 
-      ? `${totalMinutes}/${task.estimated_minutes}分` 
-      : undefined,
+    progressText:
+      status === 'pending' && totalMinutes > 0
+        ? `${totalMinutes}/${task.estimated_minutes}分`
+        : undefined,
     colorClass: colorClassMap[status],
     hasActiveSession,
     totalMinutes,

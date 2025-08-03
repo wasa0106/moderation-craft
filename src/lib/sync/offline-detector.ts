@@ -17,7 +17,7 @@ export class OfflineDetector {
     this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
     this.setupEventListeners()
     this.startPeriodicCheck()
-    
+
     // 初期状態をストアに反映
     if (typeof window !== 'undefined') {
       useSyncStore.getState().setOnlineStatus(this.isOnline)
@@ -82,7 +82,7 @@ export class OfflineDetector {
       if (this.testMode) {
         return
       }
-      
+
       this.checkConnectivity().then(isOnline => {
         if (isOnline !== this.isOnline) {
           this.setOnlineStatus(isOnline)
@@ -95,14 +95,14 @@ export class OfflineDetector {
     offlineLogger.debug(`setOnlineStatus called: ${online}`)
     if (this.isOnline !== online) {
       this.isOnline = online
-      
+
       // ストアを更新
       useSyncStore.getState().setOnlineStatus(online)
       offlineLogger.debug(`Online status updated in store: ${online}`)
-      
+
       // リスナーに通知
       this.notifyListeners(online)
-      
+
       if (online) {
         offlineLogger.info('Online detected, triggering recovery...')
         // オンラインに復帰したら同期を実行
@@ -117,11 +117,11 @@ export class OfflineDetector {
 
   private async handleOnlineRecovery() {
     offlineLogger.info('ネットワークが復旧しました - 同期を開始します')
-    
+
     // 動的インポートでSyncServiceを取得（循環参照を避けるため）
     const { SyncService } = await import('./sync-service')
     const syncService = SyncService.getInstance()
-    
+
     // 少し遅延させてから同期を実行（ネットワークの安定を待つ）
     setTimeout(() => {
       syncService.processSyncQueue().catch(error => {
@@ -184,7 +184,7 @@ export class OfflineDetector {
       clearInterval(this.checkInterval)
       this.checkInterval = null
     }
-    
+
     this.listeners = []
   }
 }

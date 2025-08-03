@@ -52,14 +52,14 @@ describe('NavMain', () => {
   it('renders menu label', () => {
     ;(usePathname as any).mockReturnValue('/projects')
     render(<NavMain items={mockItems} />)
-    
+
     expect(screen.getByText('メニュー')).toBeInTheDocument()
   })
 
   it('renders all navigation items', () => {
     ;(usePathname as any).mockReturnValue('/projects')
     render(<NavMain items={mockItems} />)
-    
+
     expect(screen.getByText('タイマー')).toBeInTheDocument()
     expect(screen.getByText('プロジェクト')).toBeInTheDocument()
   })
@@ -67,14 +67,14 @@ describe('NavMain', () => {
   it('renders icons when provided', () => {
     ;(usePathname as any).mockReturnValue('/projects')
     render(<NavMain items={mockItems} />)
-    
+
     expect(screen.getAllByText('MockIcon')).toHaveLength(2)
   })
 
   it('marks correct item as active based on pathname', () => {
     ;(usePathname as any).mockReturnValue('/projects')
     render(<NavMain items={mockItems} />)
-    
+
     const buttons = screen.getAllByTestId('sidebar-menu-button')
     expect(buttons[0]).toHaveAttribute('data-active', 'false')
     expect(buttons[1]).toHaveAttribute('data-active', 'true')
@@ -83,7 +83,7 @@ describe('NavMain', () => {
   it('marks timer as active when on root path', () => {
     ;(usePathname as jest.Mock).mockReturnValue('/')
     render(<NavMain items={mockItems} />)
-    
+
     const buttons = screen.getAllByTestId('sidebar-menu-button')
     expect(buttons[0]).toHaveAttribute('data-active', 'true')
     expect(buttons[1]).toHaveAttribute('data-active', 'false')
@@ -92,7 +92,7 @@ describe('NavMain', () => {
   it('creates correct links', () => {
     ;(usePathname as any).mockReturnValue('/projects')
     render(<NavMain items={mockItems} />)
-    
+
     const links = screen.getAllByRole('link')
     expect(links[0]).toHaveAttribute('href', '/timer')
     expect(links[1]).toHaveAttribute('href', '/projects')

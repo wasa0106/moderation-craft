@@ -126,26 +126,26 @@ export default function WeeklySchedulePage() {
     <div className="flex flex-1 flex-col">
       {/* Weekly Calendar - Always Visible */}
       <div className="h-[650px]">
-          <WeeklyCalendar
-            weeklySchedule={calendarData.weeklySchedule}
-            onScheduleTask={calendarData.scheduleTask}
-            onCreateTask={async data => {
-              await calendarData.createSmallTask(data)
-            }}
-            onUpdateTask={async data => {
-              await calendarData.updateSmallTask(data)
-            }}
-            onDeleteTask={async id => {
-              await calendarData.deleteSmallTask(id)
-            }}
-            projects={calendarData.projects}
-            bigTasks={currentWeekBigTasks}
-            smallTasks={weekSmallTasks}
-            userId={userId}
-            weekStart={weekStart}
-            onPreviousWeek={goToPreviousWeek}
-            onNextWeek={goToNextWeek}
-          />
+        <WeeklyCalendar
+          weeklySchedule={calendarData.weeklySchedule}
+          onScheduleTask={calendarData.scheduleTask}
+          onCreateTask={async data => {
+            await calendarData.createSmallTask(data)
+          }}
+          onUpdateTask={async data => {
+            await calendarData.updateSmallTask(data)
+          }}
+          onDeleteTask={async id => {
+            await calendarData.deleteSmallTask(id)
+          }}
+          projects={calendarData.projects}
+          bigTasks={currentWeekBigTasks}
+          smallTasks={weekSmallTasks}
+          userId={userId}
+          weekStart={weekStart}
+          onPreviousWeek={goToPreviousWeek}
+          onNextWeek={goToNextWeek}
+        />
       </div>
 
       {/* Task Memo */}

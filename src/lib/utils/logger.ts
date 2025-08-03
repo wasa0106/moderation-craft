@@ -35,10 +35,10 @@ class Logger {
   private shouldLog(level: LogLevel): boolean {
     // 開発環境では常にログを出力
     if (this.isDevelopment) return true
-    
+
     // 本番環境ではconfig.enabledInProductionがtrueの場合のみ
     if (!this.config.enabledInProduction) return false
-    
+
     // ログレベルをチェック
     return LOG_LEVELS[level] >= LOG_LEVELS[this.config.level]
   }

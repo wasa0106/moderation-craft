@@ -65,7 +65,7 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
     deleteSmallTask,
     isLoading: smallTasksLoading,
   } = useSmallTasks(resolvedParams?.id || '')
-  
+
   const { data: workSessions = [] } = useWorkSessions('current-user')
 
   const [showBigTaskForm, setShowBigTaskForm] = useState(false)
@@ -78,7 +78,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const project = resolvedParams?.id ? projects.find(p => p.id === resolvedParams.id) : undefined
-  const projectBigTasks = resolvedParams?.id ? bigTasks.filter(task => task.project_id === resolvedParams.id) : []
+  const projectBigTasks = resolvedParams?.id
+    ? bigTasks.filter(task => task.project_id === resolvedParams.id)
+    : []
   const projectSmallTasks = smallTasks.filter(task =>
     projectBigTasks.some(bigTask => bigTask.id === task.big_task_id)
   )

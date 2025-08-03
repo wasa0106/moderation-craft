@@ -61,50 +61,50 @@ export function WorkSessionEditDialog({
   const { toast } = useToast()
   const [isUpdating, setIsUpdating] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  
+
   // フォームの状態
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [focusLevel, setFocusLevel] = useState<string>('')
-  
+
   // ダイアログが開かれたときにフォームを初期化
   useEffect(() => {
     if (session && open) {
       const start = parseISO(session.start_time)
       setStartTime(format(start, 'HH:mm'))
-      
+
       if (session.end_time) {
         const end = parseISO(session.end_time)
         setEndTime(format(end, 'HH:mm'))
       } else {
         setEndTime('')
       }
-      
+
       setFocusLevel(session.focus_level?.toString() || '')
     }
   }, [session, open])
-  
+
   if (!session) return null
-  
+
   const handleUpdate = async () => {
     try {
       setIsUpdating(true)
-      
+
       const updates: Partial<WorkSession> = {}
       const sessionDate = parseISO(session.start_time)
-      
+
       // 開始時刻の更新
       const [startHours, startMinutes] = startTime.split(':').map(Number)
       const newStartTime = new Date(sessionDate)
       newStartTime.setHours(startHours, startMinutes, 0, 0)
       updates.start_time = newStartTime.toISOString()
-      
+
       // 終了時刻の更新（入力されている場合）
       if (endTime) {
         const [endHours, endMinutes] = endTime.split(':').map(Number)
         const newEndTime = new Date(sessionDate)
         newEndTime.setHours(endHours, endMinutes, 0, 0)
-        
+
         // 終了時刻が開始時刻より後かチェック
         if (newEndTime <= newStartTime) {
           toast({
@@ -114,11 +114,13 @@ export function WorkSessionEditDialog({
           })
           return
         }
-        
+
         updates.end_time = newEndTime.toISOString()
-        updates.duration_minutes = Math.floor((newEndTime.getTime() - newStartTime.getTime()) / (1000 * 60))
+        updates.duration_minutes = Math.floor(
+          (newEndTime.getTime() - newStartTime.getTime()) / (1000 * 60)
+        )
       }
-      
+
       // 集中度の更新
       if (focusLevel) {
         const level = parseInt(focusLevel)
@@ -126,14 +128,14 @@ export function WorkSessionEditDialog({
           updates.focus_level = level
         }
       }
-      
+
       await onUpdate(session.id, updates)
-      
+
       toast({
         title: '更新しました',
         description: 'セッション情報を更新しました',
       })
-      
+
       onOpenChange(false)
     } catch (error) {
       console.error('Failed to update session:', error)
@@ -146,17 +148,17 @@ export function WorkSessionEditDialog({
       setIsUpdating(false)
     }
   }
-  
+
   const handleDelete = async () => {
     try {
       setIsUpdating(true)
       await onDelete(session.id)
-      
+
       toast({
         title: '削除しました',
         description: 'セッションを削除しました',
       })
-      
+
       setShowDeleteDialog(false)
       onOpenChange(false)
     } catch (error) {
@@ -170,9 +172,9 @@ export function WorkSessionEditDialog({
       setIsUpdating(false)
     }
   }
-  
+
   const isActive = !session.end_time
-  
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,7 +192,7 @@ export function WorkSessionEditDialog({
               )}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="start-time" className="text-right">
@@ -202,12 +204,12 @@ export function WorkSessionEditDialog({
                   id="start-time"
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={e => setStartTime(e.target.value)}
                   disabled={isActive}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="end-time" className="text-right">
                 終了時刻
@@ -218,46 +220,51 @@ export function WorkSessionEditDialog({
                   id="end-time"
                   type="time"
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={e => setEndTime(e.target.value)}
                   placeholder={isActive ? '実行中...' : '未設定'}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="focus-level" className="text-right">
                 集中度
               </Label>
               <div className="col-span-3 flex items-center gap-2">
                 <Brain className="h-4 w-4 text-muted-foreground" />
-                <Select value={focusLevel || 'none'} onValueChange={(value) => setFocusLevel(value === 'none' ? '' : value)}>
+                <Select
+                  value={focusLevel || 'none'}
+                  onValueChange={value => setFocusLevel(value === 'none' ? '' : value)}
+                >
                   <SelectTrigger id="focus-level">
                     <SelectValue placeholder="集中度を選択" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">未設定</SelectItem>
-                    {[9, 8, 7, 6, 5, 4, 3, 2, 1].map((level) => (
+                    {[9, 8, 7, 6, 5, 4, 3, 2, 1].map(level => (
                       <SelectItem key={level} value={level.toString()}>
-                        {level} - {
-                          level >= 8 ? '最高の集中' :
-                          level >= 6 ? '良好' :
-                          level >= 4 ? '普通' :
-                          '低い'
-                        }
+                        {level} -{' '}
+                        {level >= 8
+                          ? '最高の集中'
+                          : level >= 6
+                            ? '良好'
+                            : level >= 4
+                              ? '普通'
+                              : '低い'}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            
+
             {session.duration_seconds && session.duration_seconds > 0 && (
               <div className="text-sm text-muted-foreground text-center">
                 現在の記録時間: {Math.floor(session.duration_seconds / 60)}分
               </div>
             )}
           </div>
-          
+
           <DialogFooter className="flex justify-between">
             <Button
               variant="destructive"
@@ -268,26 +275,19 @@ export function WorkSessionEditDialog({
               <Trash2 className="h-4 w-4 mr-1" />
               削除
             </Button>
-            
+
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isUpdating}
-              >
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUpdating}>
                 キャンセル
               </Button>
-              <Button
-                onClick={handleUpdate}
-                disabled={isUpdating}
-              >
+              <Button onClick={handleUpdate} disabled={isUpdating}>
                 更新
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -297,9 +297,7 @@ export function WorkSessionEditDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUpdating}>
-              キャンセル
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isUpdating}>キャンセル</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isUpdating}

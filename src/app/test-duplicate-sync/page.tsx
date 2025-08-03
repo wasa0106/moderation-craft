@@ -15,19 +15,19 @@ export default function TestDuplicateSyncPage() {
   const [loading, setLoading] = useState(false)
   const [queueItems, setQueueItems] = useState<any[]>([])
   const syncService = SyncService.getInstance()
-  
+
   // 自動同期を無効化（テスト中のみ）と初回ロード
   useEffect(() => {
     let originalAutoSync: boolean
-    
+
     import('@/stores/sync-store').then(({ useSyncStore }) => {
       originalAutoSync = useSyncStore.getState().autoSyncEnabled
       useSyncStore.getState().setAutoSync(false)
-      
+
       // 初回ロード時にキューを読み込む
       loadQueueItems()
     })
-    
+
     // コンポーネントのアンマウント時に元に戻す
     return () => {
       import('@/stores/sync-store').then(({ useSyncStore }) => {
@@ -48,7 +48,7 @@ export default function TestDuplicateSyncPage() {
     status: 'active',
     version: 1,
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   }
 
   // 同期キューの内容を取得
@@ -63,22 +63,22 @@ export default function TestDuplicateSyncPage() {
     setLoading(true)
     try {
       console.log('=== 重複追加テスト開始 ===')
-      
+
       // まずプロジェクトを実際にIndexedDBに保存
       const { projectRepository } = await import('@/lib/db/repositories')
       await projectRepository.create(testProject)
       console.log('テストプロジェクトをIndexedDBに保存しました')
-      
+
       // 1回目の追加
       console.log('1回目の追加...')
       await syncService.addToSyncQueue('project', testProject.id, 'create', testProject)
-      
+
       // 2回目の追加（重複）
       console.log('2回目の追加（重複）...')
       await syncService.addToSyncQueue('project', testProject.id, 'create', testProject)
-      
+
       await loadQueueItems()
-      
+
       toast.success('重複追加テスト完了（コンソールログを確認）')
     } catch (error) {
       console.error('エラー:', error)
@@ -93,31 +93,32 @@ export default function TestDuplicateSyncPage() {
     setLoading(true)
     try {
       console.log('=== 失敗アイテムリセットテスト開始 ===')
-      
+
       // まず失敗状態のアイテムを作成
       const items = await syncQueueRepository.getAll()
-      const targetItem = items.find(item => 
-        item.entity_type === 'project' && 
-        item.entity_id === testProject.id &&
-        item.operation_type === 'CREATE'
+      const targetItem = items.find(
+        item =>
+          item.entity_type === 'project' &&
+          item.entity_id === testProject.id &&
+          item.operation_type === 'CREATE'
       )
-      
+
       if (!targetItem) {
         toast.error('テスト対象のアイテムが見つかりません')
         return
       }
-      
+
       // 失敗状態に更新
       await syncQueueRepository.markAsFailed(targetItem.id, 'テスト用の失敗')
       console.log('アイテムを失敗状態に更新しました')
-      
+
       // データを更新して再追加
       const updatedProject = { ...testProject, name: 'プロジェクト名を更新' }
       console.log('更新したデータで再追加...')
       await syncService.addToSyncQueue('project', testProject.id, 'create', updatedProject)
-      
+
       await loadQueueItems()
-      
+
       toast.success('失敗アイテムリセットテスト完了')
     } catch (error) {
       console.error('エラー:', error)
@@ -132,18 +133,18 @@ export default function TestDuplicateSyncPage() {
     setLoading(true)
     try {
       console.log('=== 異なる操作タイプテスト開始 ===')
-      
+
       // CREATE
       await syncService.addToSyncQueue('project', testProject.id, 'create', testProject)
-      
+
       // UPDATE（これは追加されるべき）
       await syncService.addToSyncQueue('project', testProject.id, 'update', testProject)
-      
+
       // DELETE（これも追加されるべき）
       await syncService.addToSyncQueue('project', testProject.id, 'delete')
-      
+
       await loadQueueItems()
-      
+
       toast.success('異なる操作タイプテスト完了')
     } catch (error) {
       console.error('エラー:', error)
@@ -174,20 +175,16 @@ export default function TestDuplicateSyncPage() {
   return (
     <div className="container mx-auto p-4 max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">重複同期防止テスト</h1>
-      
+
       <div className="space-y-4">
         <Card className="p-4">
           <h2 className="text-lg font-semibold mb-4">テスト操作</h2>
           <div className="space-y-2">
-            <Button
-              onClick={testDuplicateAdd}
-              disabled={loading}
-              className="w-full"
-            >
+            <Button onClick={testDuplicateAdd} disabled={loading} className="w-full">
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               テスト1: 同じデータを2回追加
             </Button>
-            
+
             <Button
               onClick={testFailedItemReset}
               disabled={loading}
@@ -197,7 +194,7 @@ export default function TestDuplicateSyncPage() {
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               テスト2: 失敗アイテムのリセット
             </Button>
-            
+
             <Button
               onClick={testDifferentOperations}
               disabled={loading}
@@ -207,7 +204,7 @@ export default function TestDuplicateSyncPage() {
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               テスト3: 異なる操作タイプ
             </Button>
-            
+
             <div className="flex gap-2 mt-4">
               <Button
                 onClick={loadQueueItems}
@@ -217,7 +214,7 @@ export default function TestDuplicateSyncPage() {
               >
                 キューを再読み込み
               </Button>
-              
+
               <Button
                 onClick={clearQueue}
                 disabled={loading}
@@ -229,36 +226,40 @@ export default function TestDuplicateSyncPage() {
             </div>
           </div>
         </Card>
-        
+
         <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-4">
-            同期キューの内容 ({queueItems.length}件)
-          </h2>
+          <h2 className="text-lg font-semibold mb-4">同期キューの内容 ({queueItems.length}件)</h2>
           {queueItems.length === 0 ? (
             <p className="text-muted-foreground">キューは空です</p>
           ) : (
             <div className="space-y-2">
-              {queueItems.map((item) => (
+              {queueItems.map(item => (
                 <div key={item.id} className="p-3 border rounded text-sm">
                   <div className="font-medium">
                     {item.entity_type} - {item.operation_type}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    ID: {item.entity_id}
-                  </div>
+                  <div className="text-xs text-muted-foreground">ID: {item.entity_id}</div>
                   <div className="text-xs">
-                    Status: <span className={
-                      item.status === 'pending' ? 'text-yellow-600' :
-                      item.status === 'processing' ? 'text-blue-600' :
-                      item.status === 'completed' ? 'text-green-600' :
-                      item.status === 'failed' ? 'text-red-600' : ''
-                    }>{item.status}</span>
+                    Status:{' '}
+                    <span
+                      className={
+                        item.status === 'pending'
+                          ? 'text-yellow-600'
+                          : item.status === 'processing'
+                            ? 'text-blue-600'
+                            : item.status === 'completed'
+                              ? 'text-green-600'
+                              : item.status === 'failed'
+                                ? 'text-red-600'
+                                : ''
+                      }
+                    >
+                      {item.status}
+                    </span>
                     {item.attempt_count > 0 && ` (試行: ${item.attempt_count}回)`}
                   </div>
                   {item.error_message && (
-                    <div className="text-xs text-red-600 mt-1">
-                      エラー: {item.error_message}
-                    </div>
+                    <div className="text-xs text-red-600 mt-1">エラー: {item.error_message}</div>
                   )}
                 </div>
               ))}

@@ -91,7 +91,7 @@ export function useSync() {
     if (isOnline && syncStore.autoSyncEnabled && syncStore.needsSync()) {
       syncService.processSyncQueue()
     }
-  }, [isOnline, syncStore.autoSyncEnabled])
+  }, [isOnline, syncStore.autoSyncEnabled, syncStore])
 
   return {
     // Sync state

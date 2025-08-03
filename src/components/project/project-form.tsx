@@ -101,133 +101,120 @@ export function ProjectForm({
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-          {/* Project Name */}
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>プロジェクト名 *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="プロジェクト名を入力"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Goal */}
-          <FormField
-            control={form.control}
-            name="goal"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>ゴール *</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="プロジェクトの目標を入力"
-                    rows={3}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Deadline */}
-          <FormField
-            control={form.control}
-            name="deadline"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>期限</FormLabel>
-                <FormControl>
-                  <Input
-                    type="date"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Status (only for editing) */}
-          {isEditing && (
+            {/* Project Name */}
             <FormField
               control={form.control}
-              name="status"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ステータス</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="ステータスを選択" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="planning">計画中</SelectItem>
-                      <SelectItem value="active">アクティブ</SelectItem>
-                      <SelectItem value="completed">完了</SelectItem>
-                      <SelectItem value="paused">一時停止</SelectItem>
-                      <SelectItem value="cancelled">キャンセル</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>プロジェクト名 *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="プロジェクト名を入力" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          )}
 
-          {/* Color */}
-          <FormField
-            control={form.control}
-            name="color"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>プロジェクトカラー</FormLabel>
-                <FormControl>
-                  <ProjectColorPicker
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  {isEditing ? '更新中...' : '作成中...'}
-                </span>
-              ) : isEditing ? (
-                '更新'
-              ) : (
-                '作成'
+            {/* Goal */}
+            <FormField
+              control={form.control}
+              name="goal"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ゴール *</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="プロジェクトの目標を入力" rows={3} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </Button>
-            {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={isLoading}
-                className="flex-1"
-              >
-                キャンセル
-              </Button>
+            />
+
+            {/* Deadline */}
+            <FormField
+              control={form.control}
+              name="deadline"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>期限</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Status (only for editing) */}
+            {isEditing && (
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ステータス</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="ステータスを選択" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="planning">計画中</SelectItem>
+                        <SelectItem value="active">アクティブ</SelectItem>
+                        <SelectItem value="completed">完了</SelectItem>
+                        <SelectItem value="paused">一時停止</SelectItem>
+                        <SelectItem value="cancelled">キャンセル</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-          </div>
+
+            {/* Color */}
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>プロジェクトカラー</FormLabel>
+                  <FormControl>
+                    <ProjectColorPicker value={field.value} onChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" disabled={isLoading} className="flex-1">
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    {isEditing ? '更新中...' : '作成中...'}
+                  </span>
+                ) : isEditing ? (
+                  '更新'
+                ) : (
+                  '作成'
+                )}
+              </Button>
+              {onCancel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  キャンセル
+                </Button>
+              )}
+            </div>
           </form>
         </Form>
       </CardContent>

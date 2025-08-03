@@ -68,7 +68,8 @@ export function BigTaskForm({
     defaultValues: {
       name: task?.name || '',
       description: task?.description || '',
-      start_date: task?.start_date || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      start_date:
+        task?.start_date || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
       end_date: task?.end_date || format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
       category: task?.category || 'その他',
       estimated_hours: task?.estimated_hours || 8,
@@ -138,9 +139,9 @@ export function BigTaskForm({
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !form.watch('start_date') && "text-muted-foreground",
-                      form.formState.errors.start_date && "border-red-500"
+                      'w-full justify-start text-left font-normal',
+                      !form.watch('start_date') && 'text-muted-foreground',
+                      form.formState.errors.start_date && 'border-red-500'
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -154,8 +155,12 @@ export function BigTaskForm({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={form.watch('start_date') ? new Date(form.watch('start_date')) : undefined}
-                    onSelect={(date) => date && form.setValue('start_date', format(date, 'yyyy-MM-dd'))}
+                    selected={
+                      form.watch('start_date') ? new Date(form.watch('start_date')) : undefined
+                    }
+                    onSelect={date =>
+                      date && form.setValue('start_date', format(date, 'yyyy-MM-dd'))
+                    }
                     locale={ja}
                   />
                 </PopoverContent>
@@ -172,9 +177,9 @@ export function BigTaskForm({
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !form.watch('end_date') && "text-muted-foreground",
-                      form.formState.errors.end_date && "border-red-500"
+                      'w-full justify-start text-left font-normal',
+                      !form.watch('end_date') && 'text-muted-foreground',
+                      form.formState.errors.end_date && 'border-red-500'
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -189,7 +194,7 @@ export function BigTaskForm({
                   <Calendar
                     mode="single"
                     selected={form.watch('end_date') ? new Date(form.watch('end_date')) : undefined}
-                    onSelect={(date) => date && form.setValue('end_date', format(date, 'yyyy-MM-dd'))}
+                    onSelect={date => date && form.setValue('end_date', format(date, 'yyyy-MM-dd'))}
                     locale={ja}
                   />
                 </PopoverContent>
@@ -208,9 +213,7 @@ export function BigTaskForm({
                 value={form.watch('category')}
                 onValueChange={value => form.setValue('category', value)}
               >
-                <SelectTrigger className={cn(
-                  form.formState.errors.category && 'border-red-500'
-                )}>
+                <SelectTrigger className={cn(form.formState.errors.category && 'border-red-500')}>
                   <SelectValue placeholder="カテゴリーを選択" />
                 </SelectTrigger>
                 <SelectContent>

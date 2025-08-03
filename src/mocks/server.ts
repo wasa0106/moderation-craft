@@ -18,21 +18,11 @@ server.events.on('request:start', ({ request }) => {
 
 server.events.on('response:mocked', ({ request, response }) => {
   if (process.env.DEBUG_MSW === 'true') {
-    console.log(
-      'MSW mocked response:',
-      request.method,
-      request.url,
-      'with status',
-      response.status
-    )
+    console.log('MSW mocked response:', request.method, request.url, 'with status', response.status)
   }
 })
 
 // Handle unhandled requests
 server.events.on('request:unhandled', ({ request }) => {
-  console.warn(
-    'Found an unhandled %s request to %s',
-    request.method,
-    request.url
-  )
+  console.warn('Found an unhandled %s request to %s', request.method, request.url)
 })

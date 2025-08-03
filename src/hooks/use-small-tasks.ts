@@ -97,11 +97,11 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
         invalidateQueries.smallTasksByDate(userId, date)
       }
       invalidateQueries.activeTasks(userId)
-      
+
       // date-rangeクエリも無効化
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['small-tasks', 'date-range'],
-        refetchType: 'active'
+        refetchType: 'active',
       })
     },
     onError: error => {
@@ -125,11 +125,11 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
         invalidateQueries.smallTasksByDate(userId, date)
       }
       invalidateQueries.activeTasks(userId)
-      
+
       // date-rangeクエリも無効化
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['small-tasks', 'date-range'],
-        refetchType: 'active'
+        refetchType: 'active',
       })
     },
     onError: error => {
@@ -152,11 +152,11 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
         invalidateQueries.smallTasksByDate(userId, date)
       }
       invalidateQueries.activeTasks(userId)
-      
+
       // date-rangeクエリも無効化
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['small-tasks', 'date-range'],
-        refetchType: 'active'
+        refetchType: 'active',
       })
     },
     onError: error => {
@@ -218,11 +218,11 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
       if (date) {
         invalidateQueries.smallTasksByDate(userId, date)
       }
-      
+
       // date-rangeクエリも無効化
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['small-tasks', 'date-range'],
-        refetchType: 'active'
+        refetchType: 'active',
       })
     },
   })

@@ -6,7 +6,7 @@
 import { useSyncStore } from '@/stores/sync-store'
 import { ConflictResolver } from './conflict-resolver'
 import { OfflineDetector } from './offline-detector'
-import { 
+import {
   syncQueueRepository,
   workSessionRepository,
   projectRepository,
@@ -16,7 +16,7 @@ import {
   dopamineEntryRepository,
   dailyConditionRepository,
   scheduleMemoRepository,
-  sleepScheduleRepository
+  sleepScheduleRepository,
 } from '@/lib/db/repositories'
 import { SyncQueueItem, DatabaseEntity } from '@/types'
 import { syncLogger } from '@/lib/utils/logger'
@@ -40,7 +40,7 @@ export class SyncService {
    */
   public startAutoSync(intervalMs: number = 30000) {
     syncLogger.info(`startAutoSync called with interval: ${intervalMs}ms`)
-    
+
     if (this.syncInterval) {
       syncLogger.debug('Clearing existing interval')
       clearInterval(this.syncInterval)
@@ -50,7 +50,7 @@ export class SyncService {
       syncLogger.debug('=== Auto sync interval triggered ===')
       this.processSyncQueue()
     }, intervalMs)
-    
+
     syncLogger.debug('Auto sync interval set:', this.syncInterval)
   }
 
@@ -69,7 +69,7 @@ export class SyncService {
    */
   public async processSyncQueue(): Promise<void> {
     syncLogger.debug('processSyncQueue called')
-    
+
     if (this.isProcessing) {
       syncLogger.debug('Already processing, skipping')
       return
@@ -82,7 +82,7 @@ export class SyncService {
       syncLogger.debug('Offline, skipping sync')
       return
     }
-    
+
     if (!syncStore.canSync()) {
       syncLogger.debug('Cannot sync (already syncing or disabled), skipping')
       return
@@ -109,7 +109,7 @@ export class SyncService {
 
       syncStore.setLastSyncTime(new Date().toISOString())
       syncLogger.info(`=== Sync completed successfully: ${pendingItems.length} items ===`)
-      
+
       // 同期成功の通知（開発環境でのみ表示）
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const { toast } = await import('sonner')
@@ -118,7 +118,7 @@ export class SyncService {
     } catch (error) {
       syncLogger.error('Sync process failed:', error)
       syncStore.addSyncError(error instanceof Error ? error.message : 'Unknown sync error')
-      
+
       // エラー通知（開発環境でのみ表示）
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const { toast } = await import('sonner')
@@ -158,17 +158,18 @@ export class SyncService {
 
         // バランスの取れたリトライ戦略
         const newAttemptCount = item.attempt_count + 1
-        
+
         // エラータイプを判定
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         const isNetworkError = errorMessage.includes('fetch') || errorMessage.includes('network')
         const isAuthError = errorMessage.includes('AccessDenied') || errorMessage.includes('401')
-        const isRateLimitError = errorMessage.includes('TooManyRequests') || errorMessage.includes('429')
+        const isRateLimitError =
+          errorMessage.includes('TooManyRequests') || errorMessage.includes('429')
 
         // リトライ回数の上限を設定
-        let maxRetries = 5  // デフォルト5回
-        if (isNetworkError) maxRetries = 10  // ネットワークエラーは10回
-        if (isAuthError) maxRetries = 2      // 認証エラーは2回で諦める
+        let maxRetries = 5 // デフォルト5回
+        if (isNetworkError) maxRetries = 10 // ネットワークエラーは10回
+        if (isAuthError) maxRetries = 2 // 認証エラーは2回で諦める
         if (isRateLimitError) maxRetries = 20 // レート制限は長期戦
 
         if (newAttemptCount >= maxRetries) {
@@ -179,7 +180,7 @@ export class SyncService {
             error_message: errorMessage,
             last_attempted: new Date().toISOString(),
           })
-          
+
           // アイテムが存在するか確認してから更新
           const existingItem = await syncQueueRepository.getById(item.id)
           if (existingItem) {
@@ -192,8 +193,10 @@ export class SyncService {
           } else {
             syncLogger.warn(`sync_queue item ${item.id} not found - skipping update`)
           }
-          syncLogger.debug(`Item ${item.id} moved to dormant state after ${newAttemptCount} attempts`)
-          
+          syncLogger.debug(
+            `Item ${item.id} moved to dormant state after ${newAttemptCount} attempts`
+          )
+
           // 1時間後に自動的に復活させる（バックグラウンドタスク）
           if (isNetworkError || isRateLimitError) {
             setTimeout(async () => {
@@ -211,7 +214,7 @@ export class SyncService {
           // 次のリトライまでの待機時間を計算（指数バックオフ）
           const baseDelay = isRateLimitError ? 60000 : 30000 // レート制限は1分、それ以外は30秒
           const nextRetryDelay = Math.min(baseDelay * Math.pow(1.5, newAttemptCount - 1), 600000) // 最大10分
-          
+
           syncStore.updateSyncQueueItem(item.id, {
             status: 'pending',
             attempt_count: newAttemptCount,
@@ -219,7 +222,7 @@ export class SyncService {
             last_attempted: new Date().toISOString(),
             next_retry_after: new Date(Date.now() + nextRetryDelay).toISOString(), // 次回リトライ時刻を記録
           })
-          
+
           // アイテムが存在するか確認してから更新
           const existingItem = await syncQueueRepository.getById(item.id)
           if (existingItem) {
@@ -232,7 +235,7 @@ export class SyncService {
           } else {
             syncLogger.warn(`sync_queue item ${item.id} not found - skipping retry update`)
           }
-          
+
           syncLogger.debug(`Item ${item.id} will retry after ${nextRetryDelay / 1000} seconds`)
         }
       }
@@ -271,14 +274,16 @@ export class SyncService {
       id: item.id,
       hasData: !!item.data,
       dataLength: item.data?.length,
-      data: item.data
+      data: item.data,
     })
 
     // データを解析
     if (!item.data) {
       // データがない場合は、Repositoryから取得を試みる
-      syncLogger.warn(`No data in sync queue for ${item.entity_type} ${item.entity_id}, attempting to fetch from repository`)
-      
+      syncLogger.warn(
+        `No data in sync queue for ${item.entity_type} ${item.entity_id}, attempting to fetch from repository`
+      )
+
       let entityData = null
       switch (item.entity_type) {
         case 'work_session':
@@ -309,11 +314,11 @@ export class SyncService {
           entityData = await sleepScheduleRepository.getById(item.entity_id)
           break
       }
-      
+
       if (!entityData) {
         throw new Error(`No data provided for create operation and entity not found in repository`)
       }
-      
+
       // 取得したデータを使用
       item.data = JSON.stringify(entityData)
     }
@@ -326,12 +331,12 @@ export class SyncService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key'
+          'x-api-key': process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key',
         },
         body: JSON.stringify({
           entity_type: item.entity_type,
-          payload: entityData
-        })
+          payload: entityData,
+        }),
       })
 
       const result = await response.json()
@@ -357,7 +362,7 @@ export class SyncService {
 
     try {
       let entityData = null
-      
+
       // dataがある場合は使用、ない場合はRepositoryから取得
       if (item.data) {
         entityData = JSON.parse(item.data)
@@ -392,7 +397,7 @@ export class SyncService {
             entityData = await sleepScheduleRepository.getById(item.entity_id)
             break
         }
-        
+
         if (!entityData) {
           throw new Error(`Entity ${item.entity_type} with ID ${item.entity_id} not found`)
         }
@@ -403,13 +408,13 @@ export class SyncService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key'
+          'x-api-key': process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key',
         },
         body: JSON.stringify({
           entity_type: item.entity_type,
           operation: 'UPDATE',
-          payload: entityData
-        })
+          payload: entityData,
+        }),
       })
 
       const result = await response.json()
@@ -445,13 +450,13 @@ export class SyncService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key'
+          'x-api-key': process.env.NEXT_PUBLIC_SYNC_API_KEY || 'development-key',
         },
         body: JSON.stringify({
           entity_type: item.entity_type,
           operation: 'DELETE',
-          payload: entityData || { id: item.entity_id, user_id: 'current-user' }
-        })
+          payload: entityData || { id: item.entity_id, user_id: 'current-user' },
+        }),
       })
 
       const result = await response.json()
@@ -474,7 +479,7 @@ export class SyncService {
     try {
       // エンティティが存在するか確認
       let entityExists = false
-      
+
       switch (entityType) {
         case 'work_session':
           entityExists = !!(await workSessionRepository.getById(entityId))
@@ -529,9 +534,11 @@ export class SyncService {
           syncLogger.warn(`Unknown entity type for marking as synced: ${entityType}`)
           entityExists = true
       }
-      
+
       if (!entityExists) {
-        syncLogger.warn(`${entityType} ${entityId} not found in local database (might have been deleted or not yet committed)`)
+        syncLogger.warn(
+          `${entityType} ${entityId} not found in local database (might have been deleted or not yet committed)`
+        )
       } else {
         syncLogger.debug(`${entityType} ${entityId} marked as synced`)
       }
@@ -558,40 +565,40 @@ export class SyncService {
       syncLogger.error('Data is required for create operation', {
         entityType,
         entityId,
-        operation
+        operation,
       })
       throw new Error('Data is required for create operation')
     }
 
     const operationType = operation.toUpperCase() as 'CREATE' | 'UPDATE' | 'DELETE'
-    
+
     // 既存のアイテムをチェック
     const existingItem = await syncQueueRepository.findExistingItem(
       entityType,
       entityId,
       operationType
     )
-    
+
     if (existingItem) {
       syncLogger.debug('既存の同期キューアイテムが見つかりました:', {
         id: existingItem.id,
         status: existingItem.status,
         entityType,
         entityId,
-        operationType
+        operationType,
       })
-      
+
       // pending または processing の場合は何もしない
       if (existingItem.status === 'pending' || existingItem.status === 'processing') {
         syncLogger.debug('既に同期待ちまたは処理中のため、スキップします')
         return
       }
-      
+
       // failed の場合はリセット
       if (existingItem.status === 'failed') {
         syncLogger.debug('失敗したアイテムをリセットします')
         await syncQueueRepository.resetFailedItem(existingItem.id, data)
-        
+
         // 自動同期が有効な場合は即座に同期
         if (syncStore.isOnline && syncStore.autoSyncEnabled) {
           this.processSyncQueue()
@@ -613,12 +620,12 @@ export class SyncService {
       error_message: undefined,
       version: 1,
     }
-    
+
     const dataStr = queueItem.data as string | undefined
     syncLogger.debug('Creating sync queue item:', {
       ...queueItem,
       dataLength: dataStr ? dataStr.length : 0,
-      hasData: !!dataStr
+      hasData: !!dataStr,
     })
 
     try {
@@ -626,18 +633,18 @@ export class SyncService {
       syncLogger.debug('Created sync queue item:', {
         id: createdItem.id,
         hasData: !!createdItem.data,
-        dataLength: createdItem.data ? createdItem.data.length : 0
+        dataLength: createdItem.data ? createdItem.data.length : 0,
       })
-      
+
       // 作成直後に再度読み込んで確認
       const verifyItem = await syncQueueRepository.getById(createdItem.id)
       syncLogger.debug('Verified sync queue item:', {
         id: verifyItem?.id,
         hasData: !!verifyItem?.data,
         dataLength: verifyItem?.data?.length,
-        data: verifyItem?.data
+        data: verifyItem?.data,
       })
-      
+
       syncStore.addToSyncQueue(createdItem)
 
       // If we're online and auto-sync is enabled, trigger immediate sync

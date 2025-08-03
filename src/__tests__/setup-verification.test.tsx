@@ -29,9 +29,9 @@ describe('Test Environment Setup Verification', () => {
     // Test reverse WBS suggestion endpoint
     const goal = createGoal()
     const mockResponse = createAISuggestionResponse()
-    
+
     mockFetch('/api/reverse-wbs/suggest', mockResponse)
-    
+
     const response = await fetch('/api/reverse-wbs/suggest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -50,11 +50,15 @@ describe('Test Environment Setup Verification', () => {
 
   it('should handle unauthorized requests', async () => {
     // Test sync endpoint without API key
-    mockFetch('/api/sync', {
-      success: false,
-      error: 'API key is required. Please provide x-api-key header.'
-    }, { status: 401 })
-    
+    mockFetch(
+      '/api/sync',
+      {
+        success: false,
+        error: 'API key is required. Please provide x-api-key header.',
+      },
+      { status: 401 }
+    )
+
     const response = await fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,9 +86,9 @@ describe('Test Environment Setup Verification', () => {
 
   it('should support async operations with fake timers', () => {
     vi.useFakeTimers()
-    
+
     let value = 'initial'
-    
+
     // Simulate async operation
     setTimeout(() => {
       value = 'updated'
@@ -92,9 +96,9 @@ describe('Test Environment Setup Verification', () => {
 
     // Advance timers
     vi.advanceTimersByTime(100)
-    
+
     expect(value).toBe('updated')
-    
+
     vi.useRealTimers()
   })
 

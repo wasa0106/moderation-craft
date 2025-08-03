@@ -172,7 +172,8 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       })
       .upgrade(tx => {
         // Set default status 'pending' for all existing small_tasks
-        return tx.table('small_tasks')
+        return tx
+          .table('small_tasks')
           .toCollection()
           .modify(task => {
             if (!task.status) {
@@ -180,7 +181,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
             }
           })
       })
-    
+
     // Version 8: Migrate to duration_seconds only
     this.version(8)
       .stores({
@@ -189,7 +190,8 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         big_tasks: 'id, project_id, user_id, category, week_number, status, updated_at',
         small_tasks:
           'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
-        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+        work_sessions:
+          'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
         mood_entries: 'id, user_id, timestamp, mood_level, created_at',
         dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
         daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
@@ -199,19 +201,22 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       })
       .upgrade(tx => {
         // 既存のwork_sessionsをduration_secondsに移行
-        return tx.table('work_sessions')
+        return tx
+          .table('work_sessions')
           .toCollection()
           .modify(session => {
             // duration_secondsが存在しない場合のみ移行
             if (session.duration_seconds === undefined) {
               // duration_minutesがある場合は変換、なければ0
-              session.duration_seconds = session.duration_minutes ? session.duration_minutes * 60 : 0
+              session.duration_seconds = session.duration_minutes
+                ? session.duration_minutes * 60
+                : 0
             }
             // duration_minutesフィールドを削除
             delete session.duration_minutes
           })
       })
-    
+
     // Version 9: Add color field to projects
     this.version(9)
       .stores({
@@ -220,7 +225,8 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         big_tasks: 'id, project_id, user_id, category, week_number, status, updated_at',
         small_tasks:
           'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
-        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+        work_sessions:
+          'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
         mood_entries: 'id, user_id, timestamp, mood_level, created_at',
         dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
         daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
@@ -232,18 +238,19 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         // プリセットカラーのリスト
         const presetColors = [
           'hsl(137, 42%, 55%)', // 緑（デフォルト）
-          'hsl(0, 42%, 55%)',   // 赤
+          'hsl(0, 42%, 55%)', // 赤
           'hsl(210, 42%, 55%)', // 青
           'hsl(270, 42%, 55%)', // 紫
-          'hsl(30, 42%, 55%)',  // オレンジ
-          'hsl(60, 42%, 55%)',  // 黄色
+          'hsl(30, 42%, 55%)', // オレンジ
+          'hsl(60, 42%, 55%)', // 黄色
           'hsl(330, 42%, 55%)', // ピンク
           'hsl(180, 42%, 55%)', // シアン
           'hsl(300, 42%, 55%)', // マゼンタ
         ]
-        
+
         // 既存のプロジェクトに色を割り当て
-        return tx.table('projects')
+        return tx
+          .table('projects')
           .toCollection()
           .modify((project: any) => {
             if (!project.color) {
@@ -253,60 +260,61 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
             }
           })
       })
-    
+
     // Version 10: Remove week_number from big_tasks index
-    this.version(10)
-      .stores({
-        users: 'id, email, created_at, updated_at',
-        projects: 'id, user_id, status, updated_at, deadline, color',
-        big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
-        small_tasks:
-          'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
-        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
-        mood_entries: 'id, user_id, timestamp, mood_level, created_at',
-        dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
-        daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
-        category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
-        sync_queue:
-          'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
-      })
-    
+    this.version(10).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline, color',
+      big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
+      small_tasks:
+        'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
+      work_sessions:
+        'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+      sync_queue:
+        'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+    })
+
     // Version 11: Add schedule_memos table
-    this.version(11)
-      .stores({
-        users: 'id, email, created_at, updated_at',
-        projects: 'id, user_id, status, updated_at, deadline, color',
-        big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
-        small_tasks:
-          'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
-        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
-        mood_entries: 'id, user_id, timestamp, mood_level, created_at',
-        dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
-        daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
-        category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
-        schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
-        sync_queue:
-          'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
-      })
+    this.version(11).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline, color',
+      big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
+      small_tasks:
+        'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
+      work_sessions:
+        'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+      schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
+      sync_queue:
+        'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+    })
 
     // Version 12: Add sleep_schedules table
-    this.version(12)
-      .stores({
-        users: 'id, email, created_at, updated_at',
-        projects: 'id, user_id, status, updated_at, deadline, color',
-        big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
-        small_tasks:
-          'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
-        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
-        mood_entries: 'id, user_id, timestamp, mood_level, created_at',
-        dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
-        daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
-        category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
-        schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
-        sleep_schedules: 'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, created_at, updated_at',
-        sync_queue:
-          'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
-      })
+    this.version(12).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline, color',
+      big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
+      small_tasks:
+        'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
+      work_sessions:
+        'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+      schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
+      sleep_schedules:
+        'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, created_at, updated_at',
+      sync_queue:
+        'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+    })
 
     // Version 13: Add Fitbit data fields to sleep_schedules
     this.version(13)
@@ -316,13 +324,15 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
         small_tasks:
           'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, updated_at, *tags',
-        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+        work_sessions:
+          'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
         mood_entries: 'id, user_id, timestamp, mood_level, created_at',
         dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
         daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
         category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
         schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
-        sleep_schedules: 'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, actual_data_source, created_at, updated_at',
+        sleep_schedules:
+          'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, actual_data_source, created_at, updated_at',
         sync_queue:
           'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
       })
@@ -338,7 +348,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
             const weekStart = new Date(now)
             weekStart.setDate(now.getDate() + diff)
             const weekStartStr = weekStart.toISOString().split('T')[0]
-            
+
             // データを移行
             const memo = {
               id: crypto.randomUUID(),
@@ -346,39 +356,43 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
               week_start_date: weekStartStr,
               content: savedMemo,
               created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             }
-            
+
             // schedule_memosテーブルに追加
-            tx.table('schedule_memos').add(memo).then(() => {
-              // 移行成功後にlocalStorageをクリア
-              localStorage.removeItem('weeklyScheduleMemo')
-              console.log('Successfully migrated schedule memo from localStorage')
-            }).catch(error => {
-              console.error('Failed to migrate schedule memo:', error)
-            })
+            tx.table('schedule_memos')
+              .add(memo)
+              .then(() => {
+                // 移行成功後にlocalStorageをクリア
+                localStorage.removeItem('weeklyScheduleMemo')
+                console.log('Successfully migrated schedule memo from localStorage')
+              })
+              .catch(error => {
+                console.error('Failed to migrate schedule memo:', error)
+              })
           }
         }
       })
 
     // Version 14: Add task_type and is_reportable to small_tasks
-    this.version(14)
-      .stores({
-        users: 'id, email, created_at, updated_at',
-        projects: 'id, user_id, status, updated_at, deadline, color',
-        big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
-        small_tasks:
-          'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, task_type, is_reportable, updated_at, *tags',
-        work_sessions: 'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
-        mood_entries: 'id, user_id, timestamp, mood_level, created_at',
-        dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
-        daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
-        category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
-        schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
-        sleep_schedules: 'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, actual_data_source, created_at, updated_at',
-        sync_queue:
-          'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
-      })
+    this.version(14).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline, color',
+      big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
+      small_tasks:
+        'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, task_type, is_reportable, updated_at, *tags',
+      work_sessions:
+        'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+      schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
+      sleep_schedules:
+        'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, actual_data_source, created_at, updated_at',
+      sync_queue:
+        'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+    })
 
     this.users.hook('creating', (primKey, obj) => {
       const timestamps = this.createTimestamps()
@@ -429,14 +443,14 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       if (!obj.category) {
         obj.category = 'その他'
       }
-      
+
       // start_date/end_dateのデフォルト値設定
       if (!obj.start_date || !obj.end_date) {
         // デフォルトとして今日から1週間の期間を設定
         const today = new Date()
         const nextWeek = new Date(today)
         nextWeek.setDate(nextWeek.getDate() + 7)
-        
+
         if (!obj.start_date) {
           obj.start_date = today.toISOString().split('T')[0]
         }
@@ -565,7 +579,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       if (!obj.id) {
         obj.id = this.generateId()
       }
-      
+
       // 以下は不要（SyncQueueItemには存在しない）
       // if (!obj.operation_id) {
       //   obj.operation_id = this.generateId()
@@ -579,7 +593,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       // if (!obj.max_retries) {
       //   obj.max_retries = 3
       // }
-      
+
       if (!obj.status) {
         obj.status = 'pending'
       }
@@ -619,7 +633,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       if (!obj.id) {
         obj.id = this.generateId()
       }
-      
+
       // 睡眠時間を計算（既に計算済みでない場合）
       if (!obj.scheduled_duration_minutes && obj.scheduled_start_time && obj.scheduled_end_time) {
         const startTime = new Date(obj.scheduled_start_time)
@@ -632,7 +646,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
 
     this.sleep_schedules.hook('updating', modifications => {
       ;(modifications as any).updated_at = this.getCurrentTimestamp()
-      
+
       // 時刻が変更された場合は睡眠時間を再計算
       if ('scheduled_start_time' in modifications || 'scheduled_end_time' in modifications) {
         // リポジトリレベルで処理
@@ -783,18 +797,27 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       }
     })
 
-    const [projects, big_tasks, small_tasks, work_sessions, mood_entries, dopamine_entries, daily_conditions, schedule_memos, sleep_schedules] =
-      await Promise.all([
-        this.projects.where('id').anyOf(Array.from(entityIds.projects)).toArray(),
-        this.big_tasks.where('id').anyOf(Array.from(entityIds.big_tasks)).toArray(),
-        this.small_tasks.where('id').anyOf(Array.from(entityIds.small_tasks)).toArray(),
-        unsyncedSessions,
-        this.mood_entries.where('id').anyOf(Array.from(entityIds.mood_entries)).toArray(),
-        this.dopamine_entries.where('id').anyOf(Array.from(entityIds.dopamine_entries)).toArray(),
-        this.daily_conditions.where('date').anyOf(Array.from(entityIds.daily_conditions)).toArray(),
-        this.schedule_memos.where('id').anyOf(Array.from(entityIds.schedule_memos)).toArray(),
-        this.sleep_schedules.where('id').anyOf(Array.from(entityIds.sleep_schedules)).toArray(),
-      ])
+    const [
+      projects,
+      big_tasks,
+      small_tasks,
+      work_sessions,
+      mood_entries,
+      dopamine_entries,
+      daily_conditions,
+      schedule_memos,
+      sleep_schedules,
+    ] = await Promise.all([
+      this.projects.where('id').anyOf(Array.from(entityIds.projects)).toArray(),
+      this.big_tasks.where('id').anyOf(Array.from(entityIds.big_tasks)).toArray(),
+      this.small_tasks.where('id').anyOf(Array.from(entityIds.small_tasks)).toArray(),
+      unsyncedSessions,
+      this.mood_entries.where('id').anyOf(Array.from(entityIds.mood_entries)).toArray(),
+      this.dopamine_entries.where('id').anyOf(Array.from(entityIds.dopamine_entries)).toArray(),
+      this.daily_conditions.where('date').anyOf(Array.from(entityIds.daily_conditions)).toArray(),
+      this.schedule_memos.where('id').anyOf(Array.from(entityIds.schedule_memos)).toArray(),
+      this.sleep_schedules.where('id').anyOf(Array.from(entityIds.sleep_schedules)).toArray(),
+    ])
 
     return {
       projects,

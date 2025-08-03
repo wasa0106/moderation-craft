@@ -32,11 +32,11 @@ describe('Project Workflow Integration Test', () => {
         name: 'Integration Test Project',
         goal: 'Complete all integration tests',
         deadline: '2025-12-31',
-      }
+      },
     }
-    
+
     mockFetch('/api/projects', mockProjectResponse)
-    
+
     const projectResponse = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -52,7 +52,7 @@ describe('Project Workflow Integration Test', () => {
     expect(projectData.project.name).toBe('Integration Test Project')
 
     const projectId = projectData.project.id
-    
+
     // Create a task via API
     const mockTaskResponse = {
       success: true,
@@ -61,11 +61,11 @@ describe('Project Workflow Integration Test', () => {
         project_id: projectId,
         name: 'Write unit tests',
         estimated_minutes: 120,
-      }
+      },
     }
-    
+
     mockFetch('/api/small-tasks', mockTaskResponse)
-    
+
     const response = await fetch('/api/small-tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -86,11 +86,11 @@ describe('Project Workflow Integration Test', () => {
       session: {
         id: 'session-789',
         small_task_id: taskData.task.id,
-      }
+      },
     }
-    
+
     mockFetch('/api/work-sessions/start', mockSessionResponse)
-    
+
     const timerResponse = await fetch('/api/work-sessions/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -109,11 +109,11 @@ describe('Project Workflow Integration Test', () => {
       task: {
         ...taskData.task,
         status: 'completed',
-      }
+      },
     }
-    
+
     mockFetch(`/api/small-tasks/${taskData.task.id}/status`, mockCompleteResponse)
-    
+
     const completeResponse = await fetch(`/api/small-tasks/${taskData.task.id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -130,11 +130,15 @@ describe('Project Workflow Integration Test', () => {
 
   it('handles error scenarios gracefully', async () => {
     // Test API error handling directly
-    mockFetch('/api/projects', {
-      success: false,
-      error: 'Validation error: Name is required'
-    }, { status: 400 })
-    
+    mockFetch(
+      '/api/projects',
+      {
+        success: false,
+        error: 'Validation error: Name is required',
+      },
+      { status: 400 }
+    )
+
     const response = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -158,12 +162,12 @@ describe('Project Workflow Integration Test', () => {
       deadline: '2025-12-31',
       is_synced: false,
     }
-    
+
     mockFetch('/api/projects', {
       success: true,
-      project: mockProject
+      project: mockProject,
     })
-    
+
     const createResponse = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -183,7 +187,7 @@ describe('Project Workflow Integration Test', () => {
       syncedEntityId: projectData.project.id,
       syncedEntityType: 'project',
     })
-    
+
     const syncResponse = await fetch('/api/sync', {
       method: 'POST',
       headers: {
@@ -211,12 +215,12 @@ describe('Project Workflow Integration Test', () => {
         goal: `Complete project ${i}`,
         deadline: `2025-${String(i).padStart(2, '0')}-28`,
       }
-      
+
       mockFetch('/api/projects', {
         success: true,
-        project: mockProject
+        project: mockProject,
       })
-      
+
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -240,9 +244,9 @@ describe('Project Workflow Integration Test', () => {
             project_id: project.id,
             name: `Task ${j} for ${project.name}`,
             estimated_minutes: 60 * j,
-          }
+          },
         })
-        
+
         await fetch('/api/small-tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -259,9 +263,9 @@ describe('Project Workflow Integration Test', () => {
     mockFetch('/api/projects', {
       success: true,
       projects: projects,
-      count: 3
+      count: 3,
     })
-    
+
     const projectsResponse = await fetch('/api/projects')
     const projectsData = await projectsResponse.json()
     expect(projectsData.projects).toHaveLength(3)
@@ -273,9 +277,9 @@ describe('Project Workflow Integration Test', () => {
         { id: `task-${projects[0].id}-1`, name: `Task 1 for ${projects[0].name}` },
         { id: `task-${projects[0].id}-2`, name: `Task 2 for ${projects[0].name}` },
       ],
-      count: 2
+      count: 2,
     })
-    
+
     const tasksResponse = await fetch(`/api/small-tasks?project_id=${projects[0].id}`)
     const tasksData = await tasksResponse.json()
     expect(tasksData.tasks).toHaveLength(2)
@@ -289,12 +293,12 @@ describe('Project Workflow Integration Test', () => {
       goal: 'Test scheduling',
       deadline: '2025-12-31',
     }
-    
+
     mockFetch('/api/projects', {
       success: true,
-      project: mockProject
+      project: mockProject,
     })
-    
+
     const projectResponse = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -314,12 +318,12 @@ describe('Project Workflow Integration Test', () => {
       scheduled_start: '2025-01-15T10:00:00Z',
       scheduled_end: '2025-01-15T11:30:00Z',
     }
-    
+
     mockFetch('/api/small-tasks', {
       success: true,
-      task: mockTask
+      task: mockTask,
     })
-    
+
     const taskResponse = await fetch('/api/small-tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -338,10 +342,10 @@ describe('Project Workflow Integration Test', () => {
       success: true,
       schedule: {
         week_of: '2025-01-13',
-        scheduled_tasks: []
-      }
+        scheduled_tasks: [],
+      },
     })
-    
+
     const scheduleResponse = await fetch('/api/schedules/2025-01-13')
     const scheduleData = await scheduleResponse.json()
 
@@ -353,10 +357,10 @@ describe('Project Workflow Integration Test', () => {
       success: true,
       schedule: {
         week_of: '2025-01-13',
-        scheduled_tasks: [taskData.task.id]
-      }
+        scheduled_tasks: [taskData.task.id],
+      },
     })
-    
+
     const updateResponse = await fetch('/api/schedules/2025-01-13', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

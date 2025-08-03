@@ -11,16 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import {
-  Wifi,
-  WifiOff,
-  RefreshCw,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  X
-} from 'lucide-react'
+import { Wifi, WifiOff, RefreshCw, Clock, AlertCircle, CheckCircle, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function SyncDetailsPanel() {
@@ -33,7 +24,7 @@ export function SyncDetailsPanel() {
     syncErrors,
     getQueueByStatus,
     setAutoSync,
-    clearSyncErrors
+    clearSyncErrors,
   } = useSyncStore()
 
   const pendingItems = getQueueByStatus('pending')
@@ -66,12 +57,12 @@ export function SyncDetailsPanel() {
   // 最終同期時刻をフォーマット
   const formatLastSyncTime = () => {
     if (!lastSyncTime) return '未実行'
-    
+
     const date = new Date(lastSyncTime)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
-    
+
     if (diffMins < 1) return 'たった今'
     if (diffMins < 60) return `${diffMins}分前`
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}時間前`
@@ -95,11 +86,11 @@ export function SyncDetailsPanel() {
             </>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">自動同期</span>
           <Button
-            variant={autoSyncEnabled ? "default" : "outline"}
+            variant={autoSyncEnabled ? 'default' : 'outline'}
             size="sm"
             className="h-6 px-2 text-xs"
             onClick={() => setAutoSync(!autoSyncEnabled)}
@@ -150,7 +141,7 @@ export function SyncDetailsPanel() {
                 <Badge variant="secondary">{pendingItems.length}件</Badge>
               </div>
             )}
-            
+
             {failedItems.length > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-sm">失敗</span>
@@ -178,12 +169,7 @@ export function SyncDetailsPanel() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-red-600">エラー</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-5 w-5 p-0"
-                onClick={clearSyncErrors}
-              >
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={clearSyncErrors}>
                 <X className="h-3 w-3" />
               </Button>
             </div>

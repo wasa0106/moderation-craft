@@ -19,11 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { Palette } from 'lucide-react'
 
@@ -50,23 +46,23 @@ const CUSTOM_COLOR_VALUE = 'custom'
 function hexToHsl(hex: string): string {
   // Remove the hash if present
   hex = hex.replace(/^#/, '')
-  
+
   // Parse the hex values
   const r = parseInt(hex.slice(0, 2), 16) / 255
   const g = parseInt(hex.slice(2, 4), 16) / 255
   const b = parseInt(hex.slice(4, 6), 16) / 255
-  
+
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
   const diff = max - min
-  
+
   let h = 0
   let s = 0
   const l = (max + min) / 2
-  
+
   if (diff !== 0) {
     s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min)
-    
+
     switch (max) {
       case r:
         h = ((g - b) / diff + (g < b ? 6 : 0)) / 6
@@ -79,11 +75,11 @@ function hexToHsl(hex: string): string {
         break
     }
   }
-  
+
   const hDegrees = Math.round(h * 360)
   const sPercent = Math.round(s * 100)
   const lPercent = Math.round(l * 100)
-  
+
   return `hsl(${hDegrees}, ${sPercent}%, ${lPercent}%)`
 }
 
@@ -92,37 +88,37 @@ function hslToHex(hsl: string): string {
   // Parse HSL string
   const match = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
   if (!match) return '#000000'
-  
+
   const h = parseInt(match[1]) / 360
   const s = parseInt(match[2]) / 100
   const l = parseInt(match[3]) / 100
-  
+
   const hue2rgb = (p: number, q: number, t: number) => {
     if (t < 0) t += 1
     if (t > 1) t -= 1
-    if (t < 1/6) return p + (q - p) * 6 * t
-    if (t < 1/2) return q
-    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
     return p
   }
-  
+
   let r, g, b
-  
+
   if (s === 0) {
     r = g = b = l
   } else {
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s
     const p = 2 * l - q
-    r = hue2rgb(p, q, h + 1/3)
+    r = hue2rgb(p, q, h + 1 / 3)
     g = hue2rgb(p, q, h)
-    b = hue2rgb(p, q, h - 1/3)
+    b = hue2rgb(p, q, h - 1 / 3)
   }
-  
+
   const toHex = (x: number) => {
     const hex = Math.round(x * 255).toString(16)
     return hex.length === 1 ? '0' + hex : hex
   }
-  
+
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }
 
@@ -186,7 +182,7 @@ export function ProjectColorPicker({
 
   const handlePopoverClose = () => {
     setPopoverOpen(false)
-    
+
     // カスタムカラーが有効な場合は、そのカラーを確定
     if (customColor.match(/^hsl\(\d{1,3},\s*\d{1,3}%,\s*\d{1,3}%\)$/)) {
       onChange(customColor)
@@ -225,7 +221,7 @@ export function ProjectColorPicker({
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {PRESET_COLORS.map((color) => (
+            {PRESET_COLORS.map(color => (
               <SelectItem key={color.value} value={color.value}>
                 <div className="flex items-center gap-3">
                   <div
@@ -248,9 +244,9 @@ export function ProjectColorPicker({
         </Select>
 
         {/* カスタムカラー入力用の Popover */}
-        <Popover 
-          open={popoverOpen} 
-          onOpenChange={(open) => {
+        <Popover
+          open={popoverOpen}
+          onOpenChange={open => {
             if (!open) {
               handlePopoverClose()
             }
@@ -283,12 +279,10 @@ export function ProjectColorPicker({
                         onChange={handleColorPickerChange}
                         className="h-10 w-20 cursor-pointer rounded border border-border"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        クリックして色を選択
-                      </span>
+                      <span className="text-sm text-muted-foreground">クリックして色を選択</span>
                     </div>
                   </div>
-                  
+
                   {/* 区切り線 */}
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
@@ -298,7 +292,7 @@ export function ProjectColorPicker({
                       <span className="bg-popover px-2 text-muted-foreground">または</span>
                     </div>
                   </div>
-                  
+
                   {/* HSL入力 */}
                   <div className="space-y-2">
                     <Label className="text-xs">HSL値を直接入力</Label>
@@ -309,11 +303,9 @@ export function ProjectColorPicker({
                       onChange={handleCustomColorChange}
                       className="font-mono text-sm"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      例: hsl(120, 50%, 60%)
-                    </p>
+                    <p className="text-xs text-muted-foreground">例: hsl(120, 50%, 60%)</p>
                   </div>
-                  
+
                   {/* プレビュー */}
                   {customColor && (
                     <div className="space-y-2">

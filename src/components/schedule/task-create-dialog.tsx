@@ -68,15 +68,19 @@ export function TaskCreateDialog({
   // プロジェクトに紐づくBigTasksをフィルタリング
   const availableBigTasks = useMemo(() => {
     if (!selectedProjectId) return []
-    
+
     // デバッグログ
     console.log('TaskCreateDialog - BigTasks:', {
       selectedProjectId,
       allProjectBigTasks: allProjectBigTasks.length,
       propsBigTasks: bigTasks.length,
-      allProjectBigTasksData: allProjectBigTasks.map(t => ({ id: t.id, name: t.name, project_id: t.project_id }))
+      allProjectBigTasksData: allProjectBigTasks.map(t => ({
+        id: t.id,
+        name: t.name,
+        project_id: t.project_id,
+      })),
     })
-    
+
     // 独自に取得したBigTasksを優先し、なければpropsのbigTasksを使用
     const tasksToUse = allProjectBigTasks.length > 0 ? allProjectBigTasks : bigTasks
     return tasksToUse.filter(task => task.project_id === selectedProjectId)
@@ -104,13 +108,13 @@ export function TaskCreateDialog({
   // 時間から分数を計算
   const calculateMinutes = () => {
     if (!startTime || !endTime || !startTimeInput || !endTimeInput) return 0
-    
+
     const [startHour, startMinute] = startTimeInput.split(':').map(Number)
     const [endHour, endMinute] = endTimeInput.split(':').map(Number)
-    
+
     const startTotalMinutes = startHour * 60 + startMinute
     const endTotalMinutes = endHour * 60 + endMinute
-    
+
     return Math.max(0, endTotalMinutes - startTotalMinutes)
   }
 
@@ -143,10 +147,10 @@ export function TaskCreateDialog({
       // 入力された時刻を使って正確な日時を作成
       const [startHour, startMinute] = startTimeInput.split(':').map(Number)
       const [endHour, endMinute] = endTimeInput.split(':').map(Number)
-      
+
       const scheduledStart = new Date(startTime)
       scheduledStart.setHours(startHour, startMinute, 0, 0)
-      
+
       const scheduledEnd = new Date(endTime)
       scheduledEnd.setHours(endHour, endMinute, 0, 0)
 
@@ -161,11 +165,11 @@ export function TaskCreateDialog({
         task_type: taskType,
         is_reportable: taskType === 'project',
       }
-      
+
       console.log('タスク作成データ:', {
         ...taskData,
         scheduled_start_formatted: format(scheduledStart, 'yyyy-MM-dd HH:mm'),
-        scheduled_end_formatted: format(scheduledEnd, 'yyyy-MM-dd HH:mm')
+        scheduled_end_formatted: format(scheduledEnd, 'yyyy-MM-dd HH:mm'),
       })
 
       await onCreateTask(taskData)
@@ -180,7 +184,7 @@ export function TaskCreateDialog({
   }
 
   // ルーチンタスクのプリセット選択
-  const handlePresetSelect = (preset: typeof ROUTINE_TASK_PRESETS[0]) => {
+  const handlePresetSelect = (preset: (typeof ROUTINE_TASK_PRESETS)[0]) => {
     setTaskName(preset.name)
     // 終了時刻を予定時間に基づいて自動設定
     if (startTimeInput) {
@@ -234,74 +238,85 @@ export function TaskCreateDialog({
                   プロジェクト <span className="text-red-500">*</span>
                 </Label>
                 <div className="flex flex-wrap gap-2">
-              {projects.map((project) => (
-                <Button
-                  key={project.id}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedProjectId(project.id)}
-                  className={cn(
-                    "h-auto px-3 py-1.5 font-normal transition-all",
-                    selectedProjectId === project.id && "ring-2 ring-offset-2"
-                  )}
-                  style={project.color ? {
-                    ...(selectedProjectId === project.id ? {
-                      backgroundColor: project.color,
-                      borderColor: project.color,
-                      color: 'white',
-                    } : {
-                      borderColor: project.color,
-                      color: project.color,
-                    }),
-                  } : undefined}
-                >
-                  <div className="flex items-center gap-2">
-                    {project.color && (
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ 
-                          backgroundColor: selectedProjectId === project.id ? 'white' : project.color,
-                          opacity: selectedProjectId === project.id ? 0.8 : 1
-                        }}
-                      />
-                    )}
-                    <span className="text-sm">{project.name}</span>
-                  </div>
-                </Button>
-              ))}
+                  {projects.map(project => (
+                    <Button
+                      key={project.id}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedProjectId(project.id)}
+                      className={cn(
+                        'h-auto px-3 py-1.5 font-normal transition-all',
+                        selectedProjectId === project.id && 'ring-2 ring-offset-2'
+                      )}
+                      style={
+                        project.color
+                          ? {
+                              ...(selectedProjectId === project.id
+                                ? {
+                                    backgroundColor: project.color,
+                                    borderColor: project.color,
+                                    color: 'white',
+                                  }
+                                : {
+                                    borderColor: project.color,
+                                    color: project.color,
+                                  }),
+                            }
+                          : undefined
+                      }
+                    >
+                      <div className="flex items-center gap-2">
+                        {project.color && (
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{
+                              backgroundColor:
+                                selectedProjectId === project.id ? 'white' : project.color,
+                              opacity: selectedProjectId === project.id ? 0.8 : 1,
+                            }}
+                          />
+                        )}
+                        <span className="text-sm">{project.name}</span>
+                      </div>
+                    </Button>
+                  ))}
                 </div>
               </div>
 
               {/* BigTask選択 */}
               <div className="grid gap-2">
-            <Label htmlFor="big-task" className="text-muted-foreground">
-              大タスク <span className="text-red-500">*</span>
-            </Label>
-            {!selectedProjectId ? (
-              <p className="text-sm text-muted-foreground">先にプロジェクトを選択してください</p>
-            ) : availableBigTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">選択されたプロジェクトに大タスクがありません</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {availableBigTasks.map((task) => (
-                  <Button
-                    key={task.id}
-                    type="button"
-                    variant={selectedBigTaskId === task.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedBigTaskId(task.id)}
-                    disabled={!selectedProjectId}
-                    className={cn(
-                      "h-auto px-3 py-1.5 font-normal transition-all max-w-xs",
-                      selectedBigTaskId === task.id && "ring-2 ring-offset-2",
-                      !selectedProjectId && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    <span className="text-sm truncate">{task.name}</span>
-                  </Button>
-                ))}
-              </div>
+                <Label htmlFor="big-task" className="text-muted-foreground">
+                  大タスク <span className="text-red-500">*</span>
+                </Label>
+                {!selectedProjectId ? (
+                  <p className="text-sm text-muted-foreground">
+                    先にプロジェクトを選択してください
+                  </p>
+                ) : availableBigTasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    選択されたプロジェクトに大タスクがありません
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {availableBigTasks.map(task => (
+                      <Button
+                        key={task.id}
+                        type="button"
+                        variant={selectedBigTaskId === task.id ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedBigTaskId(task.id)}
+                        disabled={!selectedProjectId}
+                        className={cn(
+                          'h-auto px-3 py-1.5 font-normal transition-all max-w-xs',
+                          selectedBigTaskId === task.id && 'ring-2 ring-offset-2',
+                          !selectedProjectId && 'opacity-50 cursor-not-allowed'
+                        )}
+                      >
+                        <span className="text-sm truncate">{task.name}</span>
+                      </Button>
+                    ))}
+                  </div>
                 )}
               </div>
             </>
@@ -310,7 +325,7 @@ export function TaskCreateDialog({
             <div className="grid gap-2">
               <Label className="text-muted-foreground">よく使うタスク</Label>
               <div className="grid grid-cols-4 gap-2">
-                {ROUTINE_TASK_PRESETS.map((preset) => (
+                {ROUTINE_TASK_PRESETS.map(preset => (
                   <Button
                     key={preset.name}
                     type="button"
@@ -335,7 +350,7 @@ export function TaskCreateDialog({
             <Input
               id="task-name"
               value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
+              onChange={e => setTaskName(e.target.value)}
               className="bg-background border-border focus:border-primary"
             />
           </div>
@@ -355,7 +370,7 @@ export function TaskCreateDialog({
                   id="start-time"
                   type="time"
                   value={startTimeInput}
-                  onChange={(e) => setStartTimeInput(e.target.value)}
+                  onChange={e => setStartTimeInput(e.target.value)}
                   className="bg-background border-border focus:border-primary"
                 />
               </div>
@@ -367,24 +382,20 @@ export function TaskCreateDialog({
                   id="end-time"
                   type="time"
                   value={endTimeInput}
-                  onChange={(e) => setEndTimeInput(e.target.value)}
+                  onChange={e => setEndTimeInput(e.target.value)}
                   className="bg-background border-border focus:border-primary"
                 />
               </div>
             </div>
             {estimatedMinutes > 0 && (
-              <p className="text-sm text-primary mt-1">
-                予定時間: {estimatedMinutes}分
-              </p>
+              <p className="text-sm text-primary mt-1">予定時間: {estimatedMinutes}分</p>
             )}
           </div>
 
           {/* 日付表示 */}
           {startTime && (
             <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
-              <p className="font-medium">
-                {format(startTime, 'yyyy年M月d日(E)', { locale: ja })}
-              </p>
+              <p className="font-medium">{format(startTime, 'yyyy年M月d日(E)', { locale: ja })}</p>
             </div>
           )}
         </div>
@@ -400,8 +411,8 @@ export function TaskCreateDialog({
           <Button
             onClick={handleCreate}
             disabled={
-              !taskName || 
-              estimatedMinutes <= 0 || 
+              !taskName ||
+              estimatedMinutes <= 0 ||
               isCreating ||
               (taskType === 'project' && (!selectedProjectId || !selectedBigTaskId))
             }

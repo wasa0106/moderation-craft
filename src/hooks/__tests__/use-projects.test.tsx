@@ -9,25 +9,25 @@ let mockError: any = null
 
 const useProjects = vi.fn((options?: any) => {
   let filteredProjects = [...mockProjectsData]
-  
+
   // Apply filters if provided
   if (options?.status) {
     filteredProjects = filteredProjects.filter(p => p.status === options.status)
   }
-  
+
   // Apply sorting if provided
   if (options?.sortBy === 'deadline') {
     filteredProjects.sort((a, b) => a.deadline.localeCompare(b.deadline))
   }
-  
+
   return {
-    projects: mockIsLoading ? undefined : filteredProjects,
+    projects: mockIsLoading ? undefined : mockError ? undefined : filteredProjects,
     isLoading: mockIsLoading,
     error: mockError,
     refetch: vi.fn(async () => {
       mockIsLoading = true
       // Simulate async behavior
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         setTimeout(() => {
           mockIsLoading = false
           resolve(undefined)
@@ -138,9 +138,7 @@ describe('useProjects', () => {
     expect(result.current.isLoading).toBe(false)
 
     // Update mock data
-    const updatedProjects = [
-      { ...mockProjects[0], name: 'Updated Project 1' },
-    ]
+    const updatedProjects = [{ ...mockProjects[0], name: 'Updated Project 1' }]
     mockProjectsData = updatedProjects
 
     // Refetch data
@@ -150,7 +148,7 @@ describe('useProjects', () => {
 
     // Re-render to get updated data
     const { result: newResult } = renderHook(() => useProjects())
-    
+
     expect(newResult.current.projects).toHaveLength(1)
     expect(newResult.current.projects?.[0].name).toBe('Updated Project 1')
   })
@@ -210,12 +208,16 @@ describe('useProjects', () => {
 
   it('includes task statistics when requested', async () => {
     // Add stats to mock projects
-    mockProjectsData = mockProjects.map((p, i) => i === 0 ? {
-      ...p,
-      taskCount: 2,
-      completedTaskCount: 1,
-      totalHours: 2.5,
-    } : p)
+    mockProjectsData = mockProjects.map((p, i) =>
+      i === 0
+        ? {
+            ...p,
+            taskCount: 2,
+            completedTaskCount: 1,
+            totalHours: 2.5,
+          }
+        : p
+    )
     mockIsLoading = false
 
     const { result } = renderHook(() => useProjects({ includeStats: true }))

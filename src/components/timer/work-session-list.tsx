@@ -44,9 +44,7 @@ export function WorkSessionList({ sessions, tasks, projects }: WorkSessionListPr
 
   if (sessions.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        本日の作業実績はまだありません
-      </div>
+      <div className="text-center py-8 text-muted-foreground">本日の作業実績はまだありません</div>
     )
   }
 
@@ -71,14 +69,10 @@ export function WorkSessionList({ sessions, tasks, projects }: WorkSessionListPr
                   <div className="flex-1">
                     <h4 className="font-medium">{taskInfo.task.name}</h4>
                     {taskInfo.project && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {taskInfo.project.name}
-                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">{taskInfo.project.name}</p>
                     )}
                   </div>
-                  {isCompleted && (
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                  )}
+                  {isCompleted && <CheckCircle2 className="h-5 w-5 text-primary" />}
                 </div>
               </div>
             ) : (

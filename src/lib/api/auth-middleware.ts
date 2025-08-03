@@ -26,7 +26,7 @@ export function validateApiKey(request: NextRequest): AuthResult {
   if (!apiKey) {
     return {
       isValid: false,
-      error: 'API key is required. Please provide x-api-key header.'
+      error: 'API key is required. Please provide x-api-key header.',
     }
   }
 
@@ -34,7 +34,7 @@ export function validateApiKey(request: NextRequest): AuthResult {
   if (apiKey !== expectedApiKey) {
     return {
       isValid: false,
-      error: 'Invalid API key'
+      error: 'Invalid API key',
     }
   }
 
@@ -46,10 +46,10 @@ export function validateApiKey(request: NextRequest): AuthResult {
  */
 export function createAuthErrorResponse(error: string) {
   return NextResponse.json(
-    { 
-      success: false, 
+    {
+      success: false,
       error,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     },
     { status: 401 }
   )

@@ -290,21 +290,21 @@ export function ProjectList({
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   href="#"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.preventDefault()
                     setCurrentPage(prev => Math.max(1, prev - 1))
                   }}
                   className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
                 />
               </PaginationItem>
-              
+
               {/* First page */}
               <PaginationItem>
                 <PaginationLink
                   href="#"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.preventDefault()
                     setCurrentPage(1)
                   }}
@@ -313,14 +313,14 @@ export function ProjectList({
                   1
                 </PaginationLink>
               </PaginationItem>
-              
+
               {/* Ellipsis if needed */}
               {currentPage > 3 && totalPages > 4 && (
                 <PaginationItem>
                   <PaginationEllipsis />
                 </PaginationItem>
               )}
-              
+
               {/* Middle pages */}
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter(page => {
@@ -332,7 +332,7 @@ export function ProjectList({
                   <PaginationItem key={page}>
                     <PaginationLink
                       href="#"
-                      onClick={(e) => {
+                      onClick={e => {
                         e.preventDefault()
                         setCurrentPage(page)
                       }}
@@ -342,20 +342,20 @@ export function ProjectList({
                     </PaginationLink>
                   </PaginationItem>
                 ))}
-              
+
               {/* Ellipsis if needed */}
               {currentPage < totalPages - 2 && totalPages > 4 && (
                 <PaginationItem>
                   <PaginationEllipsis />
                 </PaginationItem>
               )}
-              
+
               {/* Last page */}
               {totalPages > 1 && (
                 <PaginationItem>
                   <PaginationLink
                     href="#"
-                    onClick={(e) => {
+                    onClick={e => {
                       e.preventDefault()
                       setCurrentPage(totalPages)
                     }}
@@ -365,11 +365,11 @@ export function ProjectList({
                   </PaginationLink>
                 </PaginationItem>
               )}
-              
+
               <PaginationItem>
                 <PaginationNext
                   href="#"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.preventDefault()
                     setCurrentPage(prev => Math.min(totalPages, prev + 1))
                   }}

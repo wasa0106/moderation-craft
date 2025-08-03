@@ -24,14 +24,14 @@ export default function DebugProjectsPage() {
     console.log('Comparison:', {
       directLength: directProjects.length,
       reactQueryLength: projects.length,
-      areEqual: directProjects.length === projects.length
+      areEqual: directProjects.length === projects.length,
     })
   }
 
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Debug Projects</h1>
-      
+
       <div className="space-y-4">
         <div>
           <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
@@ -41,7 +41,9 @@ export default function DebugProjectsPage() {
 
         <div className="space-x-2">
           <Button onClick={() => refetch()}>Refetch</Button>
-          <Button onClick={checkDirectly} variant="outline">Check IndexedDB Directly</Button>
+          <Button onClick={checkDirectly} variant="outline">
+            Check IndexedDB Directly
+          </Button>
         </div>
 
         <div className="mt-4">

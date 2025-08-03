@@ -20,7 +20,10 @@ export function generateTestId(prefix: string = 'test'): string {
 /**
  * Generate a random date within a range
  */
-export function generateRandomDate(start: Date = new Date(2024, 0, 1), end: Date = new Date(2025, 11, 31)): Date {
+export function generateRandomDate(
+  start: Date = new Date(2024, 0, 1),
+  end: Date = new Date(2025, 11, 31)
+): Date {
   return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()))
 }
 
@@ -29,7 +32,9 @@ export function generateRandomDate(start: Date = new Date(2024, 0, 1), end: Date
  */
 
 // Goal factory for reverse WBS
-export const createGoal: Factory<{ text: string; category: string; deadline: string }> = (overrides = {}) => ({
+export const createGoal: Factory<{ text: string; category: string; deadline: string }> = (
+  overrides = {}
+) => ({
   text: 'Webアプリケーションを3ヶ月で開発する',
   category: 'development',
   deadline: '2025-12-31',

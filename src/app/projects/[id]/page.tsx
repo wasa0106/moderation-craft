@@ -253,7 +253,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
             <Card className="border border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">大タスク</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  大タスク
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-foreground">
@@ -265,7 +267,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
             <Card className="border border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">小タスク</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  小タスク
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-foreground">
@@ -374,7 +378,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* 大タスク一覧表 */}
                   <div className="mt-6">
                     <h3 className="font-medium mb-2">大タスク一覧</h3>
@@ -388,11 +392,15 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                           </tr>
                         </thead>
                         <tbody>
-                          {projectBigTasks.map((task) => (
+                          {projectBigTasks.map(task => (
                             <tr key={task.id} className="hover:bg-muted">
-                              <td className="border border-border px-4 py-2">{task.category || '-'}</td>
+                              <td className="border border-border px-4 py-2">
+                                {task.category || '-'}
+                              </td>
                               <td className="border border-border px-4 py-2">{task.name}</td>
-                              <td className="border border-border px-4 py-2 text-right">{task.estimated_hours}h</td>
+                              <td className="border border-border px-4 py-2 text-right">
+                                {task.estimated_hours}h
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -432,7 +440,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">プロジェクト名</label>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      プロジェクト名
+                    </label>
                     <p className="text-foreground">{project.name}</p>
                   </div>
                   <div>

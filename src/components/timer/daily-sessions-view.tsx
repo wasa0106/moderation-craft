@@ -38,16 +38,16 @@ export function DailySessionsView({
   // プロジェクトの色を取得
   const getProjectColor = (projectId?: string): string => {
     if (!projectId) return 'bg-muted text-muted-foreground border-muted-foreground/20'
-    
+
     const project = projects.find(p => p.id === projectId)
-    
+
     // プロジェクトにカラーが設定されている場合
     if (project?.color) {
       // HSLカラーをインラインスタイルで適用するためのクラスを返す
       // Note: 実際の色はstyle属性で設定するため、ここではベースクラスのみ返す
       return 'text-white border-white/20'
     }
-    
+
     // フォールバック: インデックスベースの色
     const index = projects.findIndex(p => p.id === projectId)
     const colorClasses = [
@@ -76,13 +76,13 @@ export function DailySessionsView({
     const startTime = parseISO(session.start_time)
     const hour = startTime.getHours()
     const minute = startTime.getMinutes()
-    return (hour * 120) + (minute * 2) // 1時間 = 120px, 1分 = 2px
+    return hour * 120 + minute * 2 // 1時間 = 120px, 1分 = 2px
   }
 
   // 時間帯ごとのセッションをグループ化
   const sessionsByHour = useMemo(() => {
     const grouped: Record<number, WorkSession[]> = {}
-    
+
     // 0-23時まで初期化
     for (let hour = 0; hour < 24; hour++) {
       grouped[hour] = []
@@ -117,48 +117,48 @@ export function DailySessionsView({
       {/* 時間軸 */}
       <div className="absolute left-0 top-0 w-12 h-full bg-muted/30 border-r">
         {Array.from({ length: 24 }, (_, hour) => (
-          <div
-            key={hour}
-            className="h-[120px] border-b text-xs text-muted-foreground px-2 py-1"
-          >
+          <div key={hour} className="h-[120px] border-b text-xs text-muted-foreground px-2 py-1">
             {hour}:00
           </div>
         ))}
       </div>
 
       {/* セッション表示エリア */}
-      <div 
+      <div
         className="ml-12 relative overflow-y-auto h-full"
-        onScroll={(e) => onScroll?.(e.currentTarget.scrollTop)}
+        onScroll={e => onScroll?.(e.currentTarget.scrollTop)}
       >
-        <div className="relative" style={{ height: '2880px' }}> {/* 24時間 × 120px */}
+        <div className="relative" style={{ height: '2880px' }}>
+          {' '}
+          {/* 24時間 × 120px */}
           {/* 時間帯ごとの背景 */}
           {Array.from({ length: 24 }, (_, hour) => {
             const isPastHour = isToday && hour < currentHour
-            
+
             return (
-              <div key={hour} className="absolute w-full h-[120px] border-b" style={{ top: `${hour * 120}px` }}>
+              <div
+                key={hour}
+                className="absolute w-full h-[120px] border-b"
+                style={{ top: `${hour * 120}px` }}
+              >
                 {/* 現在時刻ライン */}
                 {isToday && hour === currentHour && (
-                  <div 
+                  <div
                     className="absolute w-full h-0.5 bg-destructive z-20"
                     style={{ top: `${(now.getMinutes() / 60) * 120}px` }}
                   >
                     <div className="absolute -left-2 -top-1 w-2 h-2 bg-destructive rounded-full" />
                   </div>
                 )}
-                
+
                 {/* 過去の時間帯を薄く表示 */}
-                {isPastHour && (
-                  <div className="absolute inset-0 bg-muted/50 pointer-events-none" />
-                )}
-                
+                {isPastHour && <div className="absolute inset-0 bg-muted/50 pointer-events-none" />}
+
                 {/* 30分ごとの補助線 */}
                 <div className="absolute w-full h-px bg-border top-[60px]" />
               </div>
             )
           })}
-
           {/* セッション */}
           {sessions.map((session, index) => {
             const taskInfo = getTaskAndProject(session)
@@ -182,12 +182,16 @@ export function DailySessionsView({
                   className={cn(
                     'h-full rounded-md p-2 overflow-hidden',
                     'border',
-                    taskInfo 
-                      ? (taskInfo.project?.color ? 'text-white border-white/20' : getProjectColor(taskInfo.project?.id || ''))
+                    taskInfo
+                      ? taskInfo.project?.color
+                        ? 'text-white border-white/20'
+                        : getProjectColor(taskInfo.project?.id || '')
                       : 'bg-muted text-muted-foreground border-muted-foreground/20'
                   )}
                   style={{
-                    ...(taskInfo?.project?.color ? { backgroundColor: taskInfo.project.color } : {})
+                    ...(taskInfo?.project?.color
+                      ? { backgroundColor: taskInfo.project.color }
+                      : {}),
                   }}
                 >
                   {taskInfo ? (

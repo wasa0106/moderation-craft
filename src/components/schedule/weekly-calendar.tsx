@@ -20,7 +20,15 @@ import {
 } from '@dnd-kit/core'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { WeeklySchedule, SmallTask, Project, BigTask, CreateSmallTaskData, UpdateSmallTaskData, SleepSchedule } from '@/types'
+import {
+  WeeklySchedule,
+  SmallTask,
+  Project,
+  BigTask,
+  CreateSmallTaskData,
+  UpdateSmallTaskData,
+  SleepSchedule,
+} from '@/types'
 import { cn } from '@/lib/utils'
 import { TaskCreateDialog } from './task-create-dialog'
 import { TaskDetailDialog } from './task-detail-dialog'
@@ -84,10 +92,12 @@ function DraggableTask({
       ref={setNodeRef}
       style={{
         ...style,
-        ...(project?.color ? {
-          backgroundColor: project.color,
-          '--custom-color': project.color,
-        } : {})
+        ...(project?.color
+          ? {
+              backgroundColor: project.color,
+              '--custom-color': project.color,
+            }
+          : {}),
       }}
       {...listeners}
       {...attributes}
@@ -214,8 +224,8 @@ export function WeeklyCalendar({
           taskName: block.taskName,
           startTime: block.startTime,
           endTime: block.endTime,
-          projectName: block.projectName
-        }))
+          projectName: block.projectName,
+        })),
       })
     }
   }, [weeklySchedule.scheduleBlocks])
@@ -277,7 +287,7 @@ export function WeeklyCalendar({
             dateOfSleep,
             scheduledStart: schedule.scheduled_start_time,
             scheduledEnd: schedule.scheduled_end_time,
-            generatedBlocks: dayBlocks
+            generatedBlocks: dayBlocks,
           })
         }
       }
@@ -291,8 +301,8 @@ export function WeeklyCalendar({
           date: b.date,
           type: b.type,
           startHour: b.startHour,
-          endHour: b.endHour
-        }))
+          endHour: b.endHour,
+        })),
       })
     }
 
@@ -309,32 +319,35 @@ export function WeeklyCalendar({
         name: t.name,
         start_date: t.start_date,
         end_date: t.end_date,
-        category: t.category
-      }))
+        category: t.category,
+      })),
     })
   }
 
   // Get project color - メモ化してパフォーマンスを最適化
-  const getProjectColor = useCallback((projectId: string): string => {
-    const project = projects.find(p => p.id === projectId)
+  const getProjectColor = useCallback(
+    (projectId: string): string => {
+      const project = projects.find(p => p.id === projectId)
 
-    // プロジェクトにカラーが設定されている場合
-    if (project?.color) {
-      // HSLカラーをインラインスタイルで適用するためのクラスを返す
-      // Note: 実際の色はstyle属性で設定するため、ここではベースクラスのみ返す
-      return 'text-primary-foreground border'
-    }
+      // プロジェクトにカラーが設定されている場合
+      if (project?.color) {
+        // HSLカラーをインラインスタイルで適用するためのクラスを返す
+        // Note: 実際の色はstyle属性で設定するため、ここではベースクラスのみ返す
+        return 'text-primary-foreground border'
+      }
 
-    // フォールバック: インデックスベースの色
-    const index = projects.findIndex(p => p.id === projectId)
-    const colorClasses = [
-      'bg-accent text-accent-foreground border-border',
-      'bg-info text-info-foreground border-border',
-      'bg-secondary text-secondary-foreground border-border',
-      'bg-muted text-muted-foreground border-border',
-    ]
-    return colorClasses[index % colorClasses.length] || colorClasses[0]
-  }, [projects])
+      // フォールバック: インデックスベースの色
+      const index = projects.findIndex(p => p.id === projectId)
+      const colorClasses = [
+        'bg-accent text-accent-foreground border-border',
+        'bg-info text-info-foreground border-border',
+        'bg-secondary text-secondary-foreground border-border',
+        'bg-muted text-muted-foreground border-border',
+      ]
+      return colorClasses[index % colorClasses.length] || colorClasses[0]
+    },
+    [projects]
+  )
 
   // Calculate BigTask progress from SmallTasks
   const bigTaskProgress = useMemo(() => {
@@ -352,25 +365,27 @@ export function WeeklyCalendar({
   }, [smallTasks])
 
   // Handle time slot click for task creation
-  const handleTimeSlotClick = useCallback((date: Date, hour: number, minute: number) => {
-    if (dragSelection.isDragging) return
+  const handleTimeSlotClick = useCallback(
+    (date: Date, hour: number, minute: number) => {
+      if (dragSelection.isDragging) return
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('handleTimeSlotClick called', { date, hour, minute })
-    }
+      if (process.env.NODE_ENV === 'development') {
+        console.log('handleTimeSlotClick called', { date, hour, minute })
+      }
 
-    const clickedTime = new Date(date)
-    clickedTime.setHours(hour, minute, 0, 0)
+      const clickedTime = new Date(date)
+      clickedTime.setHours(hour, minute, 0, 0)
 
-    // デフォルトで30分のタスクを作成
-    const endTime = new Date(clickedTime)
-    endTime.setMinutes(endTime.getMinutes() + 30)
+      // デフォルトで30分のタスクを作成
+      const endTime = new Date(clickedTime)
+      endTime.setMinutes(endTime.getMinutes() + 30)
 
-    setSelectedStartTime(clickedTime)
-    setSelectedEndTime(endTime)
-    setShowCreateDialog(true)
-  }, [dragSelection.isDragging])
-
+      setSelectedStartTime(clickedTime)
+      setSelectedEndTime(endTime)
+      setShowCreateDialog(true)
+    },
+    [dragSelection.isDragging]
+  )
 
   // Handle drag selection start
   const handleSelectionStart = useCallback((date: Date, hour: number, minute: number) => {
@@ -383,14 +398,17 @@ export function WeeklyCalendar({
   }, [])
 
   // Handle drag selection move
-  const handleSelectionMove = useCallback((date: Date, hour: number, minute: number) => {
-    if (!dragSelection.isDragging || !dragSelection.startSlot) return
+  const handleSelectionMove = useCallback(
+    (date: Date, hour: number, minute: number) => {
+      if (!dragSelection.isDragging || !dragSelection.startSlot) return
 
-    setDragSelection(prev => ({
-      ...prev,
-      endSlot: { date, hour, minute },
-    }))
-  }, [dragSelection.isDragging, dragSelection.startSlot])
+      setDragSelection(prev => ({
+        ...prev,
+        endSlot: { date, hour, minute },
+      }))
+    },
+    [dragSelection.isDragging, dragSelection.startSlot]
+  )
 
   // Handle drag selection end
   const handleSelectionEnd = useCallback(() => {
@@ -436,69 +454,75 @@ export function WeeklyCalendar({
   }, [dragSelection.isDragging, handleSelectionEnd])
 
   // Handle task click to show details
-  const handleTaskClick = useCallback((taskId: string) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('handleTaskClick called', { taskId })
-    }
-
-    // unscheduledTasksとscheduleBlocksからタスクを探す
-    const unscheduledTask = weeklySchedule.unscheduledTasks.find(t => t.id === taskId)
-    if (unscheduledTask) {
-      setSelectedTask(unscheduledTask)
-      setShowDetailDialog(true)
-      return
-    }
-
-    // scheduleBlocksからタスク情報を構築
-    const block = weeklySchedule.scheduleBlocks.find(b => b.taskId === taskId)
-    if (block) {
-      // 最小限のSmallTask情報を構築
-      const smallTask: SmallTask = {
-        id: block.taskId,
-        name: block.taskName,
-        project_id: block.projectId,
-        big_task_id: '', // 後で取得が必要
-        user_id: userId,
-        estimated_minutes: Math.ceil(
-          (new Date(block.endTime).getTime() - new Date(block.startTime).getTime()) / (1000 * 60)
-        ),
-        scheduled_start: block.startTime,
-        scheduled_end: block.endTime,
-        tags: block.tags || [],
-        notes: '',
-        status: 'pending',
-        is_emergency: false,
-        created_at: '',
-        updated_at: '',
-        completed_at: null,
-        actual_minutes: undefined,
-        completed_notes: null,
+  const handleTaskClick = useCallback(
+    (taskId: string) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('handleTaskClick called', { taskId })
       }
-      setSelectedTask(smallTask)
-      setShowDetailDialog(true)
-    }
-  }, [weeklySchedule, userId])
+
+      // unscheduledTasksとscheduleBlocksからタスクを探す
+      const unscheduledTask = weeklySchedule.unscheduledTasks.find(t => t.id === taskId)
+      if (unscheduledTask) {
+        setSelectedTask(unscheduledTask)
+        setShowDetailDialog(true)
+        return
+      }
+
+      // scheduleBlocksからタスク情報を構築
+      const block = weeklySchedule.scheduleBlocks.find(b => b.taskId === taskId)
+      if (block) {
+        // 最小限のSmallTask情報を構築
+        const smallTask: SmallTask = {
+          id: block.taskId,
+          name: block.taskName,
+          project_id: block.projectId,
+          big_task_id: '', // 後で取得が必要
+          user_id: userId,
+          estimated_minutes: Math.ceil(
+            (new Date(block.endTime).getTime() - new Date(block.startTime).getTime()) / (1000 * 60)
+          ),
+          scheduled_start: block.startTime,
+          scheduled_end: block.endTime,
+          tags: block.tags || [],
+          notes: '',
+          status: 'pending',
+          is_emergency: false,
+          created_at: '',
+          updated_at: '',
+          completed_at: null,
+          actual_minutes: undefined,
+          completed_notes: null,
+        }
+        setSelectedTask(smallTask)
+        setShowDetailDialog(true)
+      }
+    },
+    [weeklySchedule, userId]
+  )
 
   // Check if a time slot is in the selection range
-  const isSlotInSelection = useCallback((date: Date, hour: number, minute: number) => {
-    if (!dragSelection.startSlot || !dragSelection.endSlot || !dragSelection.isDragging) {
-      return false
-    }
+  const isSlotInSelection = useCallback(
+    (date: Date, hour: number, minute: number) => {
+      if (!dragSelection.startSlot || !dragSelection.endSlot || !dragSelection.isDragging) {
+        return false
+      }
 
-    const slotTime = new Date(date)
-    slotTime.setHours(hour, minute, 0, 0)
+      const slotTime = new Date(date)
+      slotTime.setHours(hour, minute, 0, 0)
 
-    const startTime = new Date(dragSelection.startSlot.date)
-    startTime.setHours(dragSelection.startSlot.hour, dragSelection.startSlot.minute || 0, 0, 0)
+      const startTime = new Date(dragSelection.startSlot.date)
+      startTime.setHours(dragSelection.startSlot.hour, dragSelection.startSlot.minute || 0, 0, 0)
 
-    const endTime = new Date(dragSelection.endSlot.date)
-    endTime.setHours(dragSelection.endSlot.hour, dragSelection.endSlot.minute || 0, 0, 0)
+      const endTime = new Date(dragSelection.endSlot.date)
+      endTime.setHours(dragSelection.endSlot.hour, dragSelection.endSlot.minute || 0, 0, 0)
 
-    const minTime = startTime < endTime ? startTime : endTime
-    const maxTime = startTime < endTime ? endTime : startTime
+      const minTime = startTime < endTime ? startTime : endTime
+      const maxTime = startTime < endTime ? endTime : startTime
 
-    return slotTime >= minTime && slotTime <= maxTime
-  }, [dragSelection])
+      return slotTime >= minTime && slotTime <= maxTime
+    },
+    [dragSelection]
+  )
 
   // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
@@ -546,11 +570,10 @@ export function WeeklyCalendar({
       const taskEnd = parseISO(block.endTime)
 
       // Check if task overlaps with this time slot
-      const overlaps = (
+      const overlaps =
         taskStart < slotEnd &&
         taskEnd > slotStart &&
         format(taskStart, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-      )
 
       // デバッグ: 最初のスロットでのみログ出力
       if (process.env.NODE_ENV === 'development' && hour === 0 && minute === 0) {
@@ -561,7 +584,7 @@ export function WeeklyCalendar({
           taskEnd: format(taskEnd, 'yyyy-MM-dd HH:mm'),
           slotStart: format(slotStart, 'yyyy-MM-dd HH:mm'),
           slotEnd: format(slotEnd, 'yyyy-MM-dd HH:mm'),
-          overlaps
+          overlaps,
         })
       }
 
@@ -583,11 +606,10 @@ export function WeeklyCalendar({
       const taskEnd = parseISO(block.endTime)
 
       // Check if task starts in this hour
-      const startsInHour = (
+      const startsInHour =
         taskStart >= hourStart &&
         taskStart < hourEnd &&
         format(taskStart, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-      )
 
       return startsInHour
     })
@@ -622,9 +644,7 @@ export function WeeklyCalendar({
           <div className="min-w-[800px]">
             {/* Days Header */}
             <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-muted z-30">
-              <div className="py-1.5 px-2">
-                {/* 空欄 */}
-              </div>
+              <div className="py-1.5 px-2">{/* 空欄 */}</div>
               {weekDates.map(date => (
                 <div
                   key={date.toISOString()}
@@ -654,11 +674,8 @@ export function WeeklyCalendar({
                       </div>
                     )}
                     {/* 15分スロット */}
-                    {[0, 15, 30, 45].map((minute) => (
-                      <div
-                        key={`${hour}-${minute}`}
-                        className="h-[12px]"
-                      />
+                    {[0, 15, 30, 45].map(minute => (
+                      <div key={`${hour}-${minute}`} className="h-[12px]" />
                     ))}
                   </div>
                 ))}
@@ -674,11 +691,14 @@ export function WeeklyCalendar({
                     return (
                       <div key={hour} className="border-b border-border relative">
                         {/* 15分スロット */}
-                        {[0, 15, 30, 45].map((minute) => {
+                        {[0, 15, 30, 45].map(minute => {
                           const scheduledTasks = getScheduledTasksForSlot(date, hour, minute)
                           const sleepBlocks = getSleepBlocksForSlot(date, hour, minute)
-                          const isSelected = !!(selectedStartTime && selectedEndTime &&
-                            isSlotInSelection(date, hour, minute))
+                          const isSelected = !!(
+                            selectedStartTime &&
+                            selectedEndTime &&
+                            isSlotInSelection(date, hour, minute)
+                          )
 
                           return (
                             <DroppableTimeSlot
@@ -721,7 +741,7 @@ export function WeeklyCalendar({
                           return (
                             <div
                               key={block.id}
-                              onClick={(e) => {
+                              onClick={e => {
                                 if (process.env.NODE_ENV === 'development') {
                                   console.log('Task clicked', { taskId: block.taskId })
                                 }
@@ -729,27 +749,35 @@ export function WeeklyCalendar({
                                 e.preventDefault()
                                 handleTaskClick(block.taskId)
                               }}
-                              onMouseDown={(e) => {
+                              onMouseDown={e => {
                                 e.stopPropagation()
                               }}
                               className={cn(
                                 'absolute left-0 right-0 mx-1 rounded text-xs cursor-pointer shadow-sm z-[20]',
                                 'border hover:opacity-80 transition-opacity overflow-hidden',
                                 slots <= 2 ? 'p-0.5' : 'p-1',
-                                blockProject?.color ? 'text-primary-foreground border-border' : colorClass
+                                blockProject?.color
+                                  ? 'text-primary-foreground border-border'
+                                  : colorClass
                               )}
                               style={{
                                 top: `${(taskMinute / 15) * 12}px`,
                                 height: `${slots * 12}px`,
-                                ...(blockProject?.color ? { backgroundColor: blockProject.color } : {})
+                                ...(blockProject?.color
+                                  ? { backgroundColor: blockProject.color }
+                                  : {}),
                               }}
                             >
                               {/* タスクの長さに応じて表示内容を調整 */}
                               {slots === 1 ? (
-                                <div className="font-medium truncate leading-[10px]">{block.taskName}</div>
+                                <div className="font-medium truncate leading-[10px]">
+                                  {block.taskName}
+                                </div>
                               ) : slots === 2 ? (
                                 <div className="flex items-center h-full">
-                                  <div className="font-medium truncate w-full">{block.taskName}</div>
+                                  <div className="font-medium truncate w-full">
+                                    {block.taskName}
+                                  </div>
                                 </div>
                               ) : slots === 3 ? (
                                 <>
@@ -826,10 +854,7 @@ export function WeeklyCalendar({
           <div className="p-3 border-b border-border">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               今週のタスク
-              <Badge
-                variant="secondary"
-                className="text-xs bg-secondary text-secondary-foreground"
-              >
+              <Badge variant="secondary" className="text-xs bg-secondary text-secondary-foreground">
                 {bigTasks.filter(task => task.category !== 'その他').length}
               </Badge>
             </h3>
@@ -844,8 +869,8 @@ export function WeeklyCalendar({
               ) : (
                 // プロジェクトごとにグループ化（シンプルなリスト形式）
                 projects.map(project => {
-                  const projectBigTasks = bigTasks.filter(task =>
-                    task.project_id === project.id && task.category !== 'その他'
+                  const projectBigTasks = bigTasks.filter(
+                    task => task.project_id === project.id && task.category !== 'その他'
                   )
                   if (projectBigTasks.length === 0) return null
 
@@ -900,7 +925,11 @@ export function WeeklyCalendar({
             <DraggableTask
               task={activeTask}
               color={getProjectColor(activeTask.project_id || '')}
-              project={activeTask.task_type !== 'routine' ? projects.find(p => p.id === activeTask.project_id) : undefined}
+              project={
+                activeTask.task_type !== 'routine'
+                  ? projects.find(p => p.id === activeTask.project_id)
+                  : undefined
+              }
             />
           </div>
         )}
@@ -914,7 +943,7 @@ export function WeeklyCalendar({
         endTime={selectedEndTime}
         projects={projects}
         bigTasks={bigTasks}
-        onCreateTask={async (data) => {
+        onCreateTask={async data => {
           await onCreateTask(data)
           setShowCreateDialog(false)
         }}
@@ -928,12 +957,12 @@ export function WeeklyCalendar({
         task={selectedTask}
         projects={projects}
         bigTasks={bigTasks}
-        onUpdateTask={async (data) => {
+        onUpdateTask={async data => {
           await onUpdateTask(data)
           setShowDetailDialog(false)
           setSelectedTask(null)
         }}
-        onDeleteTask={async (taskId) => {
+        onDeleteTask={async taskId => {
           await onDeleteTask(taskId)
           setShowDetailDialog(false)
           setSelectedTask(null)
