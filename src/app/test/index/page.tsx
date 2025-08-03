@@ -42,12 +42,12 @@ export default function TestIndexPage() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground mb-4">{page.description}</p>
-              <Link href={page.href}>
-                <Button className="w-full" variant="outline">
+              <Button asChild className="w-full" variant="outline">
+                <Link href={page.href}>
                   テストを開く
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         ))}

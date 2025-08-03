@@ -104,9 +104,9 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
           <p className="text-muted-foreground mb-6">
             指定されたプロジェクトは存在しないか、削除されています。
           </p>
-          <Link href="/projects">
-            <Button>プロジェクト一覧に戻る</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/projects">プロジェクト一覧に戻る</Link>
+          </Button>
         </div>
       </div>
     )
@@ -248,12 +248,12 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-4">
-          <Link href={`/projects/${resolvedParams.id}`}>
-            <Button variant="ghost" size="sm" className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm" className="flex items-center gap-2">
+            <Link href={`/projects/${resolvedParams.id}`}>
               <ArrowLeft className="h-4 w-4" />
               プロジェクト詳細に戻る
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         <div className="flex items-center justify-between">
@@ -268,12 +268,12 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
           </div>
 
           <div className="flex items-center gap-2">
-            <Link href="/schedule">
-              <Button variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/schedule">
                 <Calendar className="h-4 w-4 mr-2" />
                 スケジュール
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

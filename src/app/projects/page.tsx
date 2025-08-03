@@ -66,12 +66,12 @@ export default function ProjectsPage() {
             プロジェクトを作成・管理して目標を達成しましょう
           </p>
         </div>
-        <Link href="/projects/new">
-          <Button size="lg" className="flex items-center gap-2">
+        <Button asChild size="lg" className="flex items-center gap-2">
+          <Link href="/projects/new">
             <Plus className="h-5 w-5" />
             新しいプロジェクト
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {/* Statistics Cards */}
@@ -148,12 +148,12 @@ export default function ProjectsPage() {
             <p className="text-muted-foreground mb-6">
               最初のプロジェクトを作成して、目標達成への第一歩を踏み出しましょう
             </p>
-            <Link href="/projects/new">
-              <Button size="lg">
+            <Button asChild size="lg">
+              <Link href="/projects/new">
                 <Plus className="h-5 w-5 mr-2" />
                 プロジェクトを作成
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       )}

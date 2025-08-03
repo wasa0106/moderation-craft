@@ -75,9 +75,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
           <p className="text-muted-foreground mb-6">
             指定されたプロジェクトは存在しないか、削除されています。
           </p>
-          <Link href="/projects">
-            <Button>プロジェクト一覧に戻る</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/projects">プロジェクト一覧に戻る</Link>
+          </Button>
         </div>
       </div>
     )
@@ -171,12 +171,12 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-4">
-          <Link href="/projects">
-            <Button variant="ghost" size="sm" className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm" className="flex items-center gap-2">
+            <Link href="/projects">
               <ArrowLeft className="h-4 w-4" />
               プロジェクト一覧に戻る
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         <div className="flex items-start justify-between">
@@ -290,18 +290,18 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 gap-4">
-                <Link href={`/projects/${resolvedParams.id}/tasks`}>
-                  <Button className="w-full flex items-center gap-2 h-12">
+                <Button asChild className="w-full flex items-center gap-2 h-12">
+                  <Link href={`/projects/${resolvedParams.id}/tasks`}>
                     <Plus className="h-5 w-5" />
                     タスクを管理
-                  </Button>
-                </Link>
-                <Link href="/schedule">
-                  <Button variant="outline" className="w-full flex items-center gap-2 h-12">
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full flex items-center gap-2 h-12">
+                  <Link href="/schedule">
                     <Calendar className="h-5 w-5" />
                     スケジュール表示
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -316,12 +316,12 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                   <CheckCircle2 className="h-5 w-5" />
                   タスク一覧
                 </CardTitle>
-                <Link href={`/projects/${resolvedParams.id}/tasks`}>
-                  <Button size="sm">
+                <Button asChild size="sm">
+                  <Link href={`/projects/${resolvedParams.id}/tasks`}>
                     <Plus className="h-4 w-4 mr-2" />
                     詳細管理
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -332,12 +332,12 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                   <p className="text-sm text-muted-foreground mb-4">
                     大タスクを作成してプロジェクトを開始しましょう
                   </p>
-                  <Link href={`/projects/${resolvedParams.id}/tasks`}>
-                    <Button>
+                  <Button asChild>
+                    <Link href={`/projects/${resolvedParams.id}/tasks`}>
                       <Plus className="h-4 w-4 mr-2" />
                       タスクを作成
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
