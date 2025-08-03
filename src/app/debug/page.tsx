@@ -3,7 +3,7 @@
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks, useSmallTasksByDateRange } from '@/hooks/use-small-tasks'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
 
@@ -12,10 +12,17 @@ export default function DebugPage() {
   const { projects } = useProjects(userId)
   const { bigTasks } = useBigTasks(userId)
   const { smallTasks: allSmallTasks } = useSmallTasks(userId)
-  const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [currentWeek, setCurrentWeek] = useState<Date | null>(null)
 
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 })
-  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
+  // Initialize currentWeek on client side
+  useEffect(() => {
+    if (!currentWeek) {
+      setCurrentWeek(new Date())
+    }
+  }, [])
+
+  const weekStart = currentWeek ? startOfWeek(currentWeek, { weekStartsOn: 1 }) : new Date()
+  const weekEnd = currentWeek ? endOfWeek(currentWeek, { weekStartsOn: 1 }) : new Date()
   const weekStartStr = format(weekStart, 'yyyy-MM-dd')
   const weekEndStr = format(weekEnd, 'yyyy-MM-dd')
 
@@ -40,7 +47,7 @@ export default function DebugPage() {
         <h2 className="text-xl font-semibold mb-2">現在の週</h2>
         <div className="flex items-center gap-4 mb-2">
           <button
-            onClick={() => setCurrentWeek(prev => subWeeks(prev, 1))}
+            onClick={() => currentWeek && setCurrentWeek(prev => prev ? subWeeks(prev, 1) : new Date())}
             className="px-3 py-1 bg-primary text-primary-foreground rounded"
           >
             前週
@@ -50,7 +57,7 @@ export default function DebugPage() {
             {format(weekEnd, 'M月d日', { locale: ja })}
           </span>
           <button
-            onClick={() => setCurrentWeek(prev => addWeeks(prev, 1))}
+            onClick={() => currentWeek && setCurrentWeek(prev => prev ? addWeeks(prev, 1) : new Date())}
             className="px-3 py-1 bg-primary text-primary-foreground rounded"
           >
             次週

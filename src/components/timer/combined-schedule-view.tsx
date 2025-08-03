@@ -46,10 +46,17 @@ export function CombinedScheduleView({
   const scrollPositionKey = `schedule-scroll-${format(date, 'yyyy-MM-dd')}`
 
   // 現在時刻を状態として管理
-  const [currentTime, setCurrentTime] = useState(new Date())
-  const currentHour = currentTime.getHours()
-  const currentMinute = currentTime.getMinutes()
-  const isToday = date.toDateString() === currentTime.toDateString()
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
+  const currentHour = currentTime ? currentTime.getHours() : new Date().getHours()
+  const currentMinute = currentTime ? currentTime.getMinutes() : new Date().getMinutes()
+
+  // Initialize currentTime on client side only
+  useEffect(() => {
+    if (!currentTime) {
+      setCurrentTime(new Date())
+    }
+  }, [])
+  const isToday = currentTime ? date.toDateString() === currentTime.toDateString() : false
 
   // Get sleep schedule for the date, previous day, and next day
   const { data: sleepSchedule } = useSleepSchedule(userId, date)
@@ -171,7 +178,8 @@ export function CombinedScheduleView({
     if (!session.end_time) {
       // 進行中のセッションは現在時刻まで
       const start = parseISO(session.start_time)
-      return Math.floor((currentTime.getTime() - start.getTime()) / (1000 * 60))
+      const now = currentTime || new Date()
+      return Math.floor((now.getTime() - start.getTime()) / (1000 * 60))
     }
     return secondsToMinutes(session.duration_seconds)
   }
@@ -192,7 +200,8 @@ export function CombinedScheduleView({
   const getSessionDurationInSeconds = (session: WorkSession): number => {
     if (!session.end_time) {
       const start = parseISO(session.start_time)
-      return Math.floor((currentTime.getTime() - start.getTime()) / 1000)
+      const now = currentTime || new Date()
+      return Math.floor((now.getTime() - start.getTime()) / 1000)
     }
     return session.duration_seconds
   }

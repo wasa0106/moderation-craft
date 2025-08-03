@@ -35,13 +35,20 @@ export default function TimerPage() {
   const [showDopamineDialog, setShowDopamineDialog] = useState(false)
   const [showFocusDialog, setShowFocusDialog] = useState(false)
   const [todaySessions, setTodaySessions] = useState<WorkSession[]>([])
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showUnplannedDialog, setShowUnplannedDialog] = useState(false)
   const timerTaskDisplayRef = useRef<TimerTaskDisplayRef>(null)
 
+  // Initialize selectedDate on client side
+  useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(new Date())
+    }
+  }, [])
+
   // 日付範囲を計算（選択日の前後7日間のタスクを取得）
-  const startDate = subDays(selectedDate, 7)
-  const endDate = addDays(selectedDate, 7)
+  const startDate = selectedDate ? subDays(selectedDate, 7) : new Date()
+  const endDate = selectedDate ? addDays(selectedDate, 7) : new Date()
 
   // 日付範囲でタスクを取得
   const { smallTasks, loadTasks } = useSmallTasksByDateRange(
@@ -55,6 +62,7 @@ export default function TimerPage() {
 
   // loadSessions関数を定義
   const loadSessions = useCallback(async () => {
+    if (!selectedDate) return
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd')
       const sessions = await workSessionRepository.getSessionsForDate('current-user', dateString)
@@ -101,7 +109,7 @@ export default function TimerPage() {
 
   // 選択日のタスクを取得（緊急タスクは除外）
   const dayTasks = smallTasks.filter(task => {
-    if (!task.scheduled_start) return false
+    if (!task.scheduled_start || !selectedDate) return false
     if (task.is_emergency) return false // 緊急タスクは予定エリアに表示しない
     const taskDate = new Date(task.scheduled_start)
     return (
@@ -232,7 +240,7 @@ export default function TimerPage() {
               projects={projects}
               currentTaskId={currentTask?.id}
               onTaskClick={task => {
-                if (!isRunning && isToday(selectedDate)) {
+                if (!isRunning && selectedDate && isToday(selectedDate)) {
                   handleStartTimer(task)
                 }
               }}
@@ -241,7 +249,7 @@ export default function TimerPage() {
                 loadTasks()
                 loadSessions()
               }}
-              date={selectedDate}
+              date={selectedDate || new Date()}
               userId="current-user"
             />
           </div>
@@ -253,7 +261,7 @@ export default function TimerPage() {
           <div className="bg-card p-3 border border-border">
             <div className="flex items-center justify-between">
               <Button
-                onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+                onClick={() => selectedDate && setSelectedDate(subDays(selectedDate, 1))}
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:bg-surface-2"
@@ -263,12 +271,12 @@ export default function TimerPage() {
 
               <div className="text-center flex-1">
                 <div className="text-lg font-medium text-foreground">
-                  {format(selectedDate, 'yyyy年M月d日', { locale: ja })}
+                  {selectedDate ? format(selectedDate, 'yyyy年M月d日', { locale: ja }) : ''}
                 </div>
               </div>
 
               <Button
-                onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+                onClick={() => selectedDate && setSelectedDate(addDays(selectedDate, 1))}
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:bg-surface-2"
@@ -282,7 +290,7 @@ export default function TimerPage() {
             dayTasks={dayTasks}
             todaySessions={todaySessions}
             projects={projects}
-            selectedDate={selectedDate}
+            selectedDate={selectedDate || new Date()}
           />
         </div>
       </div>

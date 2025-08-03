@@ -20,10 +20,17 @@ export default function WeeklySchedulePage() {
   const userId = 'current-user' // 仮のユーザーID
 
   // 統一された週選択状態（タスク一覧とカレンダーで共有）
-  const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [currentWeek, setCurrentWeek] = useState<Date | null>(null)
+
+  // Initialize currentWeek on client side
+  useEffect(() => {
+    if (!currentWeek) {
+      setCurrentWeek(new Date())
+    }
+  }, [])
 
   // useScheduleMemoフックを使用
-  const { content: savedContent, save, isSaving, error } = useScheduleMemo(userId, currentWeek)
+  const { content: savedContent, save, isSaving, error } = useScheduleMemo(userId, currentWeek || new Date())
 
   // ローカルステートで編集内容を管理
   const [localContent, setLocalContent] = useState('')
@@ -53,8 +60,8 @@ export default function WeeklySchedulePage() {
   const { projects } = useProjects(userId)
 
   // 週の開始日と終了日を計算
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 })
-  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
+  const weekStart = currentWeek ? startOfWeek(currentWeek, { weekStartsOn: 1 }) : startOfWeek(new Date(), { weekStartsOn: 1 })
+  const weekEnd = currentWeek ? endOfWeek(currentWeek, { weekStartsOn: 1 }) : endOfWeek(new Date(), { weekStartsOn: 1 })
 
   // 日付をYYYY-MM-DD形式に変換
   const weekStartStr = dateUtils.toDateString(weekStart)
@@ -67,12 +74,12 @@ export default function WeeklySchedulePage() {
   const { smallTasks: weekSmallTasks } = useSmallTasksByDateRange(userId, weekStartStr, weekEndStr)
 
   // Weekly Calendar用のデータ
-  const calendarData = useWeeklySchedule(userId, currentWeek)
+  const calendarData = useWeeklySchedule(userId, currentWeek || new Date())
 
   // デバッグ用ログ出力
   useEffect(() => {
     console.log('週が変更されました:', {
-      currentWeek: format(currentWeek, 'yyyy-MM-dd'),
+      currentWeek: currentWeek ? format(currentWeek, 'yyyy-MM-dd') : 'null',
       weekStart: format(weekStart, 'yyyy-MM-dd'),
       weekEnd: format(weekEnd, 'yyyy-MM-dd'),
     })
@@ -105,15 +112,15 @@ export default function WeeklySchedulePage() {
 
   // デバッグ用：週が変更されたときのログ
   console.log('Week changed:', {
-    currentWeek: format(currentWeek, 'yyyy-MM-dd'),
+    currentWeek: currentWeek ? format(currentWeek, 'yyyy-MM-dd') : 'null',
     weekStartDate: calendarData.weeklySchedule.weekStartDate,
     weekEndDate: calendarData.weeklySchedule.weekEndDate,
     bigTasksCount: currentWeekBigTasks.length,
   })
 
   // 統一された週切り替え関数
-  const goToPreviousWeek = () => setCurrentWeek(prev => subWeeks(prev, 1))
-  const goToNextWeek = () => setCurrentWeek(prev => addWeeks(prev, 1))
+  const goToPreviousWeek = () => setCurrentWeek(prev => prev ? subWeeks(prev, 1) : new Date())
+  const goToNextWeek = () => setCurrentWeek(prev => prev ? addWeeks(prev, 1) : new Date())
 
   return (
     <div className="flex flex-1 flex-col">

@@ -2,7 +2,7 @@
  * DopamineDialog - ドーパミン入力ダイアログ
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,14 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
   const [eventDescription, setEventDescription] = useState('')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [timestamp] = useState(new Date())
+  const [timestamp, setTimestamp] = useState<Date | null>(null)
+
+  // Initialize timestamp on client side
+  useEffect(() => {
+    if (!timestamp) {
+      setTimestamp(new Date())
+    }
+  }, [])
 
   const handleSubmit = async () => {
     if (!eventDescription.trim()) return
@@ -41,7 +48,7 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
         user_id: userId,
         event_description: eventDescription.trim(),
         notes: notes.trim() || undefined,
-        timestamp: timestamp.toISOString(),
+        timestamp: timestamp ? timestamp.toISOString() : new Date().toISOString(),
       }
 
       await dopamineEntryRepository.create(data)
@@ -72,7 +79,7 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
           {/* 発生時刻 */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>{format(timestamp, 'yyyy年MM月dd日 HH:mm', { locale: ja })}</span>
+            <span>{timestamp ? format(timestamp, 'yyyy年MM月dd日 HH:mm', { locale: ja }) : ''}</span>
           </div>
 
           {/* イベント説明 */}
