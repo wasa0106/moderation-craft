@@ -194,41 +194,61 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     }
   }
 
-  async bulkCreate(items: Array<Omit<T, 'id' | 'created_at' | 'updated_at'>>): Promise<T[]> {
-    const entities = items.map(item => {
-      const id = db.generateId()
-      const timestamps = db.createTimestamps()
+  /**
+   * Add multiple entities to the sync queue
+   * @param entities - The entities to sync
+   * @param operationType - The type of operation (create, update, delete)
+   */
+  private async addEntitiesToSyncQueue(
+    entities: T[],
+    operationType: 'create' | 'update' | 'delete'
+  ): Promise<void> {
+    if (this.entityType === 'sync_queue' || entities.length === 0) {
+      return
+    }
 
-      return {
-        ...item,
-        id,
-        ...timestamps,
-      } as T
-    })
+    const { SyncService } = await import('@/lib/sync/sync-service')
+    const syncService = SyncService.getInstance()
+
+    // Process in batches for better performance
+    const batchSize = 100
+    for (let i = 0; i < entities.length; i += batchSize) {
+      const batch = entities.slice(i, i + batchSize)
+      
+      await Promise.all(
+        batch.map(async (entity) => {
+          try {
+            await syncService.addToSyncQueue(
+              this.entityType,
+              entity.id,
+              operationType,
+              entity
+            )
+          } catch (error) {
+            console.error(
+              `Failed to add ${this.entityType} ${entity.id} to sync queue (${operationType}):`,
+              error
+            )
+          }
+        })
+      )
+    }
+  }
+
+  async bulkCreate(items: Array<Omit<T, 'id' | 'created_at' | 'updated_at'>>): Promise<T[]> {
+    if (items.length === 0) {
+      return []
+    }
+
+    const entities = items.map(item => ({
+      ...item,
+      id: db.generateId(),
+      ...db.createTimestamps(),
+    } as T))
 
     try {
       await this.table.bulkAdd(entities)
-
-      const syncOperations = entities.map(entity => ({
-        operation_id: db.generateId(),
-        operation_type: 'CREATE' as const,
-        entity_type: this.entityType as
-          | 'project'
-          | 'big_task'
-          | 'small_task'
-          | 'work_session'
-          | 'mood_entry'
-          | 'daily_condition',
-        entity_id: entity.id,
-        payload: entity,
-        timestamp: entity.created_at,
-        retry_count: 0,
-        max_retries: 3,
-        status: 'pending' as const,
-      }))
-
-      await db.sync_queue.bulkAdd(syncOperations as any)
-
+      await this.addEntitiesToSyncQueue(entities, 'create')
       return entities
     } catch (error) {
       throw new Error(`Failed to bulk create ${this.entityType}: ${error}`)
@@ -238,6 +258,10 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   async bulkUpdate(
     updates: Array<{ id: string; data: Partial<Omit<T, 'id' | 'created_at'>> }>
   ): Promise<T[]> {
+    if (updates.length === 0) {
+      return []
+    }
+
     const timestamp = db.getCurrentTimestamp()
     const updatedEntities: T[] = []
 
@@ -258,26 +282,7 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         }
       })
 
-      const syncOperations = updatedEntities.map(entity => ({
-        operation_id: db.generateId(),
-        operation_type: 'UPDATE' as const,
-        entity_type: this.entityType as
-          | 'project'
-          | 'big_task'
-          | 'small_task'
-          | 'work_session'
-          | 'mood_entry'
-          | 'daily_condition',
-        entity_id: entity.id,
-        payload: entity,
-        timestamp,
-        retry_count: 0,
-        max_retries: 3,
-        status: 'pending' as const,
-      }))
-
-      await db.sync_queue.bulkAdd(syncOperations as any)
-
+      await this.addEntitiesToSyncQueue(updatedEntities, 'update')
       return updatedEntities
     } catch (error) {
       throw new Error(`Failed to bulk update ${this.entityType}: ${error}`)
@@ -285,30 +290,19 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   }
 
   async bulkDelete(ids: string[]): Promise<void> {
+    if (ids.length === 0) {
+      return
+    }
+
     try {
       const entities = await this.table.where('id').anyOf(ids).toArray()
+      
+      if (entities.length === 0) {
+        return
+      }
 
       await this.table.where('id').anyOf(ids).delete()
-
-      const syncOperations = entities.map(entity => ({
-        operation_id: db.generateId(),
-        operation_type: 'DELETE' as const,
-        entity_type: this.entityType as
-          | 'project'
-          | 'big_task'
-          | 'small_task'
-          | 'work_session'
-          | 'mood_entry'
-          | 'daily_condition',
-        entity_id: entity.id,
-        payload: entity,
-        timestamp: db.getCurrentTimestamp(),
-        retry_count: 0,
-        max_retries: 3,
-        status: 'pending' as const,
-      }))
-
-      await db.sync_queue.bulkAdd(syncOperations as any)
+      await this.addEntitiesToSyncQueue(entities, 'delete')
     } catch (error) {
       throw new Error(`Failed to bulk delete ${this.entityType}: ${error}`)
     }
