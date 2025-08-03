@@ -16,13 +16,6 @@ import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns'
 import { WeeklyCalendar } from '@/components/schedule/weekly-calendar'
 import { TaskMemo } from '@/components/schedule/task-memo'
 
-// デバッグユーティリティを動的インポート
-if (typeof window !== 'undefined') {
-  import('@/utils/debug-utils').then(() => {
-    console.log('Debug utilities loaded for weekly schedule page')
-  })
-}
-
 export default function WeeklySchedulePage() {
   const userId = 'current-user' // 仮のユーザーID
 
