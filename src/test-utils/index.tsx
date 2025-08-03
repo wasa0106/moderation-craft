@@ -1,5 +1,5 @@
 import React from 'react'
-import { render as rtlRender, RenderOptions } from '@testing-library/react'
+import { render as rtlRender, RenderOptions, renderHook as rtlRenderHook, waitFor as rtlWaitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
@@ -97,8 +97,7 @@ export function renderHook<TProps, TResult>(
     return <AllTheProviders queryClient={queryClient}>{children}</AllTheProviders>
   }
 
-  // Import renderHook from testing library react hooks
-  const { renderHook: rtlRenderHook } = require('@testing-library/react')
+  // Use imported renderHook from testing library
   return {
     ...rtlRenderHook(hook, { wrapper: Wrapper, ...renderOptions }),
     queryClient,
@@ -116,7 +115,6 @@ export function createUser() {
  * Wait for async operations with a custom timeout
  */
 export async function waitFor(callback: () => void | Promise<void>, options = { timeout: 5000 }) {
-  const { waitFor: rtlWaitFor } = require('@testing-library/react')
   return rtlWaitFor(callback, options)
 }
 
