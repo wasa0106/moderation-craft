@@ -116,7 +116,18 @@ export class PullSyncService {
 
       if (!localProject) {
         // ローカルに存在しない → 新規作成
-        await projectRepository.create(cloudProject)
+        syncLogger.info('🔍 Creating new project from cloud:', {
+          cloudId: cloudProject.id,
+          cloudUpdatedAt: cloudProject.updated_at,
+          cloudName: cloudProject.name,
+        })
+        const created = await projectRepository.create(cloudProject)
+        syncLogger.info('✅ Created project with ID:', {
+          originalId: cloudProject.id,
+          newId: created.id,
+          idChanged: cloudProject.id !== created.id,
+          name: created.name,
+        })
         syncLogger.debug('新規プロジェクトを作成:', cloudProject.id)
       } else if (new Date(cloudProject.updated_at) > new Date(localProject.updated_at)) {
         // クラウドの方が新しい → 更新
@@ -131,7 +142,18 @@ export class PullSyncService {
       const localBigTask = await bigTaskRepository.getById(cloudBigTask.id)
 
       if (!localBigTask) {
-        await bigTaskRepository.create(cloudBigTask)
+        syncLogger.info('🔍 Creating new BigTask from cloud:', {
+          cloudId: cloudBigTask.id,
+          cloudUpdatedAt: cloudBigTask.updated_at,
+          cloudName: cloudBigTask.title,
+        })
+        const created = await bigTaskRepository.create(cloudBigTask)
+        syncLogger.info('✅ Created BigTask with ID:', {
+          originalId: cloudBigTask.id,
+          newId: created.id,
+          idChanged: cloudBigTask.id !== created.id,
+          title: created.title,
+        })
         syncLogger.debug('新規BigTaskを作成:', cloudBigTask.id)
       } else if (new Date(cloudBigTask.updated_at) > new Date(localBigTask.updated_at)) {
         await bigTaskRepository.update(cloudBigTask.id, cloudBigTask)
@@ -144,7 +166,18 @@ export class PullSyncService {
       const localSmallTask = await smallTaskRepository.getById(cloudSmallTask.id)
 
       if (!localSmallTask) {
-        await smallTaskRepository.create(cloudSmallTask)
+        syncLogger.info('🔍 Creating new SmallTask from cloud:', {
+          cloudId: cloudSmallTask.id,
+          cloudUpdatedAt: cloudSmallTask.updated_at,
+          cloudName: cloudSmallTask.title,
+        })
+        const created = await smallTaskRepository.create(cloudSmallTask)
+        syncLogger.info('✅ Created SmallTask with ID:', {
+          originalId: cloudSmallTask.id,
+          newId: created.id,
+          idChanged: cloudSmallTask.id !== created.id,
+          title: created.title,
+        })
         syncLogger.debug('新規SmallTaskを作成:', cloudSmallTask.id)
       } else if (new Date(cloudSmallTask.updated_at) > new Date(localSmallTask.updated_at)) {
         await smallTaskRepository.update(cloudSmallTask.id, cloudSmallTask)

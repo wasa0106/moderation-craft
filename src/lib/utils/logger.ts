@@ -98,10 +98,13 @@ export function createLogger(prefix: string, config?: Partial<LoggerConfig>): Lo
   return new Logger(prefix, config)
 }
 
+// デバッグモードの判定
+const isDebugMode = process.env.NEXT_PUBLIC_DEBUG_SYNC === 'true'
+
 // デフォルトのロガー設定
 export const syncLogger = createLogger('Sync', {
   enabledInProduction: true, // 本番環境でもエラーログは出力
-  level: 'error', // 本番環境ではエラーのみ
+  level: isDebugMode ? 'debug' : 'error', // デバッグモード時はdebugレベル、通常はerrorのみ
 })
 
 export const offlineLogger = createLogger('Offline', {

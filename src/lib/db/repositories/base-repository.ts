@@ -33,7 +33,21 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       if (this.entityType !== 'sync_queue') {
         // 同期キューに追加
         const { SyncService } = await import('@/lib/sync/sync-service')
+        const { syncLogger } = await import('@/lib/utils/logger')
         const syncService = SyncService.getInstance()
+        
+        // 呼び出し元を特定
+        const stack = new Error().stack?.split('\n')
+        const caller = stack && stack.length > 2 ? stack[2].trim() : 'unknown'
+        
+        syncLogger.info('📤 Adding to sync queue (create):', {
+          entityType: this.entityType,
+          entityId: id,
+          operation: 'create',
+          caller: caller,
+          entityName: (entity as any).name || (entity as any).title || 'N/A',
+        })
+        
         await syncService.addToSyncQueue(this.entityType, id, 'create', entity)
       }
 
@@ -94,7 +108,20 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       if (this.entityType !== 'sync_queue') {
         // SyncServiceを動的インポートして同期キューに追加
         const { SyncService } = await import('@/lib/sync/sync-service')
+        const { syncLogger } = await import('@/lib/utils/logger')
         const syncService = SyncService.getInstance()
+        
+        // 呼び出し元を特定
+        const stack = new Error().stack?.split('\n')
+        const caller = stack && stack.length > 2 ? stack[2].trim() : 'unknown'
+        
+        syncLogger.info('📤 Adding to sync queue (update):', {
+          entityType: this.entityType,
+          entityId: id,
+          operation: 'update',
+          caller: caller,
+          entityName: (updatedEntity as any).name || (updatedEntity as any).title || 'N/A',
+        })
 
         // UPDATE操作を同期キューに追加
         await syncService.addToSyncQueue(this.entityType, id, 'update', updatedEntity)

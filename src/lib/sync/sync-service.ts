@@ -24,6 +24,7 @@ import { syncLogger } from '@/lib/utils/logger'
 export class SyncService {
   private static instance: SyncService
   private syncInterval: NodeJS.Timeout | null = null
+  private statsInterval: NodeJS.Timeout | null = null
   private isProcessing = false
 
   private constructor() {}
@@ -52,6 +53,49 @@ export class SyncService {
     }, intervalMs)
 
     syncLogger.debug('Auto sync interval set:', this.syncInterval)
+    
+    // 統計情報を定期的に出力（5分ごと）
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval)
+    }
+    
+    this.statsInterval = setInterval(() => {
+      const stats = this.getSyncStats()
+      const syncStore = useSyncStore.getState()
+      const queueItems = syncStore.syncQueue
+      
+      syncLogger.info('📈 Sync Statistics (5min interval):', {
+        pendingItems: stats.pendingItems,
+        failedItems: stats.failedItems,
+        totalQueueSize: queueItems.length,
+        isOnline: stats.isOnline,
+        isSyncing: stats.isSyncing,
+        lastSyncTime: stats.lastSyncTime,
+        autoSyncEnabled: stats.autoSyncEnabled,
+        queueByEntityType: {
+          project: queueItems.filter(item => item.entity_type === 'project').length,
+          big_task: queueItems.filter(item => item.entity_type === 'big_task').length,
+          small_task: queueItems.filter(item => item.entity_type === 'small_task').length,
+          work_session: queueItems.filter(item => item.entity_type === 'work_session').length,
+        },
+        queueByStatus: {
+          pending: queueItems.filter(item => item.status === 'pending').length,
+          processing: queueItems.filter(item => item.status === 'processing').length,
+          failed: queueItems.filter(item => item.status === 'failed').length,
+        }
+      })
+    }, 300000) // 5分ごと
+    
+    // 初回の統計情報を即座に出力
+    const initialStats = this.getSyncStats()
+    syncLogger.info('📈 Initial Sync Statistics:', {
+      pendingItems: initialStats.pendingItems,
+      failedItems: initialStats.failedItems,
+      isOnline: initialStats.isOnline,
+      isSyncing: initialStats.isSyncing,
+      lastSyncTime: initialStats.lastSyncTime,
+      autoSyncEnabled: initialStats.autoSyncEnabled,
+    })
   }
 
   /**
@@ -62,12 +106,19 @@ export class SyncService {
       clearInterval(this.syncInterval)
       this.syncInterval = null
     }
+    
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval)
+      this.statsInterval = null
+    }
   }
 
   /**
    * Processes the sync queue
    */
   public async processSyncQueue(): Promise<void> {
+    const timestamp = new Date().toISOString()
+    syncLogger.info('🔄 Starting sync process', { timestamp })
     syncLogger.debug('processSyncQueue called')
 
     if (this.isProcessing) {
@@ -93,6 +144,17 @@ export class SyncService {
 
     try {
       const pendingItems = await syncQueueRepository.getPendingItems()
+      syncLogger.info('📊 Sync queue status:', {
+        pendingCount: pendingItems.length,
+        items: pendingItems.map(item => ({
+          id: item.id,
+          entityType: item.entity_type,
+          entityId: item.entity_id,
+          operation: item.operation_type,
+          attemptCount: item.attempt_count,
+          createdAt: item.created_at,
+        }))
+      })
       syncLogger.debug(`Found ${pendingItems.length} pending items`)
 
       if (pendingItems.length === 0) {
