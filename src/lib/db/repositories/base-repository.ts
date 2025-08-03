@@ -58,14 +58,35 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     }
 
     try {
+      // sync_queueの場合は特別な処理
+      if (this.entityType === 'sync_queue') {
+        // 存在チェックを先に行う
+        const existingEntity = await this.table.get(id)
+        if (!existingEntity) {
+          console.warn(`sync_queue with ID ${id} not found - skipping update`)
+          // エラーをスローせずに、既存のエンティティがあれば返す（ない場合は空のオブジェクトを返す）
+          return existingEntity || ({} as T)
+        }
+      }
+
       const result = await this.table.update(id, updateData as any)
 
       if (result === 0) {
+        // sync_queueの場合は警告ログのみ
+        if (this.entityType === 'sync_queue') {
+          console.warn(`sync_queue with ID ${id} not found during update`)
+          return {} as T
+        }
         throw new Error(`${this.entityType} with ID ${id} not found`)
       }
 
       const updatedEntity = await this.table.get(id)
       if (!updatedEntity) {
+        // sync_queueの場合は警告ログのみ
+        if (this.entityType === 'sync_queue') {
+          console.warn(`Failed to retrieve updated sync_queue with ID ${id}`)
+          return {} as T
+        }
         throw new Error(`Failed to retrieve updated ${this.entityType}`)
       }
 

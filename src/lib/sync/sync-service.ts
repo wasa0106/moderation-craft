@@ -179,21 +179,32 @@ export class SyncService {
             error_message: errorMessage,
             last_attempted: new Date().toISOString(),
           })
-          await syncQueueRepository.update(item.id, {
-            status: 'failed',
-            attempt_count: newAttemptCount,
-            error_message: errorMessage,
-            last_attempted: new Date().toISOString(),
-          })
+          
+          // アイテムが存在するか確認してから更新
+          const existingItem = await syncQueueRepository.getById(item.id)
+          if (existingItem) {
+            await syncQueueRepository.update(item.id, {
+              status: 'failed',
+              attempt_count: newAttemptCount,
+              error_message: errorMessage,
+              last_attempted: new Date().toISOString(),
+            })
+          } else {
+            syncLogger.warn(`sync_queue item ${item.id} not found - skipping update`)
+          }
           syncLogger.debug(`Item ${item.id} moved to dormant state after ${newAttemptCount} attempts`)
           
           // 1時間後に自動的に復活させる（バックグラウンドタスク）
           if (isNetworkError || isRateLimitError) {
             setTimeout(async () => {
-              await syncQueueRepository.update(item.id, {
-                status: 'pending',
-                attempt_count: Math.floor(newAttemptCount / 2), // 試行回数を半分にリセット
-              })
+              // アイテムが存在するか確認してから更新
+              const existingItem = await syncQueueRepository.getById(item.id)
+              if (existingItem) {
+                await syncQueueRepository.update(item.id, {
+                  status: 'pending',
+                  attempt_count: Math.floor(newAttemptCount / 2), // 試行回数を半分にリセット
+                })
+              }
             }, 3600000) // 1時間後
           }
         } else {
@@ -208,12 +219,19 @@ export class SyncService {
             last_attempted: new Date().toISOString(),
             next_retry_after: new Date(Date.now() + nextRetryDelay).toISOString(), // 次回リトライ時刻を記録
           })
-          await syncQueueRepository.update(item.id, {
-            status: 'pending',
-            attempt_count: newAttemptCount,
-            error_message: errorMessage,
-            last_attempted: new Date().toISOString(),
-          })
+          
+          // アイテムが存在するか確認してから更新
+          const existingItem = await syncQueueRepository.getById(item.id)
+          if (existingItem) {
+            await syncQueueRepository.update(item.id, {
+              status: 'pending',
+              attempt_count: newAttemptCount,
+              error_message: errorMessage,
+              last_attempted: new Date().toISOString(),
+            })
+          } else {
+            syncLogger.warn(`sync_queue item ${item.id} not found - skipping retry update`)
+          }
           
           syncLogger.debug(`Item ${item.id} will retry after ${nextRetryDelay / 1000} seconds`)
         }
