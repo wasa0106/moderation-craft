@@ -30,7 +30,12 @@ export default function WeeklySchedulePage() {
   }, [])
 
   // useScheduleMemoフックを使用
-  const { content: savedContent, save, isSaving, error } = useScheduleMemo(userId, currentWeek || new Date())
+  const {
+    content: savedContent,
+    save,
+    isSaving,
+    error,
+  } = useScheduleMemo(userId, currentWeek || new Date())
 
   // ローカルステートで編集内容を管理
   const [localContent, setLocalContent] = useState('')
@@ -60,8 +65,12 @@ export default function WeeklySchedulePage() {
   const { projects } = useProjects(userId)
 
   // 週の開始日と終了日を計算
-  const weekStart = currentWeek ? startOfWeek(currentWeek, { weekStartsOn: 1 }) : startOfWeek(new Date(), { weekStartsOn: 1 })
-  const weekEnd = currentWeek ? endOfWeek(currentWeek, { weekStartsOn: 1 }) : endOfWeek(new Date(), { weekStartsOn: 1 })
+  const weekStart = currentWeek
+    ? startOfWeek(currentWeek, { weekStartsOn: 1 })
+    : startOfWeek(new Date(), { weekStartsOn: 1 })
+  const weekEnd = currentWeek
+    ? endOfWeek(currentWeek, { weekStartsOn: 1 })
+    : endOfWeek(new Date(), { weekStartsOn: 1 })
 
   // 日付をYYYY-MM-DD形式に変換
   const weekStartStr = dateUtils.toDateString(weekStart)
@@ -119,8 +128,8 @@ export default function WeeklySchedulePage() {
   })
 
   // 統一された週切り替え関数
-  const goToPreviousWeek = () => setCurrentWeek(prev => prev ? subWeeks(prev, 1) : new Date())
-  const goToNextWeek = () => setCurrentWeek(prev => prev ? addWeeks(prev, 1) : new Date())
+  const goToPreviousWeek = () => setCurrentWeek(prev => (prev ? subWeeks(prev, 1) : new Date()))
+  const goToNextWeek = () => setCurrentWeek(prev => (prev ? addWeeks(prev, 1) : new Date()))
 
   return (
     <div className="flex flex-1 flex-col">

@@ -121,12 +121,11 @@ export class PullSyncService {
           cloudUpdatedAt: cloudProject.updated_at,
           cloudName: cloudProject.name,
         })
-        const created = await projectRepository.create(cloudProject)
+        const created = await projectRepository.createWithId(cloudProject)
         syncLogger.info('✅ Created project with ID:', {
-          originalId: cloudProject.id,
-          newId: created.id,
-          idChanged: cloudProject.id !== created.id,
+          id: created.id,
           name: created.name,
+          fromCloud: true,
         })
         syncLogger.debug('新規プロジェクトを作成:', cloudProject.id)
       } else if (new Date(cloudProject.updated_at) > new Date(localProject.updated_at)) {
@@ -147,12 +146,11 @@ export class PullSyncService {
           cloudUpdatedAt: cloudBigTask.updated_at,
           cloudName: cloudBigTask.title,
         })
-        const created = await bigTaskRepository.create(cloudBigTask)
+        const created = await bigTaskRepository.createWithId(cloudBigTask)
         syncLogger.info('✅ Created BigTask with ID:', {
-          originalId: cloudBigTask.id,
-          newId: created.id,
-          idChanged: cloudBigTask.id !== created.id,
+          id: created.id,
           title: created.title,
+          fromCloud: true,
         })
         syncLogger.debug('新規BigTaskを作成:', cloudBigTask.id)
       } else if (new Date(cloudBigTask.updated_at) > new Date(localBigTask.updated_at)) {
@@ -171,12 +169,11 @@ export class PullSyncService {
           cloudUpdatedAt: cloudSmallTask.updated_at,
           cloudName: cloudSmallTask.title,
         })
-        const created = await smallTaskRepository.create(cloudSmallTask)
+        const created = await smallTaskRepository.createWithId(cloudSmallTask)
         syncLogger.info('✅ Created SmallTask with ID:', {
-          originalId: cloudSmallTask.id,
-          newId: created.id,
-          idChanged: cloudSmallTask.id !== created.id,
+          id: created.id,
           title: created.title,
+          fromCloud: true,
         })
         syncLogger.debug('新規SmallTaskを作成:', cloudSmallTask.id)
       } else if (new Date(cloudSmallTask.updated_at) > new Date(localSmallTask.updated_at)) {

@@ -79,7 +79,9 @@ export function DopamineDialog({ open, onOpenChange, userId }: DopamineDialogPro
           {/* 発生時刻 */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>{timestamp ? format(timestamp, 'yyyy年MM月dd日 HH:mm', { locale: ja }) : ''}</span>
+            <span>
+              {timestamp ? format(timestamp, 'yyyy年MM月dd日 HH:mm', { locale: ja }) : ''}
+            </span>
           </div>
 
           {/* イベント説明 */}

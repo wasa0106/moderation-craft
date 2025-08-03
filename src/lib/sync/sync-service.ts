@@ -53,17 +53,17 @@ export class SyncService {
     }, intervalMs)
 
     syncLogger.debug('Auto sync interval set:', this.syncInterval)
-    
+
     // 統計情報を定期的に出力（5分ごと）
     if (this.statsInterval) {
       clearInterval(this.statsInterval)
     }
-    
+
     this.statsInterval = setInterval(() => {
       const stats = this.getSyncStats()
       const syncStore = useSyncStore.getState()
       const queueItems = syncStore.syncQueue
-      
+
       syncLogger.info('📈 Sync Statistics (5min interval):', {
         pendingItems: stats.pendingItems,
         failedItems: stats.failedItems,
@@ -82,10 +82,10 @@ export class SyncService {
           pending: queueItems.filter(item => item.status === 'pending').length,
           processing: queueItems.filter(item => item.status === 'processing').length,
           failed: queueItems.filter(item => item.status === 'failed').length,
-        }
+        },
       })
     }, 300000) // 5分ごと
-    
+
     // 初回の統計情報を即座に出力
     const initialStats = this.getSyncStats()
     syncLogger.info('📈 Initial Sync Statistics:', {
@@ -106,7 +106,7 @@ export class SyncService {
       clearInterval(this.syncInterval)
       this.syncInterval = null
     }
-    
+
     if (this.statsInterval) {
       clearInterval(this.statsInterval)
       this.statsInterval = null
@@ -153,7 +153,7 @@ export class SyncService {
           operation: item.operation_type,
           attemptCount: item.attempt_count,
           createdAt: item.created_at,
-        }))
+        })),
       })
       syncLogger.debug(`Found ${pendingItems.length} pending items`)
 

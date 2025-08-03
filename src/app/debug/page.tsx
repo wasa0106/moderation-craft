@@ -47,7 +47,9 @@ export default function DebugPage() {
         <h2 className="text-xl font-semibold mb-2">現在の週</h2>
         <div className="flex items-center gap-4 mb-2">
           <button
-            onClick={() => currentWeek && setCurrentWeek(prev => prev ? subWeeks(prev, 1) : new Date())}
+            onClick={() =>
+              currentWeek && setCurrentWeek(prev => (prev ? subWeeks(prev, 1) : new Date()))
+            }
             className="px-3 py-1 bg-primary text-primary-foreground rounded"
           >
             前週
@@ -57,7 +59,9 @@ export default function DebugPage() {
             {format(weekEnd, 'M月d日', { locale: ja })}
           </span>
           <button
-            onClick={() => currentWeek && setCurrentWeek(prev => prev ? addWeeks(prev, 1) : new Date())}
+            onClick={() =>
+              currentWeek && setCurrentWeek(prev => (prev ? addWeeks(prev, 1) : new Date()))
+            }
             className="px-3 py-1 bg-primary text-primary-foreground rounded"
           >
             次週

@@ -1,5 +1,10 @@
 import React from 'react'
-import { render as rtlRender, RenderOptions, renderHook as rtlRenderHook, waitFor as rtlWaitFor } from '@testing-library/react'
+import {
+  render as rtlRender,
+  RenderOptions,
+  renderHook as rtlRenderHook,
+  waitFor as rtlWaitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'

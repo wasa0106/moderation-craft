@@ -60,8 +60,7 @@ class MockDatabase extends Dexie {
     super('MockDatabase')
     this.version(1).stores({
       test_entities: 'id, name, status, created_at, updated_at',
-      sync_queue:
-        '++id, user_id, entity_type, entity_id, operation_type, status, version',
+      sync_queue: '++id, user_id, entity_type, entity_id, operation_type, status, version',
     })
   }
 
@@ -142,7 +141,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
       expect(result).toHaveLength(3)
       expect(SyncService.getInstance).toHaveBeenCalled()
       expect(mockAddToSyncQueue).toHaveBeenCalledTimes(3)
-      
+
       // 各エンティティに対して正しいパラメータで呼ばれることを確認
       items.forEach((_, index) => {
         expect(mockAddToSyncQueue).toHaveBeenNthCalledWith(
@@ -160,9 +159,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
 
     it('古いsync_queue.bulkAdd()を呼び出さない', async () => {
       // Arrange
-      const items = [
-        { name: 'Project 1', status: 'active' },
-      ]
+      const items = [{ name: 'Project 1', status: 'active' }]
 
       // Act
       await repository.bulkCreate(items)
@@ -249,7 +246,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
         }
         return Promise.resolve(undefined)
       })
-      
+
       repository['table'].update = mockUpdate
       repository['table'].get = mockGet
 
@@ -259,7 +256,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
       // Assert
       expect(result).toHaveLength(3)
       expect(mockAddToSyncQueue).toHaveBeenCalledTimes(3)
-      
+
       updates.forEach((update, index) => {
         expect(mockAddToSyncQueue).toHaveBeenNthCalledWith(
           index + 1,
@@ -276,9 +273,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
 
     it('古いsync_queue.bulkAdd()を呼び出さない', async () => {
       // Arrange
-      const updates = [
-        { id: 'id1', data: { name: 'Updated Project 1' } },
-      ]
+      const updates = [{ id: 'id1', data: { name: 'Updated Project 1' } }]
 
       // Mock the table methods
       repository['table'].update = vi.fn().mockResolvedValue(1)
@@ -311,7 +306,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
         created_at: '2024-01-20T10:00:00Z',
         updated_at: '2024-01-20T10:00:00Z',
       }))
-      
+
       repository['table'].where = vi.fn().mockReturnValue({
         anyOf: vi.fn().mockReturnValue({
           toArray: vi.fn().mockResolvedValue(entities),
@@ -324,7 +319,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
 
       // Assert
       expect(mockAddToSyncQueue).toHaveBeenCalledTimes(3)
-      
+
       ids.forEach((id, index) => {
         expect(mockAddToSyncQueue).toHaveBeenNthCalledWith(
           index + 1,
@@ -347,13 +342,15 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
       // Mock the table methods
       repository['table'].where = vi.fn().mockReturnValue({
         anyOf: vi.fn().mockReturnValue({
-          toArray: vi.fn().mockResolvedValue([{
-            id: 'id1',
-            name: 'Entity id1',
-            status: 'active',
-            created_at: '2024-01-20T10:00:00Z',
-            updated_at: '2024-01-20T10:00:00Z',
-          }]),
+          toArray: vi.fn().mockResolvedValue([
+            {
+              id: 'id1',
+              name: 'Entity id1',
+              status: 'active',
+              created_at: '2024-01-20T10:00:00Z',
+              updated_at: '2024-01-20T10:00:00Z',
+            },
+          ]),
           delete: vi.fn().mockResolvedValue(undefined),
         }),
       })
@@ -383,12 +380,7 @@ describe('BaseRepository - Bulk操作の同期処理', () => {
       await repository.bulkDelete(ids)
 
       // Assert
-      expect(mockAddToSyncQueue).toHaveBeenCalledWith(
-        'test_entity',
-        'id1',
-        'delete',
-        entityData
-      )
+      expect(mockAddToSyncQueue).toHaveBeenCalledWith('test_entity', 'id1', 'delete', entityData)
     })
   })
 

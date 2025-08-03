@@ -352,6 +352,7 @@ export interface DatabaseSchema {
 
 export interface RepositoryInterface<T extends DatabaseEntity> {
   create(data: Omit<T, 'id' | 'created_at' | 'updated_at'>): Promise<T>
+  createWithId(data: T): Promise<T>
   getById(id: string): Promise<T | undefined>
   update(id: string, data: Partial<Omit<T, 'id' | 'created_at'>>): Promise<T>
   delete(id: string): Promise<void>

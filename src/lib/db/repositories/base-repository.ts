@@ -35,11 +35,11 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         const { SyncService } = await import('@/lib/sync/sync-service')
         const { syncLogger } = await import('@/lib/utils/logger')
         const syncService = SyncService.getInstance()
-        
+
         // 呼び出し元を特定
         const stack = new Error().stack?.split('\n')
         const caller = stack && stack.length > 2 ? stack[2].trim() : 'unknown'
-        
+
         syncLogger.info('📤 Adding to sync queue (create):', {
           entityType: this.entityType,
           entityId: id,
@@ -47,13 +47,44 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
           caller: caller,
           entityName: (entity as any).name || (entity as any).title || 'N/A',
         })
-        
+
         await syncService.addToSyncQueue(this.entityType, id, 'create', entity)
       }
 
       return entity
     } catch (error) {
       throw new Error(`Failed to create ${this.entityType}: ${error}`)
+    }
+  }
+
+  /**
+   * 指定されたIDでエンティティを作成（プル同期専用）
+   * 通常のcreateと異なり、IDを自動生成せずに指定されたIDを使用する
+   * プル同期から作成されたデータは同期キューに追加しない（既にクラウドに存在するため）
+   */
+  async createWithId(data: T): Promise<T> {
+    const timestamps = db.createTimestamps()
+
+    const entity = {
+      ...data,
+      ...timestamps,
+    } as T
+
+    try {
+      await this.table.add(entity)
+
+      // プル同期から作成されたデータは同期キューに追加しない
+      // （既にクラウドに存在するため、再度同期する必要がない）
+      const { syncLogger } = await import('@/lib/utils/logger')
+      syncLogger.info('✅ Created entity from pull sync (skip sync queue):', {
+        entityType: this.entityType,
+        entityId: entity.id,
+        entityName: (entity as any).name || (entity as any).title || 'N/A',
+      })
+
+      return entity
+    } catch (error) {
+      throw new Error(`Failed to create ${this.entityType} with ID: ${error}`)
     }
   }
 
@@ -110,11 +141,11 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
         const { SyncService } = await import('@/lib/sync/sync-service')
         const { syncLogger } = await import('@/lib/utils/logger')
         const syncService = SyncService.getInstance()
-        
+
         // 呼び出し元を特定
         const stack = new Error().stack?.split('\n')
         const caller = stack && stack.length > 2 ? stack[2].trim() : 'unknown'
-        
+
         syncLogger.info('📤 Adding to sync queue (update):', {
           entityType: this.entityType,
           entityId: id,
@@ -241,16 +272,11 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     const batchSize = 100
     for (let i = 0; i < entities.length; i += batchSize) {
       const batch = entities.slice(i, i + batchSize)
-      
+
       await Promise.all(
-        batch.map(async (entity) => {
+        batch.map(async entity => {
           try {
-            await syncService.addToSyncQueue(
-              this.entityType,
-              entity.id,
-              operationType,
-              entity
-            )
+            await syncService.addToSyncQueue(this.entityType, entity.id, operationType, entity)
           } catch (error) {
             console.error(
               `Failed to add ${this.entityType} ${entity.id} to sync queue (${operationType}):`,
@@ -267,11 +293,14 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       return []
     }
 
-    const entities = items.map(item => ({
-      ...item,
-      id: db.generateId(),
-      ...db.createTimestamps(),
-    } as T))
+    const entities = items.map(
+      item =>
+        ({
+          ...item,
+          id: db.generateId(),
+          ...db.createTimestamps(),
+        }) as T
+    )
 
     try {
       await this.table.bulkAdd(entities)
@@ -323,7 +352,7 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
 
     try {
       const entities = await this.table.where('id').anyOf(ids).toArray()
-      
+
       if (entities.length === 0) {
         return
       }
