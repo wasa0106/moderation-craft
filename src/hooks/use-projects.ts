@@ -138,8 +138,9 @@ export function useProjects(userId: string) {
       projectStore.optimisticDelete(id)
 
       try {
-        await projectRepository.delete(id)
-        await syncService.addToSyncQueue('project', id, 'delete')
+        // 関連データも含めて削除
+        await projectRepository.deleteWithRelatedData(id)
+        // 同期キューへの追加は deleteWithRelatedData 内で行われるため、ここでは不要
       } catch (error) {
         // Revert optimistic update on error
         projectStore.revertOptimisticDelete(originalProject)
@@ -147,8 +148,12 @@ export function useProjects(userId: string) {
       }
     },
     onSuccess: (_, deletedId) => {
+      // プロジェクトと関連データのクエリを無効化
       invalidateQueries.project(deletedId)
       invalidateQueries.projectsByUser(userId)
+      // 関連データのクエリも無効化
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
     },
     onError: error => {
       console.error('Failed to delete project:', error)

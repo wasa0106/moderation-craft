@@ -41,17 +41,19 @@ export function ProjectDeleteDialog({
             <AlertTriangle className="h-5 w-5 text-destructive" />
             プロジェクトを削除
           </AlertDialogTitle>
-          <AlertDialogDescription className="space-y-2">
-            <p>以下のプロジェクトを削除しますか？この操作は取り消せません。</p>
-            <div className="bg-muted p-3 rounded-lg">
-              <p className="font-medium">{project.name}</p>
-              <p className="text-sm text-muted-foreground mt-1">{project.goal}</p>
-            </div>
-            <p className="text-sm text-destructive font-medium">
-              ⚠️ このプロジェクトに関連するすべてのタスクとセッションも削除されます。
-            </p>
+          <AlertDialogDescription>
+            以下のプロジェクトを削除しますか？この操作は取り消せません。
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <div className="space-y-3 py-3">
+          <div className="bg-muted p-3 rounded-lg">
+            <div className="font-medium">{project.name}</div>
+            <div className="text-sm text-muted-foreground mt-1">{project.goal}</div>
+          </div>
+          <p className="text-sm text-destructive font-medium">
+            ⚠️ このプロジェクトに関連するすべてのタスクとセッションも削除されます。
+          </p>
+        </div>
         <AlertDialogFooter>
           <AlertDialogCancel>キャンセル</AlertDialogCancel>
           <AlertDialogAction
