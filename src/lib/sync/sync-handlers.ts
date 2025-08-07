@@ -173,8 +173,10 @@ export async function syncWorkSession(request: SyncRequest): Promise<SyncResult>
     case 'CREATE':
     case 'UPDATE':
       const item = {
-        PK: keyPatterns.workSession.pk(workSession.user_id, workSession.start_time.split('T')[0]),
-        SK: keyPatterns.workSession.sk(workSession.id),
+        // PKパターンを他のエンティティと統一（USER#user_id形式）
+        PK: `USER#${workSession.user_id}`,
+        // SKに日付情報を含めて一意性を保証
+        SK: `WORKSESSION#${workSession.start_time.split('T')[0]}#${workSession.id}`,
 
         user_time_pk: workSession.small_task_id
           ? keyPatterns.workSession.gsi1pk(workSession.small_task_id)
@@ -208,11 +210,9 @@ export async function syncWorkSession(request: SyncRequest): Promise<SyncResult>
         new DeleteCommand({
           TableName: TABLE_NAME,
           Key: {
-            PK: keyPatterns.workSession.pk(
-              workSession.user_id,
-              workSession.start_time.split('T')[0]
-            ),
-            SK: keyPatterns.workSession.sk(workSession.id),
+            // PKパターンを統一形式に合わせる
+            PK: `USER#${workSession.user_id}`,
+            SK: `WORKSESSION#${workSession.start_time.split('T')[0]}#${workSession.id}`,
           },
         })
       )
