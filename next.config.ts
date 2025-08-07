@@ -13,6 +13,32 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
   },
   
+  /* Webpack configuration for DuckDB WASM */
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+    
+    // Add rule for .wasm files
+    config.module.rules.push({
+      test: /\.wasm$/,
+      type: 'asset/resource',
+    });
+    
+    // Add rule for worker files
+    config.module.rules.push({
+      test: /\.worker\.js$/,
+      use: { loader: 'worker-loader' },
+    });
+    
+    return config;
+  },
+  
   /* Headers for better caching */
   async headers() {
     return [

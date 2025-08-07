@@ -80,6 +80,7 @@
 - `npm run lint` - ESLint実行
 - `npm run type-check` - TypeScript型チェック
 - デバッグツール: `/debug`ページで各種機能テスト可能
+  - `/debug/pipeline` - データパイプライン管理UI
 
 ## 主要機能
 1. **プロジェクト管理**: WBSベースのタスク階層管理
@@ -87,8 +88,195 @@
 3. **スケジューリング**: 週次計画とドラッグ&ドロップ
 4. **レポート**: 進捗と時間分析
 5. **同期機能**: オフライン対応とクラウド同期
+6. **データパイプライン**: DynamoDB → S3自動エクスポート
 
 ## Git運用
 - mainブランチ保護
 - 機能開発はfeature/*ブランチ
 - コミットメッセージは日本語可
+
+## データパイプラインアーキテクチャ
+
+### 概要
+個人創作者の生産性と健康データを統合分析するモダンデータスタック
+
+### アーキテクチャ構成
+```
+データソース → 取り込み → データレイク → 変換 → 分析 → サービング
+   ↓            ↓           ↓            ↓       ↓        ↓
+Multiple     Lambda        S3          dbt   DuckDB   Dashboard
+Sources      Functions                              
+```
+
+### データソース層
+
+#### 内部データソース
+- **ModerationCraft**: タスク、プロジェクト、作業セッション
+- **IndexedDB**: オフラインファーストデータ
+- **DynamoDB**: 同期済みクラウドデータ
+
+#### 外部データソース
+- **健康データ**
+  - Fitbit: 睡眠、心拍変動、活動量、ストレススコア
+  - Apple Health: iOS連携データ
+  - Google Fit: Android連携データ
+  
+- **環境データ**
+  - OpenWeatherMap: 気温、湿度、気圧、大気質
+  - 日照時間、UV指数
+  
+- **活動データ**
+  - Google Calendar: スケジュール、会議
+  - GitHub: コミット、PR活動
+  - Spotify: 作業中BGM、集中度指標
+
+### データレイク設計（S3）
+
+#### ディレクトリ構造
+```
+s3://moderation-craft-data/
+├── raw/                    # 生データ層（不変）
+│   ├── internal/           # 内部アプリデータ
+│   │   ├── dynamodb-exports/dt=YYYY-MM-DD/
+│   │   └── app-events/dt=YYYY-MM-DD/
+│   ├── external/           # 外部APIデータ
+│   │   ├── fitbit/
+│   │   │   ├── sleep/dt=YYYY-MM-DD/
+│   │   │   ├── activity/dt=YYYY-MM-DD/
+│   │   │   └── vitals/dt=YYYY-MM-DD/
+│   │   ├── weather/
+│   │   │   ├── hourly/dt=YYYY-MM-DD/
+│   │   │   └── daily/dt=YYYY-MM-DD/
+│   │   └── calendar/dt=YYYY-MM-DD/
+│   └── manual/             # 手動アップロード
+│       └── mood-journals/
+├── staging/                # 変換中間層
+│   ├── cleaned/           # クレンジング済み
+│   ├── standardized/      # 標準化済み
+│   └── unified/           # 統合済み
+├── gold/                  # 分析用データマート（ビジネス向け集計済み）
+│   ├── daily_summaries/   # 日次集計
+│   ├── weekly_reports/    # 週次レポート
+│   ├── correlations/      # 相関分析
+│   └── predictions/       # 予測モデル用
+└── ml/                    # 機械学習用
+    ├── features/          # 特徴量
+    ├── training/          # 学習用データセット
+    └── models/            # モデルアーティファクト
+```
+
+#### データフォーマット
+- **raw層**: JSON/CSV（元の形式を保持）
+- **staging層**: Parquet（圧縮・高速化）
+- **gold層**: Parquet/Delta Lake（ACID保証）
+
+### データ変換層（dbt）
+
+#### モデル階層
+1. **ステージング層**
+   - `stg_*`: 生データのクレンジング、型変換
+   - データ品質チェック、NULL処理
+   
+2. **中間層**
+   - `int_*`: ビジネスロジック適用
+   - データ統合、計算フィールド追加
+   
+3. **マート層**
+   - `mart_*`: 最終的な分析用テーブル
+   - 集計、ピボット、時系列処理
+
+#### 主要データモデル
+- `mart_productivity_daily`: 日次生産性指標
+- `mart_wellness_correlation`: 健康×生産性相関
+- `mart_environmental_impact`: 環境要因影響分析
+- `mart_predictive_features`: ML用特徴量
+
+### 分析エンジン（DuckDB）
+
+#### 採用理由
+- **高速**: カラムナストレージで分析クエリ最適化
+- **軽量**: サーバーレス、組み込み可能
+- **S3対応**: Parquetファイル直接クエリ
+- **WASM対応**: ブラウザ内実行可能
+
+#### 利用パターン
+1. **ローカル分析**: オフライン時の分析継続
+2. **エッジ分析**: CDNエッジでの前処理
+3. **バッチ分析**: 大規模集計処理
+4. **リアルタイム**: ストリーミングデータ処理
+
+### データ取り込みパイプライン
+
+#### Lambda Functions
+- `ingest-fitbit`: 日次健康データ取得（毎日午前2時）
+- `ingest-weather`: 日次天候データ取得（毎日午前3時）
+- `export-dynamodb`: 日次DynamoDBエクスポート（毎日午前1時）
+- `refresh-report-data`: オンデマンドデータ更新（レポート画面の更新ボタン）
+
+#### ワークフロー管理（Step Functions）
+```
+開始 → データ取得 → バリデーション → S3保存 → dbt実行 → 通知
+         ↓                ↓
+     リトライ         エラー処理
+```
+
+### データガバナンス
+
+#### データ品質管理
+- dbtテストによる自動検証
+- Great Expectationsによる期待値検証
+- データリネージの追跡
+- スキーマ進化の管理
+
+### 分析ユースケース
+
+#### 1. 生産性最適化
+- 最適作業時間帯の特定
+- 集中力パターン分析
+- タスク完了予測
+
+#### 2. 健康相関分析
+- 睡眠と生産性の相関
+- 運動と創造性の関係
+- ストレスと品質の影響
+
+#### 3. 環境影響分析
+- 天候と気分の関係
+- 気圧と集中力
+- 季節性パターン
+
+#### 4. パーソナライズド推奨
+- 個人別最適スケジュール
+- 休憩タイミング提案
+- 健康改善アドバイス
+
+### 実装フェーズ
+
+#### Phase 1: 基盤構築（2週間）✅ 完了
+- ✅ S3バケット設定
+- ✅ 基本Lambda関数
+- ✅ DynamoDB → S3エクスポート
+- ✅ アプリケーション統合（デバッグUI）
+
+#### Phase 2: 外部連携（3週間）
+- Fitbit API統合
+- 天候API統合
+- データ標準化処理
+
+#### Phase 3: 分析基盤（3週間）
+- dbtプロジェクト構築
+- 基本マート作成
+- DuckDB統合
+
+#### Phase 4: 高度な分析（4週間）
+- 相関分析実装
+- 予測モデル構築
+- ダッシュボード開発
+
+### 技術スタック拡張
+- **データレイク**: AWS S3
+- **データ変換**: dbt Core
+- **分析DB**: DuckDB (WASM)
+- **オーケストレーション**: AWS Step Functions
+- **モニタリング**: CloudWatch
+- **ML**: Hugging Face

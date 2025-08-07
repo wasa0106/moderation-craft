@@ -88,6 +88,49 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     }
   }
 
+  /**
+   * プル同期からの更新専用メソッド
+   * 通常のupdateと異なり：
+   * - updated_atを上書きしない（クラウドの値をそのまま使用）
+   * - 同期キューに追加しない（既にクラウドに存在するため）
+   */
+  async updateFromPullSync(id: string, cloudData: Partial<T>): Promise<T> {
+    try {
+      // クラウドデータをそのまま使用（updated_atの上書きなし）
+      const updateData = {
+        ...cloudData,
+        // created_atとidは更新しない
+      }
+      delete (updateData as any).id
+      delete (updateData as any).created_at
+
+      const result = await this.table.update(id, updateData as any)
+
+      if (result === 0) {
+        throw new Error(`${this.entityType} with ID ${id} not found`)
+      }
+
+      const updatedEntity = await this.table.get(id)
+      if (!updatedEntity) {
+        throw new Error(`Failed to retrieve updated ${this.entityType}`)
+      }
+
+      // プル同期からの更新は同期キューに追加しない
+      const { syncLogger } = await import('@/lib/utils/logger')
+      syncLogger.info('✅ Updated entity from pull sync (skip sync queue):', {
+        entityType: this.entityType,
+        entityId: id,
+        entityName: (updatedEntity as any).name || (updatedEntity as any).title || 'N/A',
+        cloudUpdatedAt: cloudData.updated_at,
+        localUpdatedAt: updatedEntity.updated_at,
+      })
+
+      return updatedEntity
+    } catch (error) {
+      throw new Error(`Failed to update ${this.entityType} from pull sync: ${error}`)
+    }
+  }
+
   async getById(id: string): Promise<T | undefined> {
     try {
       return await this.table.get(id)

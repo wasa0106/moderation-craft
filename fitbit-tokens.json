@@ -1,0 +1,8 @@
+{
+  "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIyM1FRQzIiLCJzdWIiOiJCR1BHQ1IiLCJpc3MiOiJGaXRiaXQiLCJ0eXAiOiJhY2Nlc3NfdG9rZW4iLCJzY29wZXMiOiJ3aHIgd3NsZSB3YWN0IiwiZXhwIjoxNzU0NDg3MDE1LCJpYXQiOjE3NTQ0NTgyMTV9.oSHk1bgJCDuDToAUov9uLWEhixOmZlOc5xrABCAAzfs",
+  "expires_in": 28800,
+  "refresh_token": "81706cdd5ed6317aa7f468f09977d23d9a0c6e7f8c1de5166df05fcd170a65f7",
+  "scope": "heartrate sleep activity",
+  "token_type": "Bearer",
+  "user_id": "BGPGCR"
+}

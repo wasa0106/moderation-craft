@@ -39,7 +39,7 @@ export class PullSyncService {
     const syncStore = useSyncStore.getState()
 
     try {
-      syncLogger.info('プル同期を開始します')
+      syncLogger.info('🔽 プル同期を開始します（無限ループ対策済み）')
 
       // APIからデータを取得
       const apiUrl = `/api/sync/pull?userId=${userId}`
@@ -129,11 +129,22 @@ export class PullSyncService {
         })
         syncLogger.debug('新規プロジェクトを作成:', cloudProject.id)
       } else if (new Date(cloudProject.updated_at) > new Date(localProject.updated_at)) {
-        // クラウドの方が新しい → 更新
-        await projectRepository.update(cloudProject.id, cloudProject)
-        syncLogger.debug('プロジェクトを更新:', cloudProject.id)
+        // クラウドの方が新しい → 更新（プル同期専用メソッドを使用）
+        syncLogger.info('🔄 Updating project from cloud (preventing sync loop):', {
+          cloudId: cloudProject.id,
+          cloudUpdatedAt: cloudProject.updated_at,
+          localUpdatedAt: localProject.updated_at,
+          cloudName: cloudProject.name,
+        })
+        await projectRepository.updateFromPullSync(cloudProject.id, cloudProject)
+        syncLogger.debug('プロジェクトを更新（プル同期）:', cloudProject.id)
+      } else {
+        syncLogger.debug('⏭️ Skipping project update (local is newer or same):', {
+          cloudId: cloudProject.id,
+          cloudUpdatedAt: cloudProject.updated_at,
+          localUpdatedAt: localProject.updated_at,
+        })
       }
-      // ローカルの方が新しい場合は何もしない（次回のプッシュ同期で反映される）
     }
 
     // BigTaskのマージ
@@ -154,8 +165,21 @@ export class PullSyncService {
         })
         syncLogger.debug('新規BigTaskを作成:', cloudBigTask.id)
       } else if (new Date(cloudBigTask.updated_at) > new Date(localBigTask.updated_at)) {
-        await bigTaskRepository.update(cloudBigTask.id, cloudBigTask)
-        syncLogger.debug('BigTaskを更新:', cloudBigTask.id)
+        // クラウドの方が新しい → 更新（プル同期専用メソッドを使用）
+        syncLogger.info('🔄 Updating BigTask from cloud (preventing sync loop):', {
+          cloudId: cloudBigTask.id,
+          cloudUpdatedAt: cloudBigTask.updated_at,
+          localUpdatedAt: localBigTask.updated_at,
+          cloudTitle: cloudBigTask.title,
+        })
+        await bigTaskRepository.updateFromPullSync(cloudBigTask.id, cloudBigTask)
+        syncLogger.debug('BigTaskを更新（プル同期）:', cloudBigTask.id)
+      } else {
+        syncLogger.debug('⏭️ Skipping BigTask update (local is newer or same):', {
+          cloudId: cloudBigTask.id,
+          cloudUpdatedAt: cloudBigTask.updated_at,
+          localUpdatedAt: localBigTask.updated_at,
+        })
       }
     }
 
@@ -177,8 +201,21 @@ export class PullSyncService {
         })
         syncLogger.debug('新規SmallTaskを作成:', cloudSmallTask.id)
       } else if (new Date(cloudSmallTask.updated_at) > new Date(localSmallTask.updated_at)) {
-        await smallTaskRepository.update(cloudSmallTask.id, cloudSmallTask)
-        syncLogger.debug('SmallTaskを更新:', cloudSmallTask.id)
+        // クラウドの方が新しい → 更新（プル同期専用メソッドを使用）
+        syncLogger.info('🔄 Updating SmallTask from cloud (preventing sync loop):', {
+          cloudId: cloudSmallTask.id,
+          cloudUpdatedAt: cloudSmallTask.updated_at,
+          localUpdatedAt: localSmallTask.updated_at,
+          cloudTitle: cloudSmallTask.title,
+        })
+        await smallTaskRepository.updateFromPullSync(cloudSmallTask.id, cloudSmallTask)
+        syncLogger.debug('SmallTaskを更新（プル同期）:', cloudSmallTask.id)
+      } else {
+        syncLogger.debug('⏭️ Skipping SmallTask update (local is newer or same):', {
+          cloudId: cloudSmallTask.id,
+          cloudUpdatedAt: cloudSmallTask.updated_at,
+          localUpdatedAt: localSmallTask.updated_at,
+        })
       }
     }
 
