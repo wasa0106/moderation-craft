@@ -5,17 +5,18 @@
  * Fitbitなどの外部サービスとの連携を管理します
  */
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { fitbitAuth } from '@/lib/fitbit/auth';
-import type { FitbitAuthState, FitbitTokenResponse } from '@/lib/fitbit/types';
+import type { FitbitAuthState } from '@/lib/fitbit/types';
 import { Activity, Heart, Moon, RefreshCw, Unlink, Link2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
-export default function IntegrationsPage() {
+// メインコンテンツを別コンポーネントに分離
+function IntegrationsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [authState, setAuthState] = useState<FitbitAuthState>({ isAuthenticated: false });
@@ -333,5 +334,20 @@ export default function IntegrationsPage() {
         </CardHeader>
       </Card>
     </div>
+  );
+}
+
+// Suspense境界でラップしたメインコンポーネント
+export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+        <div className="flex items-center justify-center py-8">
+          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    }>
+      <IntegrationsPageContent />
+    </Suspense>
   );
 }
