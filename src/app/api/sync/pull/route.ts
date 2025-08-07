@@ -77,6 +77,9 @@ export async function GET(request: NextRequest) {
       projects: data.projects.length,
       bigTasks: data.bigTasks.length,
       smallTasks: data.smallTasks.length,
+      workSessions: data.workSessions.length,
+      moodEntries: data.moodEntries.length,
+      dopamineEntries: data.dopamineEntries.length,
       total: result.Items?.length || 0,
     })
 

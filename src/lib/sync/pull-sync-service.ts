@@ -70,9 +70,12 @@ export class PullSyncService {
       }
 
       syncLogger.info('クラウドからデータを取得しました:', {
-        projects: result.data.projects.length,
-        bigTasks: result.data.bigTasks.length,
-        smallTasks: result.data.smallTasks.length,
+        projects: result.data.projects?.length || 0,
+        bigTasks: result.data.bigTasks?.length || 0,
+        smallTasks: result.data.smallTasks?.length || 0,
+        workSessions: result.data.workSessions?.length || 0,
+        moodEntries: result.data.moodEntries?.length || 0,
+        dopamineEntries: result.data.dopamineEntries?.length || 0,
       })
 
       // データをIndexedDBに反映（競合解決：最新を優先）
@@ -215,6 +218,111 @@ export class PullSyncService {
           cloudId: cloudSmallTask.id,
           cloudUpdatedAt: cloudSmallTask.updated_at,
           localUpdatedAt: localSmallTask.updated_at,
+        })
+      }
+    }
+
+    // WorkSessionのマージ
+    for (const cloudWorkSession of cloudData.workSessions || []) {
+      const localWorkSession = await workSessionRepository.getById(cloudWorkSession.id)
+
+      if (!localWorkSession) {
+        syncLogger.info('🔍 Creating new WorkSession from cloud:', {
+          cloudId: cloudWorkSession.id,
+          cloudUpdatedAt: cloudWorkSession.updated_at,
+          taskId: cloudWorkSession.small_task_id,
+        })
+        const created = await workSessionRepository.createWithId(cloudWorkSession)
+        syncLogger.info('✅ Created WorkSession with ID:', {
+          id: created.id,
+          taskId: created.small_task_id,
+          fromCloud: true,
+        })
+        syncLogger.debug('新規WorkSessionを作成:', cloudWorkSession.id)
+      } else if (new Date(cloudWorkSession.updated_at) > new Date(localWorkSession.updated_at)) {
+        // クラウドの方が新しい → 更新（プル同期専用メソッドを使用）
+        syncLogger.info('🔄 Updating WorkSession from cloud (preventing sync loop):', {
+          cloudId: cloudWorkSession.id,
+          cloudUpdatedAt: cloudWorkSession.updated_at,
+          localUpdatedAt: localWorkSession.updated_at,
+        })
+        await workSessionRepository.updateFromPullSync(cloudWorkSession.id, cloudWorkSession)
+        syncLogger.debug('WorkSessionを更新（プル同期）:', cloudWorkSession.id)
+      } else {
+        syncLogger.debug('⏭️ Skipping WorkSession update (local is newer or same):', {
+          cloudId: cloudWorkSession.id,
+          cloudUpdatedAt: cloudWorkSession.updated_at,
+          localUpdatedAt: localWorkSession.updated_at,
+        })
+      }
+    }
+
+    // MoodEntryのマージ
+    for (const cloudMoodEntry of cloudData.moodEntries || []) {
+      const localMoodEntry = await moodEntryRepository.getById(cloudMoodEntry.id)
+
+      if (!localMoodEntry) {
+        syncLogger.info('🔍 Creating new MoodEntry from cloud:', {
+          cloudId: cloudMoodEntry.id,
+          cloudUpdatedAt: cloudMoodEntry.updated_at,
+          mood: cloudMoodEntry.mood,
+        })
+        const created = await moodEntryRepository.createWithId(cloudMoodEntry)
+        syncLogger.info('✅ Created MoodEntry with ID:', {
+          id: created.id,
+          mood: created.mood,
+          fromCloud: true,
+        })
+        syncLogger.debug('新規MoodEntryを作成:', cloudMoodEntry.id)
+      } else if (new Date(cloudMoodEntry.updated_at) > new Date(localMoodEntry.updated_at)) {
+        // クラウドの方が新しい → 更新（プル同期専用メソッドを使用）
+        syncLogger.info('🔄 Updating MoodEntry from cloud (preventing sync loop):', {
+          cloudId: cloudMoodEntry.id,
+          cloudUpdatedAt: cloudMoodEntry.updated_at,
+          localUpdatedAt: localMoodEntry.updated_at,
+        })
+        await moodEntryRepository.updateFromPullSync(cloudMoodEntry.id, cloudMoodEntry)
+        syncLogger.debug('MoodEntryを更新（プル同期）:', cloudMoodEntry.id)
+      } else {
+        syncLogger.debug('⏭️ Skipping MoodEntry update (local is newer or same):', {
+          cloudId: cloudMoodEntry.id,
+          cloudUpdatedAt: cloudMoodEntry.updated_at,
+          localUpdatedAt: localMoodEntry.updated_at,
+        })
+      }
+    }
+
+    // DopamineEntryのマージ
+    for (const cloudDopamineEntry of cloudData.dopamineEntries || []) {
+      const localDopamineEntry = await dopamineEntryRepository.getById(cloudDopamineEntry.id)
+
+      if (!localDopamineEntry) {
+        syncLogger.info('🔍 Creating new DopamineEntry from cloud:', {
+          cloudId: cloudDopamineEntry.id,
+          cloudUpdatedAt: cloudDopamineEntry.updated_at,
+          activity: cloudDopamineEntry.activity,
+        })
+        const created = await dopamineEntryRepository.createWithId(cloudDopamineEntry)
+        syncLogger.info('✅ Created DopamineEntry with ID:', {
+          id: created.id,
+          activity: created.activity,
+          fromCloud: true,
+        })
+        syncLogger.debug('新規DopamineEntryを作成:', cloudDopamineEntry.id)
+      } else if (new Date(cloudDopamineEntry.updated_at) > new Date(localDopamineEntry.updated_at)) {
+        // クラウドの方が新しい → 更新（プル同期専用メソッドを使用）
+        syncLogger.info('🔄 Updating DopamineEntry from cloud (preventing sync loop):', {
+          cloudId: cloudDopamineEntry.id,
+          cloudUpdatedAt: cloudDopamineEntry.updated_at,
+          localUpdatedAt: localDopamineEntry.updated_at,
+        })
+        await dopamineEntryRepository.updateFromPullSync(cloudDopamineEntry.id, cloudDopamineEntry)
+        syncLogger.debug('DopamineEntryを更新（プル同期）:', cloudDopamineEntry.id)
+      } else {
+        syncLogger.debug('⏭️ Skipping DopamineEntry update (local is newer or same):', {
+          cloudId: cloudDopamineEntry.id,
+          cloudUpdatedAt: cloudDopamineEntry.updated_at,
+          localUpdatedAt: localDopamineEntry.updated_at,
         })
       }
     }
