@@ -508,7 +508,7 @@ export default function AllEntitiesTestPage() {
                           <p className="text-sm text-muted-foreground">
                             {new Date(entry.timestamp).toLocaleString('ja-JP')}
                           </p>
-                          {entry.notes && <p className="text-sm">{entry.notes}</p>}
+                          {'notes' in entry && (entry as any).notes && <p className="text-sm">{(entry as any).notes}</p>}
                         </div>
                         <Button
                           onClick={() => addToQueue('mood_entry', entry)}
@@ -543,7 +543,7 @@ export default function AllEntitiesTestPage() {
                           <p className="text-sm text-muted-foreground">
                             {new Date(entry.timestamp).toLocaleString('ja-JP')}
                           </p>
-                          {entry.notes && <p className="text-sm">{entry.notes}</p>}
+                          {'notes' in entry && (entry as any).notes && <p className="text-sm">{(entry as any).notes}</p>}
                         </div>
                         <Button
                           onClick={() => addToQueue('dopamine_entry', entry)}

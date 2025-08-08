@@ -106,8 +106,8 @@ export function generateRecurringTasks(
   const parentTaskId = crypto.randomUUID()
   
   // 開始日時と終了日時を取得
-  const startDateTime = parseISO(baseTask.scheduled_start)
-  const endDateTime = parseISO(baseTask.scheduled_end)
+  const startDateTime = parseISO(baseTask.scheduled_start as string)
+  const endDateTime = parseISO(baseTask.scheduled_end as string)
   const duration = endDateTime.getTime() - startDateTime.getTime()
   
   // 開始日を設定

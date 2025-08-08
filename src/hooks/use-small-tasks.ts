@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { smallTaskRepository } from '@/lib/db/repositories'
 import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
-import { SmallTask, CreateSmallTaskData, UpdateSmallTaskData } from '@/types'
+import { SmallTask, CreateSmallTaskData, UpdateSmallTaskData, RecurrencePattern } from '@/types'
 import { db } from '@/lib/db/database'
 import { generateRecurringTasks } from '@/lib/utils/recurrence-utils'
 
@@ -111,7 +111,14 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
         })
         
         // 繰り返しタスクを生成
-        const recurringTasks = generateRecurringTasks(data, data.recurrence_pattern!)
+        const recurringTasks = data.recurrence_pattern && 
+          typeof data.recurrence_pattern === 'object' &&
+          'type' in data.recurrence_pattern && 
+          'interval' in data.recurrence_pattern &&
+          'start_date' in data.recurrence_pattern &&
+          'end_condition' in data.recurrence_pattern
+          ? generateRecurringTasks(data, data.recurrence_pattern as RecurrencePattern)
+          : []
         
         // 子タスクをバッチ作成
         const createdTasks = []
