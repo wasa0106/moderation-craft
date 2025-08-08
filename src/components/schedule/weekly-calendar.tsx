@@ -158,8 +158,9 @@ function DraggableScheduledTask({
 }) {
   const [isResizing, setIsResizing] = useState(false)
   const [resizeHeight, setResizeHeight] = useState(slots * 12)
+  const [resizeOffset, setResizeOffset] = useState(0)
   const [isOverResizeHandle, setIsOverResizeHandle] = useState(false)
-  const resizeStartRef = useRef<{ y: number; height: number } | null>(null)
+  const resizeStartRef = useRef<{ y: number; height: number; position: 'top' | 'bottom'; originalStart: Date; originalEnd: Date } | null>(null)
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.taskId,
@@ -193,6 +194,9 @@ function DraggableScheduledTask({
     resizeStartRef.current = {
       y: e.clientY,
       height: slots * 12,
+      position: position,
+      originalStart: new Date(taskStart),
+      originalEnd: new Date(taskEnd),
     }
   }
 
@@ -204,19 +208,31 @@ function DraggableScheduledTask({
       if (!resizeStartRef.current) return
       
       const deltaY = e.clientY - resizeStartRef.current.y
-      const rawHeight = resizeStartRef.current.height + deltaY
-      
-      // 15分単位（12px）にスナップ
       const slotHeight = 12
       const minHeight = slotHeight // 最小1スロット
-      const snappedHeight = Math.max(minHeight, Math.round(rawHeight / slotHeight) * slotHeight)
       
-      setResizeHeight(snappedHeight)
+      if (resizeStartRef.current.position === 'top') {
+        // 上辺のリサイズ: 高さを逆方向に調整し、位置もオフセット
+        const rawHeight = resizeStartRef.current.height - deltaY
+        const snappedHeight = Math.max(minHeight, Math.round(rawHeight / slotHeight) * slotHeight)
+        const snappedDelta = Math.round(deltaY / slotHeight) * slotHeight
+        
+        setResizeHeight(snappedHeight)
+        setResizeOffset(snappedDelta)
+      } else {
+        // 下辺のリサイズ: 従来通り
+        const rawHeight = resizeStartRef.current.height + deltaY
+        const snappedHeight = Math.max(minHeight, Math.round(rawHeight / slotHeight) * slotHeight)
+        
+        setResizeHeight(snappedHeight)
+        setResizeOffset(0)
+      }
     }
 
     const handleMouseUp = async () => {
       if (!resizeStartRef.current || !onUpdateTask) {
         setIsResizing(false)
+        setResizeOffset(0)
         return
       }
 
@@ -224,20 +240,38 @@ function DraggableScheduledTask({
       const newSlots = Math.round(resizeHeight / 12)
       const newDurationMinutes = newSlots * 15
       
-      // Calculate new end time
-      const newEndTime = new Date(taskStart)
-      newEndTime.setMinutes(newEndTime.getMinutes() + newDurationMinutes)
+      if (resizeStartRef.current.position === 'top') {
+        // 上辺のリサイズ: 開始時間を変更、終了時間は固定
+        const offsetMinutes = Math.round(resizeOffset / 12) * 15
+        const newStartTime = new Date(resizeStartRef.current.originalStart)
+        newStartTime.setMinutes(newStartTime.getMinutes() + offsetMinutes)
+        
+        // Update task
+        await onUpdateTask({
+          id: block.taskId,
+          data: {
+            estimated_minutes: newDurationMinutes,
+            scheduled_start: newStartTime.toISOString(),
+            scheduled_end: resizeStartRef.current.originalEnd.toISOString(),
+          }
+        })
+      } else {
+        // 下辺のリサイズ: 開始時間は固定、終了時間を変更
+        const newEndTime = new Date(taskStart)
+        newEndTime.setMinutes(newEndTime.getMinutes() + newDurationMinutes)
 
-      // Update task
-      await onUpdateTask({
-        id: block.taskId,
-        data: {
-          estimated_minutes: newDurationMinutes,
-          scheduled_end: newEndTime.toISOString(),
-        }
-      })
+        // Update task
+        await onUpdateTask({
+          id: block.taskId,
+          data: {
+            estimated_minutes: newDurationMinutes,
+            scheduled_end: newEndTime.toISOString(),
+          }
+        })
+      }
 
       setIsResizing(false)
+      setResizeOffset(0)
       resizeStartRef.current = null
     }
 
@@ -248,12 +282,12 @@ function DraggableScheduledTask({
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, resizeHeight, taskStart, block.taskId, onUpdateTask])
+  }, [isResizing, resizeHeight, resizeOffset, taskStart, block.taskId, onUpdateTask])
 
   const style = {
     transform: getSnappedTransform() || 'none',
     opacity: isDragging ? 0.5 : 1,
-    top: `${(taskMinute / 15) * 12}px`,
+    top: isResizing ? `${(taskMinute / 15) * 12 + resizeOffset}px` : `${(taskMinute / 15) * 12}px`,
     height: isResizing ? `${resizeHeight}px` : `${slots * 12}px`,
     ...(blockProject?.color ? { backgroundColor: blockProject.color } : {}),
     // スナップ動作を視覚的に表現
@@ -288,7 +322,7 @@ function DraggableScheduledTask({
     >
       {/* Top resize handle */}
       <div
-        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-primary/20"
+        className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-primary/20"
         onMouseDown={e => handleResizeStart(e, 'top')}
         onMouseEnter={() => setIsOverResizeHandle(true)}
         onMouseLeave={() => setIsOverResizeHandle(false)}
@@ -296,7 +330,7 @@ function DraggableScheduledTask({
       
       {/* Bottom resize handle */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-primary/20"
+        className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-primary/20"
         onMouseDown={e => handleResizeStart(e, 'bottom')}
         onMouseEnter={() => setIsOverResizeHandle(true)}
         onMouseLeave={() => setIsOverResizeHandle(false)}
