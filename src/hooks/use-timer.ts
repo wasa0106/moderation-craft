@@ -88,7 +88,7 @@ export function useTimer(userId: string) {
 
   // End timer mutation
   const endTimerMutation = useMutation({
-    mutationFn: async (data?: { focusLevel?: number }) => {
+    mutationFn: async (data?: { focusLevel?: number; workNotes?: string }) => {
       const { activeSession, focusLevel, moodNotes } = timerStore
       if (!activeSession) {
         throw new Error('No active session')
@@ -98,7 +98,8 @@ export function useTimer(userId: string) {
       const session = await workSessionRepository.endSession(
         activeSession.id,
         undefined,
-        finalFocusLevel || undefined
+        finalFocusLevel || undefined,
+        data?.workNotes
       )
 
       // セッションが削除された場合（2分以下）

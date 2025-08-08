@@ -74,7 +74,7 @@ export default function ReportsPage() {
   })
 
   const filteredSmallTasks = smallTasks.filter(task => {
-    // ルーチンタスクはレポートから除外
+    // フリータスクはレポートから除外
     if (task.task_type === 'routine' || task.is_reportable === false) return false
 
     const bigTask = bigTasks.find(bt => bt.id === task.big_task_id)

@@ -10,6 +10,7 @@ import { useTimer } from '@/hooks/use-timer'
 import { useTimerStore } from '@/stores/timer-store'
 import { useSmallTasksByDateRange, useCreateSmallTask } from '@/hooks/use-small-tasks'
 import { useProjects } from '@/hooks/use-projects'
+import { useBigTasks } from '@/hooks/use-big-tasks'
 import { SmallTask, Project, WorkSession } from '@/types'
 import { workSessionRepository } from '@/lib/db/repositories'
 import { MoodDialog } from '@/components/timer/mood-dialog'
@@ -20,12 +21,15 @@ import { CombinedScheduleView } from '@/components/timer/combined-schedule-view'
 import { WorkProgressCard } from '@/components/timer/work-progress-card'
 import { TimerTaskDisplay, TimerTaskDisplayRef } from '@/components/timer/timer-task-display'
 import { TimerControls } from '@/components/timer/timer-controls'
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { format, addDays, subDays, isToday } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { dopamineEntryRepository, moodEntryRepository } from '@/lib/db/repositories'
+import { DopamineEntry, MoodEntry } from '@/types'
 
 export default function TimerPage() {
   const { projects } = useProjects('current-user')
+  const { bigTasks } = useBigTasks('current-user')
   const { startTimer, endTimer } = useTimer('current-user')
 
   const { isRunning, activeSession, currentTask, setCurrentTask, setCurrentProject } =
@@ -37,6 +41,9 @@ export default function TimerPage() {
   const [todaySessions, setTodaySessions] = useState<WorkSession[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showUnplannedDialog, setShowUnplannedDialog] = useState(false)
+  const [unplannedTaskName, setUnplannedTaskName] = useState('')
+  const [dopamineEntries, setDopamineEntries] = useState<DopamineEntry[]>([])
+  const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([])
   const timerTaskDisplayRef = useRef<TimerTaskDisplayRef>(null)
 
   // Initialize selectedDate on client side
@@ -44,7 +51,7 @@ export default function TimerPage() {
     if (!selectedDate) {
       setSelectedDate(new Date())
     }
-  }, [])
+  }, [selectedDate])
 
   // 日付範囲を計算（選択日の前後7日間のタスクを取得）
   const startDate = selectedDate ? subDays(selectedDate, 7) : new Date()
@@ -59,6 +66,42 @@ export default function TimerPage() {
 
   // タスク作成フック
   const { createSmallTask } = useCreateSmallTask('current-user')
+
+  // 記録データを取得する関数
+  const fetchRecords = useCallback(async () => {
+    if (!selectedDate) return
+    
+    const dateStr = format(selectedDate, 'yyyy-MM-dd')
+    const startOfDay = new Date(dateStr)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(dateStr)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    try {
+      // Fetch dopamine entries
+      const dopamineData = await dopamineEntryRepository.getByDateRange(
+        'current-user',
+        startOfDay.toISOString(),
+        endOfDay.toISOString()
+      )
+      setDopamineEntries(dopamineData)
+
+      // Fetch mood entries
+      const moodData = await moodEntryRepository.getByDateRange(
+        'current-user',
+        startOfDay.toISOString(),
+        endOfDay.toISOString()
+      )
+      setMoodEntries(moodData)
+    } catch (error) {
+      console.error('Failed to fetch records:', error)
+    }
+  }, [selectedDate])
+
+  // 選択日が変更されたときに記録データを取得
+  useEffect(() => {
+    fetchRecords()
+  }, [fetchRecords])
 
   // loadSessions関数を定義
   const loadSessions = useCallback(async () => {
@@ -125,11 +168,14 @@ export default function TimerPage() {
   }
 
   const handleStartTimer = (task?: SmallTask, taskDescription?: string) => {
-    if (task) {
-      const project = getProjectForTask(task)
-      setCurrentTask(task)
+    // タスクが渡されるか、currentTaskがある場合
+    const taskToStart = task || currentTask
+    
+    if (taskToStart) {
+      const project = getProjectForTask(taskToStart)
+      setCurrentTask(taskToStart)
       setCurrentProject(project || null)
-      startTimer({ taskId: task.id })
+      startTimer({ taskId: taskToStart.id })
     } else if (taskDescription) {
       // 計画外タスクの場合
       setCurrentTask(null)
@@ -148,16 +194,19 @@ export default function TimerPage() {
   }
 
   const handleStopTimer = () => {
-    // 集中度ダイアログを表示せずに直接停止する場合は以下のコメントを外す
-    // endTimer()
-    // return
+    // 経過時間が2分（120秒）以下、またはフリータスクの場合はダイアログを表示せずに終了
+    const { elapsedTime } = useTimerStore.getState()
+    if (elapsedTime <= 120 || currentTask?.task_type === 'routine') {
+      endTimer({})
+      return
+    }
 
-    // 集中度ダイアログを表示する場合
+    // プロジェクトタスクで2分を超える場合のみ集中度ダイアログを表示
     setShowFocusDialog(true)
   }
 
-  const handleFocusSubmit = (focusLevel: number) => {
-    endTimer({ focusLevel })
+  const handleFocusSubmit = (focusLevel: number, workNotes?: string) => {
+    endTimer({ focusLevel, workNotes })
     setShowFocusDialog(false)
 
     // タスク選択をクリア
@@ -178,6 +227,7 @@ export default function TimerPage() {
       // 緊急SmallTaskを作成
       const smallTask = await createSmallTask({
         project_id: taskData.projectId,
+        big_task_id: taskData.bigTaskId,
         user_id: 'current-user',
         name: taskData.name,
         estimated_minutes: 30,
@@ -206,7 +256,10 @@ export default function TimerPage() {
                 smallTasks={smallTasks}
                 projects={projects}
                 dayTasks={dayTasks}
-                onUnplannedTaskClick={() => setShowUnplannedDialog(true)}
+                onUnplannedTaskClick={(taskName?: string) => {
+                  setUnplannedTaskName(taskName || '')
+                  setShowUnplannedDialog(true)
+                }}
                 onTaskChange={async task => {
                   if (isRunning && activeSession && task) {
                     await workSessionRepository.update(activeSession.id, {
@@ -214,6 +267,10 @@ export default function TimerPage() {
                     })
                     await loadSessions()
                   }
+                }}
+                onTaskSelect={task => {
+                  // タスク選択時にWorkSessionを開始
+                  handleStartTimer(task)
                 }}
               />
             </div>
@@ -235,7 +292,7 @@ export default function TimerPage() {
         <div className="overflow-hidden bg-surface-1 shadow-surface-1 border border-border h-[650px]">
           <div style={{ height: '650px', position: 'relative' }}>
             <CombinedScheduleView
-              tasks={dayTasks}
+              tasks={smallTasks}
               sessions={todaySessions}
               projects={projects}
               currentTaskId={currentTask?.id}
@@ -251,6 +308,9 @@ export default function TimerPage() {
               }}
               date={selectedDate || new Date()}
               userId="current-user"
+              dopamineEntries={dopamineEntries}
+              moodEntries={moodEntries}
+              onRecordsUpdate={fetchRecords}
             />
           </div>
         </div>
@@ -286,8 +346,9 @@ export default function TimerPage() {
             </div>
           </div>
 
+          {/* プロジェクトタスクのみ（ルーティンタスクを除外） */}
           <WorkProgressCard
-            dayTasks={dayTasks}
+            dayTasks={dayTasks.filter(task => task.task_type !== 'routine')}
             todaySessions={todaySessions}
             projects={projects}
             selectedDate={selectedDate || new Date()}
@@ -296,12 +357,18 @@ export default function TimerPage() {
       </div>
 
       {/* ダイアログ */}
-      <MoodDialog open={showMoodDialog} onOpenChange={setShowMoodDialog} userId="current-user" />
+      <MoodDialog 
+        open={showMoodDialog} 
+        onOpenChange={setShowMoodDialog} 
+        userId="current-user" 
+        onSuccess={fetchRecords}
+      />
 
       <DopamineDialog
         open={showDopamineDialog}
         onOpenChange={setShowDopamineDialog}
         userId="current-user"
+        onSuccess={fetchRecords}
       />
 
       <FocusDialog
@@ -312,9 +379,16 @@ export default function TimerPage() {
 
       <UnplannedTaskDialog
         open={showUnplannedDialog}
-        onOpenChange={setShowUnplannedDialog}
+        onOpenChange={(open) => {
+          setShowUnplannedDialog(open)
+          if (!open) {
+            setUnplannedTaskName('')  // ダイアログが閉じた時にクリア
+          }
+        }}
         onConfirm={handleUnplannedTaskConfirm}
         projects={projects}
+        bigTasks={bigTasks}
+        initialTaskName={unplannedTaskName}
       />
     </div>
   )

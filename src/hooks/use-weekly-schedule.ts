@@ -37,9 +37,14 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     weekEndStr
   )
 
-  // 作成・更新・削除用のフック
-  const { createSmallTask, updateSmallTask, deleteSmallTask, rescheduleTask } =
-    useSmallTasks(userId)
+  // 作成・更新・削除用のフック（繰り返しタスク対応を含む）
+  const { 
+    createSmallTask, 
+    updateSmallTask, 
+    deleteSmallTask, 
+    rescheduleTask,
+    deleteRecurringTasks 
+  } = useSmallTasks(userId)
 
   // Also get all small tasks for progress calculation
   const { smallTasks: allSmallTasks } = useSmallTasks(userId)
@@ -113,6 +118,7 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
               task.project_id || '',
               activeProjects.findIndex(p => p.id === task.project_id)
             ),
+          isRecurring: !!task.recurrence_parent_id || !!task.recurrence_enabled,
         }
       })
   }, [weekTasks, projects, bigTasks, activeProjects])
@@ -177,6 +183,7 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     createSmallTask,
     updateSmallTask,
     deleteSmallTask,
+    deleteRecurringTasks,
     scheduleTask,
     unscheduleTask,
   }

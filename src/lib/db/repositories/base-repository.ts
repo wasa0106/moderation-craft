@@ -26,6 +26,18 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
       ...timestamps,
     } as T
 
+    // 繰り返しタスク関連フィールドのデバッグログ
+    if (this.entityType === 'small_task') {
+      const smallTask = entity as any
+      console.log('🔍 Creating SmallTask with recurrence fields:', {
+        name: smallTask.name,
+        id: smallTask.id,
+        recurrence_enabled: smallTask.recurrence_enabled,
+        recurrence_pattern: smallTask.recurrence_pattern,
+        recurrence_parent_id: smallTask.recurrence_parent_id,
+      })
+    }
+
     try {
       await this.table.add(entity)
 

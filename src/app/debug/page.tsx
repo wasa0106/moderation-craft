@@ -84,6 +84,49 @@ export default function DebugPage() {
       </div>
 
       <div className="mb-6 p-4 bg-card rounded-lg border border-border">
+        <h2 className="text-xl font-semibold mb-2">今週のSmallTasks ({weekSmallTasks.length}件)</h2>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {weekSmallTasks.map((task, index) => (
+            <div key={task.id} className="p-3 bg-muted rounded border border-border">
+              <p className="font-semibold">
+                {index + 1}. {task.name}
+              </p>
+              <div className="text-sm mt-1 space-y-1">
+                <p>ID: {task.id}</p>
+                <p>プロジェクトID: {task.project_id}</p>
+                <p>タスクタイプ: {task.task_type || 'なし'}</p>
+                <p>予定: {task.scheduled_start} 〜 {task.scheduled_end}</p>
+                
+                {/* 繰り返し設定の詳細表示 */}
+                <div className="mt-2 p-2 bg-background rounded">
+                  <p className="font-semibold text-primary">繰り返し設定:</p>
+                  <p>recurrence_enabled: <span className={task.recurrence_enabled ? 'text-green-600' : 'text-muted-foreground'}>{String(task.recurrence_enabled)}</span></p>
+                  <p>recurrence_parent_id: <span className={task.recurrence_parent_id ? 'text-blue-600' : 'text-muted-foreground'}>{task.recurrence_parent_id || 'なし'}</span></p>
+                  <p>recurrence_pattern: <span className={task.recurrence_pattern ? 'text-purple-600' : 'text-muted-foreground'}>
+                    {task.recurrence_pattern ? JSON.stringify(task.recurrence_pattern, null, 2) : 'なし'}
+                  </span></p>
+                  <p>is_reportable: {String(task.is_reportable)}</p>
+                  
+                  {/* 繰り返しタスクの判定結果 */}
+                  <div className="mt-1 p-1 rounded bg-muted">
+                    <p className="text-xs">
+                      判定ロジック結果: 
+                      <span className="font-bold ml-2">
+                        {!!(task && (
+                          (task.recurrence_parent_id && task.recurrence_parent_id !== '') || 
+                          task.recurrence_enabled === true
+                        )) ? '✅ 繰り返しタスク' : '❌ 通常タスク'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-6 p-4 bg-card rounded-lg border border-border">
         <h2 className="text-xl font-semibold mb-2">BigTasks ({bigTasks.length}件)</h2>
         {bigTasks.map((task, index) => (
           <div key={task.id} className="mb-3 p-3 bg-muted rounded">

@@ -6,16 +6,18 @@ import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { SmallTask, Project, WorkSession } from '@/types'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Moon } from 'lucide-react'
+import { Moon, Sparkles, Brain } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { secondsToMinutes } from '@/lib/utils/time-utils'
 import { TaskCard } from '@/components/timer/task-card'
 import { WorkSessionEditDialog } from '@/components/timer/work-session-edit-dialog'
-import { workSessionRepository } from '@/lib/db/repositories'
+import { RecordDetailDialog } from '@/components/timer/record-detail-dialog'
+import { workSessionRepository, dopamineEntryRepository, moodEntryRepository } from '@/lib/db/repositories'
 import { SyncService } from '@/lib/sync/sync-service'
 import { useToast } from '@/hooks/use-toast'
 import { useSleepSchedule, generateSleepBlocks } from '@/hooks/use-sleep-schedule'
 import { subDays, addDays } from 'date-fns'
+import { DopamineEntry, MoodEntry } from '@/types'
 
 interface CombinedScheduleViewProps {
   tasks: SmallTask[]
@@ -26,6 +28,9 @@ interface CombinedScheduleViewProps {
   onTaskStatusChange?: () => void
   date?: Date
   userId?: string
+  dopamineEntries?: DopamineEntry[]
+  moodEntries?: MoodEntry[]
+  onRecordsUpdate?: () => void
 }
 
 export function CombinedScheduleView({
@@ -37,10 +42,15 @@ export function CombinedScheduleView({
   onTaskStatusChange,
   date = new Date(),
   userId = 'current-user',
+  dopamineEntries = [],
+  moodEntries = [],
+  onRecordsUpdate,
 }: CombinedScheduleViewProps) {
   const { toast } = useToast()
   const [selectedSession, setSelectedSession] = useState<WorkSession | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<{ type: 'dopamine' | 'mood', data: DopamineEntry | MoodEntry } | null>(null)
+  const [isRecordDialogOpen, setIsRecordDialogOpen] = useState(false)
   const syncService = SyncService.getInstance()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollPositionKey = `schedule-scroll-${format(date, 'yyyy-MM-dd')}`
@@ -55,7 +65,7 @@ export function CombinedScheduleView({
     if (!currentTime) {
       setCurrentTime(new Date())
     }
-  }, [])
+  }, [currentTime])
   const isToday = currentTime ? date.toDateString() === currentTime.toDateString() : false
 
   // Get sleep schedule for the date, previous day, and next day
@@ -98,29 +108,6 @@ export function CombinedScheduleView({
     return () => clearInterval(timer)
   }, [isToday])
 
-  // プロジェクトの色を取得
-  const getProjectColor = (projectId?: string): string => {
-    if (!projectId) return 'bg-muted text-foreground border-border'
-
-    const project = projects.find(p => p.id === projectId)
-
-    // プロジェクトにカラーが設定されている場合
-    if (project?.color) {
-      // HSLカラーをインラインスタイルで適用するためのクラスを返す
-      // Note: 実際の色はstyle属性で設定するため、ここではベースクラスのみ返す
-      return 'text-white border-white/20'
-    }
-
-    // フォールバック: インデックスベースの色
-    const index = projects.findIndex(p => p.id === projectId)
-    const colorClasses = [
-      'bg-accent text-accent-foreground border-accent-foreground/20',
-      'bg-muted text-muted-foreground border-muted-foreground/20',
-      'bg-secondary text-secondary-foreground border-secondary-foreground/20',
-      'bg-card text-card-foreground border-border',
-    ]
-    return colorClasses[index % colorClasses.length] || colorClasses[0]
-  }
 
   // HSLカラーを調整する関数（彩度18%、明度82%に設定）
   const adjustHSLForBackground = (hslColor: string): string => {
@@ -134,11 +121,11 @@ export function CombinedScheduleView({
   // タスクの高さを計算（15分スロット単位）
   const getItemHeight = (minutes: number): number => {
     const slots = Math.ceil(minutes / 15) // 15分単位に切り上げ
-    // 30分以下のタスクは最小2スロット（24px）を確保
+    // 30分以下のタスクは最小2スロット（30px）を確保
     const minSlots = minutes <= 30 ? 2 : 1
-    const baseHeight = Math.max(slots * 12, minSlots * 12)
-    // スロット間に余白を作るため、1px減らす
-    return baseHeight - 1
+    const baseHeight = Math.max(slots * 15, minSlots * 15)
+    // スロット間に余白を作るため、2px減らす
+    return baseHeight - 2
   }
 
   // タスクの開始位置を計算（15分スロット単位）
@@ -147,7 +134,7 @@ export function CombinedScheduleView({
     const hour = startTime.getHours()
     const minute = startTime.getMinutes()
     const slot = Math.floor(minute / 15) // 15分スロット（0-3）
-    return hour * 48 + slot * 12 // 1時間 = 48px (4スロット × 12px)
+    return hour * 60 + slot * 15 // 1時間 = 60px (4スロット × 15px)
   }
 
   // セッションに紐づくタスクとプロジェクト情報を取得
@@ -160,18 +147,6 @@ export function CombinedScheduleView({
     return { task, project }
   }
 
-  // 集中力レベルの色を取得（背景色用）
-  const getFocusGradient = (level?: number): string => {
-    if (!level) return 'bg-muted text-muted-foreground border-border'
-    if (level >= 8) return 'bg-primary text-primary-foreground border-primary' // ゾーン（最高の集中）
-    if (level >= 7) return 'bg-foreground text-background border-foreground' // 深い集中
-    if (level >= 6) return 'bg-foreground/80 text-background border-foreground/80' // 集中
-    if (level >= 5) return 'bg-muted-foreground text-background border-muted-foreground' // まあまあ
-    if (level >= 4) return 'bg-muted text-muted-foreground border-border' // 普通
-    if (level >= 3) return 'bg-accent text-accent-foreground border-accent' // 疲れ気味
-    if (level >= 2) return 'bg-card text-card-foreground border-border' // ぼんやり
-    return 'bg-background text-foreground border-border' // 眠い
-  }
 
   // セッションの時間を計算
   const getSessionDuration = (session: WorkSession): number => {
@@ -248,6 +223,56 @@ export function CombinedScheduleView({
     setIsEditDialogOpen(true)
   }
 
+  // 記録の更新
+  const handleRecordUpdate = async (type: 'dopamine' | 'mood', id: string, data: Partial<DopamineEntry | MoodEntry>) => {
+    try {
+      if (type === 'dopamine') {
+        await dopamineEntryRepository.update(id, data)
+        await syncService.addToSyncQueue('dopamine_entry', id, 'update', data)
+      } else {
+        await moodEntryRepository.update(id, data)
+        await syncService.addToSyncQueue('mood_entry', id, 'update', data)
+      }
+      
+      // データ更新を親コンポーネントに通知
+      if (onRecordsUpdate) {
+        onRecordsUpdate()
+      }
+      
+      // 選択中のレコードも更新
+      if (selectedRecord) {
+        setSelectedRecord({
+          ...selectedRecord,
+          data: { ...selectedRecord.data, ...data }
+        })
+      }
+    } catch (error) {
+      console.error('Failed to update record:', error)
+      throw error
+    }
+  }
+
+  // 記録の削除
+  const handleRecordDelete = async (type: 'dopamine' | 'mood', id: string) => {
+    try {
+      if (type === 'dopamine') {
+        await dopamineEntryRepository.delete(id)
+        await syncService.addToSyncQueue('dopamine_entry', id, 'delete')
+      } else {
+        await moodEntryRepository.delete(id)
+        await syncService.addToSyncQueue('mood_entry', id, 'delete')
+      }
+      
+      // データ更新を親コンポーネントに通知
+      if (onRecordsUpdate) {
+        onRecordsUpdate()
+      }
+    } catch (error) {
+      console.error('Failed to delete record:', error)
+      throw error
+    }
+  }
+
   // スクロール位置の保存
   const saveScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -264,9 +289,9 @@ export function CombinedScheduleView({
         // 保存された位置に復元
         scrollContainerRef.current.scrollTop = parseInt(savedPosition)
       } else if (isToday) {
-        // 今日の場合は現在時刻の2時間前の位置を計算（1時間 = 48px）
+        // 今日の場合は現在時刻の2時間前の位置を計算（1時間 = 60px）
         const scrollHour = Math.max(0, currentHour - 2)
-        const scrollPosition = scrollHour * 48
+        const scrollPosition = scrollHour * 60
         scrollContainerRef.current.scrollTop = scrollPosition
       }
     }
@@ -276,7 +301,7 @@ export function CombinedScheduleView({
     <div className="relative h-full overflow-x-hidden">
       {/* ヘッダー */}
       <div className="sticky top-0 z-20 bg-background border-b">
-        <div className="grid grid-cols-[48px_1fr_1px_1fr] h-10">
+        <div className="grid grid-cols-[48px_1fr_1px_1fr_1px_32px] h-10">
           <div className="border-r bg-muted/30" />
           <div className="flex items-center justify-center text-sm font-medium text-muted-foreground">
             予定
@@ -284,6 +309,10 @@ export function CombinedScheduleView({
           <div className="bg-border" />
           <div className="flex items-center justify-center text-sm font-medium text-muted-foreground">
             実績
+          </div>
+          <div className="bg-border" />
+          <div className="flex items-center justify-center text-sm font-medium text-muted-foreground">
+            記録
           </div>
         </div>
       </div>
@@ -300,21 +329,21 @@ export function CombinedScheduleView({
         onScroll={saveScrollPosition}
       >
         {/* 時間帯の背景（予定・実績エリアのみ） */}
-        <div className="absolute" style={{ left: '48px', right: 0, top: 0, height: '1152px' }}>
+        <div className="absolute" style={{ left: '48px', right: 0, top: 0, height: '1440px' }}>
           {Array.from({ length: 24 }, (_, hour) => {
             const isPastHour = isToday && hour < currentHour
 
             return (
               <div
                 key={hour}
-                className="relative h-[48px]"
-                style={{ top: `${hour * 48}px`, position: 'absolute', width: '100%' }}
+                className="relative h-[60px]"
+                style={{ top: `${hour * 60}px`, position: 'absolute', width: '100%' }}
               >
                 {/* 30分の補助線 */}
-                <div className="absolute w-full h-[12px] top-0" />
-                <div className="absolute w-full h-[12px] top-[12px]" />
-                <div className="absolute w-full h-[12px] top-[24px]" />
-                <div className="absolute w-full h-[12px] top-[36px]" />
+                <div className="absolute w-full h-[15px] top-0" />
+                <div className="absolute w-full h-[15px] top-[15px]" />
+                <div className="absolute w-full h-[15px] top-[30px]" />
+                <div className="absolute w-full h-[15px] top-[45px]" />
 
                 {/* 過去の時間帯を薄く表示 */}
                 {isPastHour && <div className="absolute inset-0 bg-muted/30 pointer-events-none" />}
@@ -324,15 +353,15 @@ export function CombinedScheduleView({
         </div>
 
         <div
-          className="grid grid-cols-[48px_1fr_1px_1fr] relative max-w-full"
-          style={{ height: '1152px' }}
+          className="grid grid-cols-[48px_1fr_1px_1fr_1px_32px] relative max-w-full"
+          style={{ height: '1440px' }}
         >
           {' '}
-          {/* 24時間 × 48px */}
+          {/* 24時間 × 60px */}
           {/* 時間軸 */}
           <div className="sticky -left-2 bg-muted/30 border-r z-5 relative">
             {Array.from({ length: 24 }, (_, hour) => (
-              <div key={hour} className="relative h-[48px]">
+              <div key={hour} className="relative h-[60px]">
                 {/* 時刻表示を時間の境界に配置 */}
                 {hour !== 0 && (
                   <div className="absolute -top-[13px] right-2 bg-muted/30 px-1">
@@ -350,8 +379,8 @@ export function CombinedScheduleView({
             {Array.from({ length: 24 }, (_, hour) => (
               <div
                 key={`border-${hour}`}
-                className="absolute w-full h-[48px] border-b border-border pointer-events-none"
-                style={{ top: `${hour * 48}px`, zIndex: 15 }}
+                className="absolute w-full h-[60px] border-b border-border pointer-events-none"
+                style={{ top: `${hour * 60}px`, zIndex: 15 }}
               />
             ))}
 
@@ -361,13 +390,12 @@ export function CombinedScheduleView({
               if (block.date !== dateStr) return null
 
               const startSlot = Math.floor(block.startMinute / 15)
-              const endSlot = Math.ceil(block.endMinute / 15) // 終了時刻は切り上げ
-              const top = block.startHour * 48 + startSlot * 12
+              const top = block.startHour * 60 + startSlot * 15
               const totalEndMinutes = block.endHour * 60 + block.endMinute
               const totalStartMinutes = block.startHour * 60 + block.startMinute
               const durationMinutes = totalEndMinutes - totalStartMinutes
               const durationSlots = Math.ceil(durationMinutes / 15)
-              const height = durationSlots * 12
+              const height = durationSlots * 15
 
               return (
                 <div
@@ -406,14 +434,27 @@ export function CombinedScheduleView({
             {isToday && (
               <div
                 className="absolute w-full h-0.5 bg-red-500 z-50"
-                style={{ top: `${currentHour * 48 + Math.floor(currentMinute / 15) * 12}px` }}
+                style={{ top: `${currentHour * 60 + Math.floor(currentMinute / 15) * 15}px` }}
               >
                 <div className="absolute -left-2 -top-1 w-2 h-2 bg-red-500 rounded-full" />
               </div>
             )}
 
             {/* タスク */}
-            {tasks.map((task, index) => {
+            {tasks
+              .filter(task => {
+                // 緊急タスクは予定エリアに表示しない
+                if (task.is_emergency) return false
+                // 表示日のタスクのみ表示
+                if (!task.scheduled_start || !date) return false
+                const taskDate = new Date(task.scheduled_start)
+                return (
+                  taskDate.getDate() === date.getDate() &&
+                  taskDate.getMonth() === date.getMonth() &&
+                  taskDate.getFullYear() === date.getFullYear()
+                )
+              })
+              .map((task) => {
               const isActive = task.id === currentTaskId
               const project =
                 task.task_type !== 'routine'
@@ -453,8 +494,8 @@ export function CombinedScheduleView({
             {Array.from({ length: 24 }, (_, hour) => (
               <div
                 key={`border-${hour}`}
-                className="absolute w-full h-[48px] border-b border-border pointer-events-none"
-                style={{ top: `${hour * 48}px`, zIndex: 15 }}
+                className="absolute w-full h-[60px] border-b border-border pointer-events-none"
+                style={{ top: `${hour * 60}px`, zIndex: 15 }}
               />
             ))}
 
@@ -462,14 +503,14 @@ export function CombinedScheduleView({
             {isToday && (
               <div
                 className="absolute w-full h-0.5 bg-red-500 z-50"
-                style={{ top: `${currentHour * 48 + Math.floor(currentMinute / 15) * 12}px` }}
+                style={{ top: `${currentHour * 60 + Math.floor(currentMinute / 15) * 15}px` }}
               >
                 <div className="absolute -right-2 -top-1 w-2 h-2 bg-red-500 rounded-full" />
               </div>
             )}
 
             {/* セッション */}
-            {sessions.map((session, index) => {
+            {sessions.map((session) => {
               const taskInfo = getTaskAndProject(session)
               const isActive = !session.end_time
               const duration = getSessionDuration(session)
@@ -477,103 +518,270 @@ export function CombinedScheduleView({
               const displayDuration = Math.max(duration, 10)
               const isJustStarted = duration < 5
 
+              // 動的なスタイルを計算（予定エリアと同じロジック）
+              const getDynamicStyles = () => {
+                // 15分以内は最小サイズ
+                if (displayDuration <= 15) {
+                  return {
+                    padding: 'p-0.5',
+                    titleSize: 'text-[10px]',
+                    timeSize: 'text-[9px]',
+                    focusSize: 'text-[9px]',
+                  }
+                } else if (displayDuration <= 30) {
+                  return {
+                    padding: 'p-0.5',
+                    titleSize: 'text-xs',
+                    timeSize: 'text-[10px]',
+                    focusSize: 'text-[10px]',
+                  }
+                } else if (displayDuration <= 60) {
+                  return {
+                    padding: 'p-1',
+                    titleSize: 'text-xs',
+                    timeSize: 'text-[11px]',
+                    focusSize: 'text-[11px]',
+                  }
+                } else {
+                  return {
+                    padding: 'p-1.5',
+                    titleSize: 'text-sm',
+                    timeSize: 'text-xs',
+                    focusSize: 'text-xs',
+                  }
+                }
+              }
+
+              const styles = getDynamicStyles()
+              
+              // 15分以内は特別な表示
+              const isVeryShort = displayDuration <= 15
+              
+              // レイアウトを決定（セッションの長さに基づく）
+              const shouldShowTimeOnSecondLine = displayDuration > 45 && !isVeryShort
+
               return (
                 <div
                   key={session.id}
                   className={cn(
-                    'absolute left-0.5 right-4 rounded-lg p-2 transition-all cursor-pointer',
-                    'hover:shadow-md hover:scale-[1.02]',
+                    'absolute left-0.5 right-4 rounded-sm transition-all cursor-pointer box-border',
+                    'hover:shadow-sm hover:bg-surface-2',
+                    'border-0 border-l-4 overflow-hidden',
+                    styles.padding,
+                    'text-foreground',
                     isActive && 'ring-2 ring-primary ring-offset-1',
-                    isActive && isJustStarted && 'animate-pulse'
+                    isActive && isJustStarted && 'animate-pulse',
+                    !taskInfo && 'border-l-border bg-muted/50'
                   )}
                   style={{
                     top: `${getItemTop(session.start_time)}px`,
                     height: `${getItemHeight(displayDuration)}px`,
                     zIndex: isActive ? 20 : 20,
+                    ...(taskInfo?.project?.color
+                      ? {
+                          backgroundColor: adjustHSLForBackground(taskInfo.project.color),
+                          borderLeftColor: taskInfo.project.color,
+                        }
+                      : taskInfo
+                        ? {
+                            backgroundColor: 'hsl(137, 2%, 96%)',
+                            borderLeftColor: 'hsl(137, 8%, 15%)',
+                          }
+                        : {}),
                   }}
                   onClick={() => handleSessionClick(session)}
                 >
-                  <div
-                    className={cn(
-                      'h-full rounded-md p-2 overflow-hidden shadow-sm',
-                      'border-0 border-l-4',
-                      // デフォルトカラー
-                      'text-foreground',
-                      !taskInfo && 'border-l-border bg-muted/50'
-                    )}
-                    style={{
-                      ...(taskInfo?.project?.color
-                        ? {
-                            backgroundColor: adjustHSLForBackground(taskInfo.project.color),
-                            borderLeftColor: taskInfo.project.color,
-                          }
-                        : taskInfo
-                          ? {
-                              backgroundColor: 'hsl(137, 2%, 96%)',
-                              borderLeftColor: 'hsl(137, 8%, 15%)',
-                            }
-                          : {}),
-                    }}
-                  >
-                    {taskInfo ? (
-                      <>
+                  {taskInfo ? (
+                    shouldShowTimeOnSecondLine ? (
+                      // 2行表示パターン（高さが十分な場合）
+                      <div className="flex flex-col gap-0.5">
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-[10px] leading-tight truncate">
+                            <h4 className={cn('font-medium truncate', styles.titleSize)}>
                               {taskInfo.task.name}
                             </h4>
-                            <p className="text-[10px] opacity-80">
-                              {formatDuration(getSessionDurationInSeconds(session))}
-                              <span className="ml-1">
-                                ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} -
-                                {session.end_time
-                                  ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
-                                  : '実行中'}
-                                )
-                              </span>
-                            </p>
                           </div>
                           <div className="flex items-center gap-0.5">
-                            {session.focus_level && duration >= 30 && (
+                            {session.focus_level && duration >= 15 && (
                               <div className="bg-background/20 rounded px-0.5">
-                                <span className="text-[10px] font-bold">{session.focus_level}</span>
+                                <span className={cn('font-bold', styles.focusSize)}>{session.focus_level}</span>
                               </div>
                             )}
                           </div>
                         </div>
-                      </>
-                    ) : (
-                      <div>
-                        <div className="flex items-start justify-between gap-1">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-[10px] leading-tight truncate">
-                              {session.mood_notes || 'タスクなし'}
-                            </h4>
-                            <p className="text-[10px] opacity-80">
-                              {formatDuration(getSessionDurationInSeconds(session))}
-                              <span className="ml-1">
-                                ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} -
-                                {session.end_time
-                                  ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
-                                  : '実行中'}
-                                )
-                              </span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-0.5">
-                            {session.focus_level && duration >= 30 && (
-                              <div className="bg-background/20 rounded px-0.5">
-                                <span className="text-[10px] font-bold">{session.focus_level}</span>
-                              </div>
-                            )}
-                          </div>
+                        <div className={cn('opacity-80', styles.timeSize)}>
+                          {formatDuration(getSessionDurationInSeconds(session))} ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} - {session.end_time
+                            ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
+                            : '実行中'})
                         </div>
                       </div>
-                    )}
-                  </div>
+                    ) : (
+                      // 1行表示パターン（高さが不足の場合）
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <h4 className={cn('font-medium truncate', styles.titleSize)}>
+                            {taskInfo.task.name}
+                          </h4>
+                          <span className={cn('opacity-80 whitespace-nowrap', styles.timeSize)}>
+                            {isVeryShort ? (
+                              duration < 60 ? `${duration}分` : formatDuration(getSessionDurationInSeconds(session))
+                            ) : (
+                              <>
+                                {formatDuration(getSessionDurationInSeconds(session))} ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} - {session.end_time
+                                  ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
+                                  : '実行中'})
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {session.focus_level && duration >= 15 && (
+                            <div className="bg-background/20 rounded px-0.5">
+                              <span className={cn('font-bold', styles.focusSize)}>{session.focus_level}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    shouldShowTimeOnSecondLine ? (
+                      // 2行表示パターン（タスクなし、高さが十分な場合）
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-start justify-between gap-1">
+                          <div className="flex-1 min-w-0">
+                            <h4 className={cn('font-medium truncate', styles.titleSize)}>
+                              {session.mood_notes || 'タスクなし'}
+                            </h4>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            {session.focus_level && duration >= 15 && (
+                              <div className="bg-background/20 rounded px-0.5">
+                                <span className={cn('font-bold', styles.focusSize)}>{session.focus_level}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className={cn('opacity-80', styles.timeSize)}>
+                          {formatDuration(getSessionDurationInSeconds(session))} ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} - {session.end_time
+                            ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
+                            : '実行中'})
+                        </div>
+                      </div>
+                    ) : (
+                      // 1行表示パターン（タスクなし、高さが不足の場合）
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <h4 className={cn('font-medium truncate', styles.titleSize)}>
+                            {session.mood_notes || 'タスクなし'}
+                          </h4>
+                          <span className={cn('opacity-80 whitespace-nowrap', styles.timeSize)}>
+                            {isVeryShort ? (
+                              duration < 60 ? `${duration}分` : formatDuration(getSessionDurationInSeconds(session))
+                            ) : (
+                              <>
+                                {formatDuration(getSessionDurationInSeconds(session))} ({format(parseISO(session.start_time), 'HH:mm', { locale: ja })} - {session.end_time
+                                  ? format(parseISO(session.end_time), 'HH:mm', { locale: ja })
+                                  : '実行中'})
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {session.focus_level && duration >= 15 && (
+                            <div className="bg-background/20 rounded px-0.5">
+                              <span className={cn('font-bold', styles.focusSize)}>{session.focus_level}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
                 </div>
               )
             })}
+          </div>
+          {/* 中央の区切り線（実績と記録の間） */}
+          <div className="bg-border relative" />
+          {/* 記録エリア */}
+          <div className="relative bg-primary/5">
+            {/* 時間ごとの境界線 */}
+            {Array.from({ length: 24 }, (_, hour) => (
+              <div
+                key={`border-${hour}`}
+                className="absolute w-full h-[60px] border-b border-border pointer-events-none"
+                style={{ top: `${hour * 60}px`, zIndex: 15 }}
+              />
+            ))}
+
+            {/* 現在時刻ライン（記録側） */}
+            {isToday && (
+              <div
+                className="absolute w-full h-0.5 bg-red-500 z-50"
+                style={{ top: `${currentHour * 60 + Math.floor(currentMinute / 15) * 15}px` }}
+              />
+            )}
+
+            {/* 記録アイコンの配置 */}
+            {(() => {
+              const allRecords = [
+                ...dopamineEntries.map(entry => ({ type: 'dopamine' as const, data: entry, timestamp: entry.timestamp })),
+                ...moodEntries.map(entry => ({ 
+                  type: 'mood' as const, 
+                  data: entry, 
+                  timestamp: entry.timestamp 
+                }))
+              ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+              // スロットごとの記録を管理（重複回避のため）
+              const slotOccupancy: { [key: number]: number } = {}
+
+              return allRecords.map((record, index) => {
+                const recordTime = new Date(record.timestamp)
+                const hour = recordTime.getHours()
+                const minute = recordTime.getMinutes()
+                const baseSlot = Math.floor(minute / 15)
+                const baseTop = hour * 60 + baseSlot * 15
+
+                // このスロットでの使用済み位置を取得
+                const slotKey = baseTop
+                const offsetCount = slotOccupancy[slotKey] || 0
+                slotOccupancy[slotKey] = offsetCount + 1
+
+                // 縦方向のオフセット（アイコンの高さ16px + 余白4px = 20pxずつずらす）
+                const verticalOffset = offsetCount * 20
+                const finalTop = baseTop + verticalOffset
+
+                const Icon = record.type === 'dopamine' ? Sparkles : Brain
+                const iconColor = record.type === 'dopamine' ? 'text-yellow-500' : 'text-blue-500'
+                const hoverColor = record.type === 'dopamine' ? 'hover:bg-yellow-100' : 'hover:bg-blue-100'
+
+                return (
+                  <div
+                    key={`${record.type}-${index}`}
+                    className={cn(
+                      'absolute left-2 w-6 h-6 flex items-center justify-center rounded cursor-pointer transition-all',
+                      'hover:scale-110',
+                      hoverColor
+                    )}
+                    style={{
+                      top: `${finalTop}px`,
+                      zIndex: 25,
+                    }}
+                    onClick={() => {
+                      setSelectedRecord({ type: record.type, data: record.data })
+                      setIsRecordDialogOpen(true)
+                    }}
+                    title={`${format(recordTime, 'HH:mm')} - ${
+                      record.type === 'dopamine' 
+                        ? (record.data as DopamineEntry).event_description.substring(0, 20) + '...'
+                        : `気分レベル: ${(record.data as MoodEntry).mood_level}`
+                    }`}
+                  >
+                    <Icon className={cn('h-4 w-4', iconColor)} />
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
       </div>
@@ -593,6 +801,15 @@ export function CombinedScheduleView({
         }
         onUpdate={handleSessionUpdate}
         onDelete={handleSessionDelete}
+      />
+
+      {/* 記録詳細ダイアログ */}
+      <RecordDetailDialog
+        open={isRecordDialogOpen}
+        onOpenChange={setIsRecordDialogOpen}
+        record={selectedRecord}
+        onUpdate={handleRecordUpdate}
+        onDelete={handleRecordDelete}
       />
     </div>
   )

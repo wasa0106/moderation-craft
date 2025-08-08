@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { format, eachDayOfInterval, setHours, setMinutes, parseISO, isWeekend } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Clock, ChevronLeft, ChevronRight, Moon } from 'lucide-react'
+import { Clock, ChevronLeft, ChevronRight, Moon, Calendar } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   DndContext,
   DragEndEvent,
@@ -31,7 +32,7 @@ import {
 } from '@/types'
 import { cn } from '@/lib/utils'
 import { TaskCreateDialog } from './task-create-dialog'
-import { TaskDetailDialog } from './task-detail-dialog'
+import { TaskEditDialog } from './task-edit-dialog'
 import { WeeklySleepScheduleDialog } from './weekly-sleep-schedule-dialog'
 import { useWeeklySleepSchedules, generateSleepBlocks } from '@/hooks/use-sleep-schedule'
 
@@ -41,6 +42,7 @@ interface WeeklyCalendarProps {
   onCreateTask: (data: CreateSmallTaskData) => Promise<void>
   onUpdateTask: (data: { id: string; data: UpdateSmallTaskData }) => Promise<void>
   onDeleteTask: (taskId: string) => Promise<void>
+  onDeleteRecurringTasks?: (data: { parentId: string; mode?: 'all' | 'future' }) => Promise<void>
   projects: Project[]
   bigTasks: BigTask[]
   smallTasks?: SmallTask[]
@@ -130,6 +132,213 @@ function DraggableTask({
   )
 }
 
+// Draggable scheduled task component
+function DraggableScheduledTask({
+  block,
+  taskStart,
+  taskEnd,
+  taskMinute,
+  durationMinutes,
+  slots,
+  blockProject,
+  colorClass,
+  handleTaskClick,
+  onUpdateTask,
+}: {
+  block: any
+  taskStart: Date
+  taskEnd: Date
+  taskMinute: number
+  durationMinutes: number
+  slots: number
+  blockProject?: Project
+  colorClass: string
+  handleTaskClick: (taskId: string) => void
+  onUpdateTask?: (data: { id: string; data: UpdateSmallTaskData }) => Promise<void>
+}) {
+  const [isResizing, setIsResizing] = useState(false)
+  const [resizeHeight, setResizeHeight] = useState(slots * 12)
+  const [isOverResizeHandle, setIsOverResizeHandle] = useState(false)
+  const resizeStartRef = useRef<{ y: number; height: number } | null>(null)
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: block.taskId,
+    data: {
+      isScheduled: true,
+      estimatedMinutes: durationMinutes,
+      taskId: block.taskId,
+      taskName: block.taskName,
+    },
+  })
+
+  // Calculate snapped transform for 15-minute grid
+  const getSnappedTransform = () => {
+    if (!transform) return undefined
+    
+    // 15分 = 12px (各スロットの高さ)
+    const slotHeight = 12
+    
+    // Y座標を15分単位にスナップ
+    const snappedY = Math.round(transform.y / slotHeight) * slotHeight
+    
+    // X座標はそのまま使用（横移動は自由）
+    return `translate3d(${transform.x}px, ${snappedY}px, 0)`
+  }
+
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent, position: 'top' | 'bottom') => {
+    e.stopPropagation()
+    e.preventDefault()
+    setIsResizing(true)
+    resizeStartRef.current = {
+      y: e.clientY,
+      height: slots * 12,
+    }
+  }
+
+  // Handle resize move
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeStartRef.current) return
+      
+      const deltaY = e.clientY - resizeStartRef.current.y
+      const rawHeight = resizeStartRef.current.height + deltaY
+      
+      // 15分単位（12px）にスナップ
+      const slotHeight = 12
+      const minHeight = slotHeight // 最小1スロット
+      const snappedHeight = Math.max(minHeight, Math.round(rawHeight / slotHeight) * slotHeight)
+      
+      setResizeHeight(snappedHeight)
+    }
+
+    const handleMouseUp = async () => {
+      if (!resizeStartRef.current || !onUpdateTask) {
+        setIsResizing(false)
+        return
+      }
+
+      // Calculate new duration based on height
+      const newSlots = Math.round(resizeHeight / 12)
+      const newDurationMinutes = newSlots * 15
+      
+      // Calculate new end time
+      const newEndTime = new Date(taskStart)
+      newEndTime.setMinutes(newEndTime.getMinutes() + newDurationMinutes)
+
+      // Update task
+      await onUpdateTask({
+        id: block.taskId,
+        data: {
+          estimated_minutes: newDurationMinutes,
+          scheduled_end: newEndTime.toISOString(),
+        }
+      })
+
+      setIsResizing(false)
+      resizeStartRef.current = null
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, resizeHeight, taskStart, block.taskId, onUpdateTask])
+
+  const style = {
+    transform: getSnappedTransform() || 'none',
+    opacity: isDragging ? 0.5 : 1,
+    top: `${(taskMinute / 15) * 12}px`,
+    height: isResizing ? `${resizeHeight}px` : `${slots * 12}px`,
+    ...(blockProject?.color ? { backgroundColor: blockProject.color } : {}),
+    // スナップ動作を視覚的に表現
+    transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={e => {
+        if (isResizing || isOverResizeHandle) return
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Task clicked', { taskId: block.taskId })
+        }
+        e.stopPropagation()
+        e.preventDefault()
+        handleTaskClick(block.taskId)
+      }}
+      {...(isResizing || isOverResizeHandle ? {} : listeners)}
+      {...(isResizing || isOverResizeHandle ? {} : attributes)}
+      className={cn(
+        'absolute left-0 right-0 mx-1 rounded text-xs shadow-sm z-[20] group',
+        'border hover:opacity-80 transition-opacity overflow-hidden',
+        slots <= 2 ? 'p-0.5' : 'p-1',
+        blockProject?.color
+          ? 'text-primary-foreground border-border'
+          : colorClass,
+        isDragging && 'scale-105',
+        isResizing ? 'cursor-ns-resize' : 'cursor-move'
+      )}
+      style={style}
+    >
+      {/* Top resize handle */}
+      <div
+        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-primary/20"
+        onMouseDown={e => handleResizeStart(e, 'top')}
+        onMouseEnter={() => setIsOverResizeHandle(true)}
+        onMouseLeave={() => setIsOverResizeHandle(false)}
+      />
+      
+      {/* Bottom resize handle */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-primary/20"
+        onMouseDown={e => handleResizeStart(e, 'bottom')}
+        onMouseEnter={() => setIsOverResizeHandle(true)}
+        onMouseLeave={() => setIsOverResizeHandle(false)}
+      />
+      {/* タスクの長さに応じて表示内容を調整 */}
+      {slots === 1 ? (
+        <div className="font-medium truncate leading-[10px] flex items-center gap-1">
+          {block.isRecurring && <span className="text-[10px]">🔁</span>}
+          <span className="truncate">{block.taskName}</span>
+        </div>
+      ) : slots === 2 ? (
+        <div className="flex items-center h-full">
+          <div className="font-medium truncate w-full flex items-center gap-1">
+            {block.isRecurring && <span className="text-xs">🔁</span>}
+            <span className="truncate">{block.taskName}</span>
+          </div>
+        </div>
+      ) : slots === 3 ? (
+        <>
+          <div className="font-medium truncate flex items-center gap-1">
+            {block.isRecurring && <span className="text-xs">🔁</span>}
+            <span className="truncate">{block.taskName}</span>
+          </div>
+          <div className="text-[10px] opacity-75 truncate">
+            {format(taskStart, 'H:mm')}-{format(taskEnd, 'H:mm')}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="font-medium truncate flex items-center gap-1">
+            {block.isRecurring && <span className="text-xs">🔁</span>}
+            <span className="truncate">{block.taskName}</span>
+          </div>
+          <div className="text-xs opacity-75">
+            {format(taskStart, 'HH:mm')} - {format(taskEnd, 'HH:mm')}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // Droppable time slot component with 15-minute quarters
 function DroppableTimeSlot({
   date,
@@ -193,6 +402,7 @@ export function WeeklyCalendar({
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
+  onDeleteRecurringTasks,
   projects,
   bigTasks,
   smallTasks = [],
@@ -211,7 +421,7 @@ export function WeeklyCalendar({
   const [selectedStartTime, setSelectedStartTime] = useState<Date | null>(null)
   const [selectedEndTime, setSelectedEndTime] = useState<Date | null>(null)
   const [selectedTask, setSelectedTask] = useState<SmallTask | null>(null)
-  const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
   const [showWeeklySleepDialog, setShowWeeklySleepDialog] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -423,6 +633,8 @@ export function WeeklyCalendar({
 
     const endTime = new Date(dragSelection.endSlot.date)
     endTime.setHours(dragSelection.endSlot.hour, dragSelection.endSlot.minute || 0, 0, 0)
+    // スロットの終了時刻は開始時刻+15分なので、15分を追加
+    endTime.setMinutes(endTime.getMinutes() + 15)
 
     // 終了時刻が開始時刻より前の場合は入れ替える
     if (endTime < startTime) {
@@ -464,7 +676,7 @@ export function WeeklyCalendar({
       const unscheduledTask = weeklySchedule.unscheduledTasks.find(t => t.id === taskId)
       if (unscheduledTask) {
         setSelectedTask(unscheduledTask)
-        setShowDetailDialog(true)
+        setShowEditDialog(true)
         return
       }
 
@@ -494,7 +706,7 @@ export function WeeklyCalendar({
           completed_notes: null,
         }
         setSelectedTask(smallTask)
-        setShowDetailDialog(true)
+        setShowEditDialog(true)
       }
     },
     [weeklySchedule, userId]
@@ -539,21 +751,44 @@ export function WeeklyCalendar({
     }
 
     const taskId = active.id as string
-    const task = weeklySchedule.unscheduledTasks.find(t => t.id === taskId)
+    const dragData = active.data.current as any
+    
+    // Check if this is a scheduled task being moved
+    if (dragData?.isScheduled) {
+      const dropData = over.data.current as TimeSlot
+      const startTime = setHours(setMinutes(dropData.date, dropData.minute || 0), dropData.hour)
+      const durationMinutes = dragData.estimatedMinutes || 30
+      const endMinutes = (dropData.minute || 0) + durationMinutes
+      const endHour = dropData.hour + Math.floor(endMinutes / 60)
+      const endMinute = endMinutes % 60
+      const endTime = setHours(setMinutes(dropData.date, endMinute), endHour)
 
-    if (!task) {
-      setActiveId(null)
-      return
+      // Update the task with new time
+      await onUpdateTask({
+        id: taskId,
+        data: {
+          scheduled_start: startTime.toISOString(),
+          scheduled_end: endTime.toISOString(),
+        }
+      })
+    } else {
+      // Original logic for unscheduled tasks
+      const task = weeklySchedule.unscheduledTasks.find(t => t.id === taskId)
+
+      if (!task) {
+        setActiveId(null)
+        return
+      }
+
+      const dropData = over.data.current as TimeSlot
+      const startTime = setHours(setMinutes(dropData.date, dropData.minute || 0), dropData.hour)
+      const endMinutes = (dropData.minute || 0) + task.estimated_minutes
+      const endHour = dropData.hour + Math.floor(endMinutes / 60)
+      const endMinute = endMinutes % 60
+      const endTime = setHours(setMinutes(dropData.date, endMinute), endHour)
+
+      await onScheduleTask(taskId, startTime.toISOString(), endTime.toISOString())
     }
-
-    const dropData = over.data.current as TimeSlot
-    const startTime = setHours(setMinutes(dropData.date, dropData.minute || 0), dropData.hour)
-    const endMinutes = (dropData.minute || 0) + task.estimated_minutes
-    const endHour = dropData.hour + Math.floor(endMinutes / 60)
-    const endMinute = endMinutes % 60
-    const endTime = setHours(setMinutes(dropData.date, endMinute), endHour)
-
-    await onScheduleTask(taskId, startTime.toISOString(), endTime.toISOString())
 
     setActiveId(null)
   }
@@ -574,19 +809,6 @@ export function WeeklyCalendar({
         taskStart < slotEnd &&
         taskEnd > slotStart &&
         format(taskStart, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-
-      // デバッグ: 最初のスロットでのみログ出力
-      if (process.env.NODE_ENV === 'development' && hour === 0 && minute === 0) {
-        console.log('タスクスロットチェック:', {
-          date: format(date, 'yyyy-MM-dd'),
-          taskName: block.taskName,
-          taskStart: format(taskStart, 'yyyy-MM-dd HH:mm'),
-          taskEnd: format(taskEnd, 'yyyy-MM-dd HH:mm'),
-          slotStart: format(slotStart, 'yyyy-MM-dd HH:mm'),
-          slotEnd: format(slotEnd, 'yyyy-MM-dd HH:mm'),
-          overlaps,
-        })
-      }
 
       return overlaps
     })
@@ -739,62 +961,19 @@ export function WeeklyCalendar({
                           const colorClass = getProjectColor(block.projectId)
 
                           return (
-                            <div
+                            <DraggableScheduledTask
                               key={block.id}
-                              onClick={e => {
-                                if (process.env.NODE_ENV === 'development') {
-                                  console.log('Task clicked', { taskId: block.taskId })
-                                }
-                                e.stopPropagation()
-                                e.preventDefault()
-                                handleTaskClick(block.taskId)
-                              }}
-                              onMouseDown={e => {
-                                e.stopPropagation()
-                              }}
-                              className={cn(
-                                'absolute left-0 right-0 mx-1 rounded text-xs cursor-pointer shadow-sm z-[20]',
-                                'border hover:opacity-80 transition-opacity overflow-hidden',
-                                slots <= 2 ? 'p-0.5' : 'p-1',
-                                blockProject?.color
-                                  ? 'text-primary-foreground border-border'
-                                  : colorClass
-                              )}
-                              style={{
-                                top: `${(taskMinute / 15) * 12}px`,
-                                height: `${slots * 12}px`,
-                                ...(blockProject?.color
-                                  ? { backgroundColor: blockProject.color }
-                                  : {}),
-                              }}
-                            >
-                              {/* タスクの長さに応じて表示内容を調整 */}
-                              {slots === 1 ? (
-                                <div className="font-medium truncate leading-[10px]">
-                                  {block.taskName}
-                                </div>
-                              ) : slots === 2 ? (
-                                <div className="flex items-center h-full">
-                                  <div className="font-medium truncate w-full">
-                                    {block.taskName}
-                                  </div>
-                                </div>
-                              ) : slots === 3 ? (
-                                <>
-                                  <div className="font-medium truncate">{block.taskName}</div>
-                                  <div className="text-[10px] opacity-75 truncate">
-                                    {format(taskStart, 'H:mm')}-{format(taskEnd, 'H:mm')}
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="font-medium truncate">{block.taskName}</div>
-                                  <div className="text-xs opacity-75">
-                                    {format(taskStart, 'HH:mm')} - {format(taskEnd, 'HH:mm')}
-                                  </div>
-                                </>
-                              )}
-                            </div>
+                              block={block}
+                              taskStart={taskStart}
+                              taskEnd={taskEnd}
+                              taskMinute={taskMinute}
+                              durationMinutes={durationMinutes}
+                              slots={slots}
+                              blockProject={blockProject}
+                              colorClass={colorClass}
+                              handleTaskClick={handleTaskClick}
+                              onUpdateTask={onUpdateTask}
+                            />
                           )
                         })}
                       </div>
@@ -882,9 +1061,63 @@ export function WeeklyCalendar({
                           className="w-2 h-2 rounded-full"
                           style={project.color ? { backgroundColor: project.color } : {}}
                         />
-                        <span className="text-sm font-semibold text-foreground">
-                          {project.name}
-                        </span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="text-sm font-semibold text-foreground hover:underline focus:outline-none focus:underline text-left">
+                              {project.name}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80">
+                            <div className="space-y-3">
+                              <div className="font-medium text-foreground">{project.name}</div>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-muted-foreground">作業可能時間</span>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">平日:</span>
+                                    <span className="font-mono">
+                                      {project.weekday_work_days !== undefined &&
+                                      project.weekday_hours_per_day !== undefined
+                                        ? `${project.weekday_work_days}日 × ${project.weekday_hours_per_day}時間 = ${
+                                            project.weekday_work_days * project.weekday_hours_per_day
+                                          }時間`
+                                        : '未設定'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">休日:</span>
+                                    <span className="font-mono">
+                                      {project.weekend_work_days !== undefined &&
+                                      project.weekend_hours_per_day !== undefined
+                                        ? `${project.weekend_work_days}日 × ${project.weekend_hours_per_day}時間 = ${
+                                            project.weekend_work_days * project.weekend_hours_per_day
+                                          }時間`
+                                        : '未設定'}
+                                    </span>
+                                  </div>
+                                </div>
+                                {project.weekday_work_days !== undefined &&
+                                  project.weekend_work_days !== undefined &&
+                                  project.weekday_hours_per_day !== undefined &&
+                                  project.weekend_hours_per_day !== undefined && (
+                                    <div className="pt-2 mt-2 border-t border-border">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">週間合計:</span>
+                                        <span className="font-mono font-medium text-foreground">
+                                          {project.weekday_work_days * project.weekday_hours_per_day +
+                                            project.weekend_work_days * project.weekend_hours_per_day}
+                                          時間
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       {/* タスクリスト（シンプル化） */}
@@ -950,23 +1183,22 @@ export function WeeklyCalendar({
         userId={userId}
       />
 
-      {/* Task Detail Dialog */}
-      <TaskDetailDialog
-        open={showDetailDialog}
-        onOpenChange={setShowDetailDialog}
+      {/* Task Edit Dialog */}
+      <TaskEditDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
         task={selectedTask}
-        projects={projects}
-        bigTasks={bigTasks}
         onUpdateTask={async data => {
           await onUpdateTask(data)
-          setShowDetailDialog(false)
+          setShowEditDialog(false)
           setSelectedTask(null)
         }}
         onDeleteTask={async taskId => {
           await onDeleteTask(taskId)
-          setShowDetailDialog(false)
+          setShowEditDialog(false)
           setSelectedTask(null)
         }}
+        onDeleteRecurringTasks={onDeleteRecurringTasks}
       />
 
       {/* Weekly Sleep Schedule Dialog */}

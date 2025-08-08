@@ -153,6 +153,10 @@ export default function ProjectCreatePage() {
         version: 1,
         estimated_total_hours: totalTaskHours,
         color: projectColor,
+        weekday_work_days: weekdayWorkDays,
+        weekend_work_days: weekendWorkDays,
+        weekday_hours_per_day: weekdayHoursPerDay,
+        weekend_hours_per_day: weekendHoursPerDay,
       }
 
       if (process.env.NODE_ENV === 'development') {

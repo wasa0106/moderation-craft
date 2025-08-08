@@ -2,7 +2,7 @@
  * FocusDialog - 集中力入力ダイアログ
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -12,30 +12,63 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Brain, Target, Zap, Coffee, Wind, Cloud, Flame, Star, Moon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Slider } from '@/components/ui/slider'
+import { Textarea } from '@/components/ui/textarea'
 
 interface FocusDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (focusLevel: number) => void
+  onSubmit: (focusLevel: number, workNotes?: string) => void
 }
 
-const focusLevels = [
-  { value: 1, icon: Moon, label: '眠い' },
-  { value: 2, icon: Cloud, label: 'ぼんやり' },
-  { value: 3, icon: Coffee, label: '疲れ気味' },
-  { value: 4, icon: Wind, label: '普通' },
-  { value: 5, icon: Target, label: 'まあまあ' },
-  { value: 6, icon: Brain, label: '集中' },
-  { value: 7, icon: Flame, label: 'かなり集中' },
-  { value: 8, icon: Star, label: '深い集中' },
-  { value: 9, icon: Zap, label: 'ゾーン！' },
+const focusLabels = [
+  '眠い',
+  'ぼんやり',
+  '疲れ気味',
+  '普通',
+  'まあまあ',
+  '集中',
+  'かなり集中',
+  '深い集中',
+  'ゾーン！',
 ]
 
 export function FocusDialog({ open, onOpenChange, onSubmit }: FocusDialogProps) {
-  const [selectedFocus, setSelectedFocus] = useState<number | null>(null)
+  const [focusLevel, setFocusLevel] = useState<number>(5)
+  const [workNotes, setWorkNotes] = useState<string>('')
+  const sliderRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // ダイアログが開いたときにデフォルト値をリセット
+  useEffect(() => {
+    if (open) {
+      setFocusLevel(5)
+      setWorkNotes('')
+      // スライダーにフォーカスを当てる
+      setTimeout(() => {
+        const slider = sliderRef.current?.querySelector('[role="slider"]') as HTMLElement
+        slider?.focus()
+      }, 100)
+    }
+  }, [open])
+
+  // キーボードショートカット
+  useEffect(() => {
+    if (!open) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Shiftを押している場合のEnterキーで確定
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault()
+        onSubmit(focusLevel, workNotes || undefined)
+        onOpenChange(false)
+      }
+      // 通常のEnterは何もしない（テキストエリアでの改行のため）
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, focusLevel, workNotes, onSubmit, onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -45,55 +78,63 @@ export function FocusDialog({ open, onOpenChange, onSubmit }: FocusDialogProps) 
           <DialogDescription>作業中の集中度を9段階で評価してください</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>集中力レベル</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {focusLevels.map(level => {
-                const Icon = level.icon
-                const isSelected = selectedFocus === level.value
+        <div className="space-y-6 py-6">
+          <div className="space-y-4">
+            <div ref={sliderRef}>
+              <Slider
+                value={[focusLevel]}
+                onValueChange={(value) => setFocusLevel(value[0])}
+                min={1}
+                max={9}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>1</span>
+              <span>2</span>
+              <span>3</span>
+              <span>4</span>
+              <span>5</span>
+              <span>6</span>
+              <span>7</span>
+              <span>8</span>
+              <span>9</span>
+            </div>
 
-                return (
-                  <button
-                    key={level.value}
-                    onClick={() => {
-                      onSubmit(level.value)
-                      setSelectedFocus(null)
-                      onOpenChange(false)
-                    }}
-                    className={cn(
-                      'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all',
-                      'hover:bg-muted/50',
-                      isSelected ? 'border-primary bg-primary/5' : 'border-border bg-background'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'h-8 w-8',
-                        isSelected
-                          ? 'text-primary'
-                          : level.value <= 3
-                            ? 'text-muted-foreground'
-                            : level.value <= 6
-                              ? 'text-foreground'
-                              : 'text-foreground'
-                      )}
-                    />
-                    <span className="text-xs font-medium">{level.label}</span>
-                    <span
-                      className={cn(
-                        'text-lg font-bold',
-                        isSelected ? 'text-primary' : 'text-muted-foreground'
-                      )}
-                    >
-                      {level.value}
-                    </span>
-                  </button>
-                )
-              })}
+            <div className="space-y-2">
+              <Textarea
+                ref={textareaRef}
+                value={workNotes}
+                onChange={(e) => setWorkNotes(e.target.value)}
+                onKeyDown={(e) => {
+                  // Shiftを押している場合のEnterキーで確定
+                  if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault()
+                    onSubmit(focusLevel, workNotes || undefined)
+                    onOpenChange(false)
+                  }
+                  // 通常のEnterはデフォルトの改行動作
+                }}
+                placeholder="作業内容や気づきをメモ（任意）"
+                className="min-h-[80px] resize-none"
+              />
             </div>
           </div>
         </div>
+
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              onSubmit(focusLevel, workNotes || undefined)
+              onOpenChange(false)
+            }}
+            className="w-full"
+          >
+            確定
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

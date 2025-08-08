@@ -67,11 +67,24 @@ function TaskCardComponent({
       }
 
     // 作業中の場合
-    if (displayInfo.hasActiveSession)
+    if (displayInfo.hasActiveSession) {
+      if (project?.color) {
+        // プロジェクトカラーを使用（より鮮やかに）
+        return {
+          className: 'text-white border-0 border-l-4',
+          style: {
+            backgroundColor: project.color,
+            borderLeftColor: project.color,
+            filter: 'brightness(1.1) saturate(1.2)', // 明るく鮮やかにして強調
+          },
+        }
+      }
+      // プロジェクトがない場合はデフォルト
       return {
         className:
           'bg-primary text-primary-foreground border-0 border-l-4 border-l-primary-foreground',
       }
+    }
 
     // プロジェクトカラーがある場合
     if (project?.color) {
@@ -229,13 +242,19 @@ function TaskCardComponent({
             'relative transition-all rounded-sm box-border',
             styles.padding,
             'hover:shadow-sm hover:bg-surface-2',
-            isActive && 'ring-2 ring-primary ring-offset-1',
+            isActive && 'ring-2 ring-offset-1',
             status === 'completed' && 'opacity-80',
             status === 'cancelled' && 'opacity-60',
             'cursor-pointer',
             cardStyle.className
           )}
-          style={{ ...cardStyle.style, ...style }}
+          style={{ 
+            ...cardStyle.style, 
+            ...style,
+            ...(isActive && project?.color ? { 
+              boxShadow: `0 0 0 2px ${project.color}, 0 0 0 3px white` 
+            } : {})
+          }}
           onClick={e => {
             if (!showButtons) {
               e.stopPropagation()

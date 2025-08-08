@@ -2,7 +2,7 @@
  * MoodDialog - 感情入力ダイアログ
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -13,21 +13,10 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
+import { Slider } from '@/components/ui/slider'
 import { moodEntryRepository } from '@/lib/db/repositories'
 import { CreateMoodEntryData } from '@/types'
-import {
-  Smile,
-  Frown,
-  Meh,
-  Heart,
-  Angry,
-  Sparkles,
-  Brain,
-  Zap,
-  CloudRain,
-  CheckCircle,
-} from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SyncService } from '@/lib/sync/sync-service'
 import { toast } from 'sonner'
@@ -36,35 +25,41 @@ interface MoodDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   userId: string
+  onSuccess?: () => void
 }
 
-const moodLevels = [
-  { value: 1, icon: Angry, label: 'とても悪い' },
-  { value: 2, icon: Frown, label: '悪い' },
-  { value: 3, icon: CloudRain, label: 'やや悪い' },
-  { value: 4, icon: Meh, label: '普通' },
-  { value: 5, icon: Smile, label: 'まあまあ' },
-  { value: 6, icon: Heart, label: '良い' },
-  { value: 7, icon: Brain, label: 'とても良い' },
-  { value: 8, icon: Sparkles, label: '素晴らしい' },
-  { value: 9, icon: Zap, label: '最高！' },
-]
-
-export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
-  const [selectedMood, setSelectedMood] = useState<number | null>(null)
+export function MoodDialog({ open, onOpenChange, userId, onSuccess }: MoodDialogProps) {
+  const [moodLevel, setMoodLevel] = useState<number>(5)
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const syncService = SyncService.getInstance()
+  const sliderRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const handleSubmit = async () => {
-    if (!selectedMood) return
+  // ダイアログが開いたときにデフォルト値をリセット
+  useEffect(() => {
+    if (open) {
+      setMoodLevel(5)
+      setNotes('')
+      setIsSuccess(false)
+      // スライダーにフォーカスを当てる
+      setTimeout(() => {
+        const slider = sliderRef.current?.querySelector('[role="slider"]') as HTMLElement
+        slider?.focus()
+      }, 100)
+    }
+  }, [open])
 
+  const handleSubmit = useCallback(async () => {
+    // 二重実行防止
+    if (isSubmitting) return
+    
     setIsSubmitting(true)
     try {
       const data: CreateMoodEntryData = {
         user_id: userId,
-        mood_level: selectedMood,
+        mood_level: moodLevel,
         notes: notes || undefined,
         timestamp: new Date().toISOString(),
       }
@@ -78,13 +73,18 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
       // 成功状態を表示
       setIsSuccess(true)
       toast.success('感情を記録しました', {
-        description: `気分レベル: ${selectedMood}`,
+        description: `気分レベル: ${moodLevel}`,
         icon: <CheckCircle className="w-4 h-4" />,
       })
 
+      // 成功コールバックを呼び出す
+      if (onSuccess) {
+        onSuccess()
+      }
+
       // 少し待ってからダイアログを閉じる
       setTimeout(() => {
-        setSelectedMood(null)
+        setMoodLevel(5)
         setNotes('')
         setIsSuccess(false)
         onOpenChange(false)
@@ -97,12 +97,29 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [isSubmitting, userId, moodLevel, notes, onSuccess, onOpenChange])
+
+  // キーボードショートカット
+  useEffect(() => {
+    if (!open) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Shiftを押している場合のEnterキーで確定
+      if (e.key === 'Enter' && e.shiftKey && !isSubmitting) {
+        e.preventDefault()
+        handleSubmit()
+      }
+      // 通常のEnterは何もしない（テキストエリアでの改行のため）
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, isSubmitting, handleSubmit])
 
   // ダイアログを閉じる時にステートをリセット
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && !isSubmitting) {
-      setSelectedMood(null)
+      setMoodLevel(5)
       setNotes('')
       setIsSuccess(false)
     }
@@ -117,65 +134,56 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
           <DialogDescription>現在の感情レベルを選択してください</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* 感情レベル選択 */}
-          <div className="space-y-2">
-            <Label>感情レベル</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {moodLevels.map(level => {
-                const Icon = level.icon
-                const isSelected = selectedMood === level.value
-
-                return (
-                  <button
-                    key={level.value}
-                    onClick={() => setSelectedMood(level.value)}
-                    className={cn(
-                      'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all',
-                      'hover:bg-muted/50',
-                      isSelected ? 'border-primary bg-primary/5' : 'border-border bg-background'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'h-8 w-8',
-                        isSelected
-                          ? 'text-primary'
-                          : level.value <= 3
-                            ? 'text-muted-foreground'
-                            : level.value <= 6
-                              ? 'text-foreground'
-                              : 'text-foreground'
-                      )}
-                    />
-                    <span className="text-xs font-medium">{level.label}</span>
-                  </button>
-                )
-              })}
+        <div className="space-y-6 py-6">
+          <div className="space-y-4">
+            <div ref={sliderRef}>
+              <Slider
+                value={[moodLevel]}
+                onValueChange={(value) => setMoodLevel(value[0])}
+                min={1}
+                max={9}
+                step={1}
+                className="w-full"
+              />
             </div>
-          </div>
+            
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>1</span>
+              <span>2</span>
+              <span>3</span>
+              <span>4</span>
+              <span>5</span>
+              <span>6</span>
+              <span>7</span>
+              <span>8</span>
+              <span>9</span>
+            </div>
 
-          {/* メモ入力 */}
-          <div className="space-y-2">
-            <Label htmlFor="mood-notes">メモ（任意）</Label>
-            <Textarea
-              id="mood-notes"
-              placeholder="今の気分について詳しく記録できます..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-            />
+            <div className="space-y-2">
+              <Textarea
+                ref={textareaRef}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onKeyDown={(e) => {
+                  // Shiftを押している場合のEnterキーで確定
+                  if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault()
+                    handleSubmit()
+                  }
+                  // 通常のEnterはデフォルトの改行動作
+                }}
+                placeholder="今の気分について詳しく記録できます..."
+                className="min-h-[80px] resize-none"
+              />
+            </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
-            キャンセル
-          </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!selectedMood || isSubmitting || isSuccess}
-            className={cn(isSuccess && 'bg-primary hover:bg-primary/90')}
+            disabled={isSubmitting || isSuccess}
+            className={cn('w-full', isSuccess && 'bg-primary hover:bg-primary/90')}
           >
             {isSuccess ? (
               <>
@@ -185,7 +193,7 @@ export function MoodDialog({ open, onOpenChange, userId }: MoodDialogProps) {
             ) : isSubmitting ? (
               '保存中...'
             ) : (
-              '保存'
+              '確定'
             )}
           </Button>
         </DialogFooter>

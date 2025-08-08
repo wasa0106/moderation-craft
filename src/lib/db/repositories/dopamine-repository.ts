@@ -23,7 +23,7 @@ export class DopamineEntryRepositoryImpl
   implements DopamineEntryRepository
 {
   protected table = db.dopamine_entries
-  protected entityType = 'dopamine_entries'
+  protected entityType = 'dopamine_entry'
 
   async getByDateRange(
     userId: string,

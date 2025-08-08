@@ -187,6 +187,85 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
   protected table: Table<SmallTask> = db.small_tasks
   protected entityType = 'small_task'
 
+  /**
+   * 同じ親IDを持つすべての繰り返しタスクを取得
+   */
+  async getByRecurrenceParentId(parentId: string): Promise<SmallTask[]> {
+    try {
+      return await this.table
+        .where('recurrence_parent_id')
+        .equals(parentId)
+        .sortBy('scheduled_start')
+    } catch (error) {
+      throw new Error(`Failed to get recurring tasks: ${error}`)
+    }
+  }
+
+  /**
+   * 繰り返しタスクを一括更新
+   */
+  async updateRecurringTasks(
+    parentId: string,
+    data: Partial<SmallTask>,
+    updateMode: 'all' | 'future' = 'all'
+  ): Promise<SmallTask[]> {
+    try {
+      // 親タスクまたは同じ親IDを持つタスクを取得
+      const tasks = await this.table
+        .where('id').equals(parentId)
+        .or('recurrence_parent_id').equals(parentId)
+        .toArray()
+
+      const updatedTasks: SmallTask[] = []
+      const now = new Date()
+
+      for (const task of tasks) {
+        // futureモードの場合、過去のタスクはスキップ
+        if (updateMode === 'future' && task.scheduled_start) {
+          const taskDate = new Date(task.scheduled_start)
+          if (taskDate < now) continue
+        }
+
+        const updatedTask = await this.update(task.id, data)
+        updatedTasks.push(updatedTask)
+      }
+
+      return updatedTasks
+    } catch (error) {
+      throw new Error(`Failed to update recurring tasks: ${error}`)
+    }
+  }
+
+  /**
+   * 繰り返しタスクを一括削除
+   */
+  async deleteRecurringTasks(
+    parentId: string,
+    deleteMode: 'all' | 'future' = 'all'
+  ): Promise<void> {
+    try {
+      // 親タスクまたは同じ親IDを持つタスクを取得
+      const tasks = await this.table
+        .where('id').equals(parentId)
+        .or('recurrence_parent_id').equals(parentId)
+        .toArray()
+
+      const now = new Date()
+
+      for (const task of tasks) {
+        // futureモードの場合、過去のタスクはスキップ
+        if (deleteMode === 'future' && task.scheduled_start) {
+          const taskDate = new Date(task.scheduled_start)
+          if (taskDate < now) continue
+        }
+
+        await this.delete(task.id)
+      }
+    } catch (error) {
+      throw new Error(`Failed to delete recurring tasks: ${error}`)
+    }
+  }
+
   async getScheduledForDate(userId: string, date: string): Promise<SmallTask[]> {
     try {
       const startOfDay = `${date}T00:00:00.000Z`

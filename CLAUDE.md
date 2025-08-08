@@ -105,7 +105,7 @@
 データソース → 取り込み → データレイク → 変換 → 分析 → サービング
    ↓            ↓           ↓            ↓       ↓        ↓
 Multiple     Lambda        S3          dbt   DuckDB   Dashboard
-Sources      Functions                              
+Sources      Functions
 ```
 
 ### データソース層
@@ -120,11 +120,11 @@ Sources      Functions
   - Fitbit: 睡眠、心拍変動、活動量、ストレススコア
   - Apple Health: iOS連携データ
   - Google Fit: Android連携データ
-  
+
 - **環境データ**
   - OpenWeatherMap: 気温、湿度、気圧、大気質
   - 日照時間、UV指数
-  
+
 - **活動データ**
   - Google Calendar: スケジュール、会議
   - GitHub: コミット、PR活動
@@ -176,11 +176,11 @@ s3://moderation-craft-data/
 1. **ステージング層**
    - `stg_*`: 生データのクレンジング、型変換
    - データ品質チェック、NULL処理
-   
+
 2. **中間層**
    - `int_*`: ビジネスロジック適用
    - データ統合、計算フィールド追加
-   
+
 3. **マート層**
    - `mart_*`: 最終的な分析用テーブル
    - 集計、ピボット、時系列処理
@@ -280,3 +280,11 @@ s3://moderation-craft-data/
 - **オーケストレーション**: AWS Step Functions
 - **モニタリング**: CloudWatch
 - **ML**: Hugging Face
+
+### ロギング ###
+* ライブラリ: vibelogger
+* 使い方: https://github.com/fladdict/vibe-logger
+* vibeloggerはコーディングエージェント用に高度な構造化データを出力するロガーです。
+* ログにはvibeloggerを可能な限り利用し、ログからAIが自律的に何が起きてるかを把握できるようにする
+* vibeloggerにはステップ、プロセス、コンテキスト情報、TODOなど様々な情報を構造化して記録できます。
+* デバッグ時には./logsの出力を参照する

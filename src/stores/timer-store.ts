@@ -82,6 +82,7 @@ export const useTimerStore = create<TimerState>()(
 
       stopTimer: () =>
         set({
+          activeSession: null,
           isRunning: false,
           elapsedTime: 0,
           startTime: null,

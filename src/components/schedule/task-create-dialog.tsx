@@ -11,15 +11,28 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Clock, Calendar, ListTodo, Coffee } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Clock, Calendar, ListTodo, Coffee, RefreshCw, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Project, BigTask, CreateSmallTaskData } from '@/types'
+import { Project, BigTask, SmallTask, CreateSmallTaskData, UpdateSmallTaskData, RecurrencePattern } from '@/types'
 import { cn } from '@/lib/utils'
 import { useBigTasks } from '@/hooks/use-big-tasks'
+import { getRecurrenceDescription } from '@/lib/utils/recurrence-utils'
 
 interface TaskCreateDialogProps {
   open: boolean
@@ -30,18 +43,21 @@ interface TaskCreateDialogProps {
   bigTasks: BigTask[]
   onCreateTask: (data: CreateSmallTaskData) => Promise<void>
   userId: string
+  // 編集モード用
+  editMode?: boolean
+  existingTask?: SmallTask | null
+  onUpdateTask?: (data: { id: string; data: UpdateSmallTaskData }) => Promise<void>
+  onDeleteTask?: (taskId: string) => Promise<void>
+  // 繰り返しタスクの一括削除用
+  onDeleteRecurringTasks?: (data: { parentId: string; mode?: 'all' | 'future' }) => Promise<void>
 }
 
-// ルーチンタスクのプリセット
+// フリータスクのプリセット
 const ROUTINE_TASK_PRESETS = [
-  { name: '移動', icon: '🚶', estimatedMinutes: 30 },
-  { name: '身支度', icon: '🚿', estimatedMinutes: 30 },
-  { name: '食事', icon: '🍽️', estimatedMinutes: 30 },
-  { name: '休憩', icon: '☕', estimatedMinutes: 15 },
-  { name: '掃除', icon: '🧹', estimatedMinutes: 30 },
-  { name: '買い物', icon: '🛒', estimatedMinutes: 60 },
-  { name: '運動', icon: '🏃', estimatedMinutes: 45 },
-  { name: '読書', icon: '📚', estimatedMinutes: 30 },
+  { name: '移動', icon: '🚶' },
+  { name: '身支度', icon: '🚿' },
+  { name: '食事', icon: '🍽️' },
+  { name: '休憩', icon: '☕' },
 ]
 
 export function TaskCreateDialog({
@@ -53,6 +69,11 @@ export function TaskCreateDialog({
   bigTasks,
   onCreateTask,
   userId,
+  editMode = false,
+  existingTask = null,
+  onUpdateTask,
+  onDeleteTask,
+  onDeleteRecurringTasks,
 }: TaskCreateDialogProps) {
   const [taskType, setTaskType] = useState<'project' | 'routine'>('project')
   const [taskName, setTaskName] = useState('')
@@ -61,6 +82,20 @@ export function TaskCreateDialog({
   const [startTimeInput, setStartTimeInput] = useState('')
   const [endTimeInput, setEndTimeInput] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  
+  // 繰り返しタスク削除モード選択用
+  const [showRecurringDeleteDialog, setShowRecurringDeleteDialog] = useState(false)
+  const [recurringDeleteMode, setRecurringDeleteMode] = useState<'this' | 'all' | null>(null)
+  
+  // 繰り返し設定の状態
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false)
+  const [recurrenceExpanded, setRecurrenceExpanded] = useState(false)
+  const [recurrenceType, setRecurrenceType] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1)
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([])
+  const [recurrenceStartDate, setRecurrenceStartDate] = useState('')
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('')
 
   // 選択されたプロジェクトの全BigTasksを取得
   const { bigTasks: allProjectBigTasks } = useBigTasks(userId, selectedProjectId)
@@ -94,16 +129,53 @@ export function TaskCreateDialog({
 
   // 初期値の設定
   useEffect(() => {
-    if (startTime && endTime) {
+    if (editMode && existingTask) {
+      // 編集モード：既存タスクからデータを読み込む
+      setTaskName(existingTask.name)
+      setTaskType(existingTask.task_type || 'project')
+      setSelectedProjectId(existingTask.project_id || '')
+      setSelectedBigTaskId(existingTask.big_task_id || '')
+      
+      if (existingTask.scheduled_start) {
+        const start = new Date(existingTask.scheduled_start)
+        setStartTimeInput(format(start, 'HH:mm'))
+        setRecurrenceStartDate(format(start, 'yyyy-MM-dd'))
+      }
+      
+      if (existingTask.scheduled_end) {
+        const end = new Date(existingTask.scheduled_end)
+        setEndTimeInput(format(end, 'HH:mm'))
+      }
+      
+      // 繰り返し設定の復元
+      if (existingTask.recurrence_enabled && existingTask.recurrence_pattern) {
+        setRecurrenceEnabled(true)
+        setRecurrenceType(existingTask.recurrence_pattern.type)
+        setRecurrenceInterval(existingTask.recurrence_pattern.interval)
+        if (existingTask.recurrence_pattern.weekdays) {
+          setSelectedWeekdays(existingTask.recurrence_pattern.weekdays)
+        }
+        if (existingTask.recurrence_pattern.end_condition.type === 'date' && 
+            existingTask.recurrence_pattern.end_condition.value) {
+          setRecurrenceEndDate(existingTask.recurrence_pattern.end_condition.value as string)
+        }
+      }
+    } else if (startTime && endTime) {
+      // 新規作成モード：選択した時間を設定
       setStartTimeInput(formatTimeInput(startTime))
       setEndTimeInput(formatTimeInput(endTime))
+      // 開始日を自動設定
+      const dateStr = format(startTime, 'yyyy-MM-dd')
+      setRecurrenceStartDate(dateStr)
     }
-  }, [startTime, endTime])
+  }, [startTime, endTime, editMode, existingTask])
 
-  // プロジェクト変更時にBigTaskをリセット
+  // プロジェクト変更時にBigTaskをリセット（新規作成時のみ）
   useEffect(() => {
-    setSelectedBigTaskId('')
-  }, [selectedProjectId])
+    if (!editMode) {
+      setSelectedBigTaskId('')
+    }
+  }, [selectedProjectId, editMode])
 
   // 時間から分数を計算
   const calculateMinutes = () => {
@@ -128,11 +200,23 @@ export function TaskCreateDialog({
     setSelectedBigTaskId('')
     setStartTimeInput('')
     setEndTimeInput('')
+    setRecurrenceEnabled(false)
+    setRecurrenceExpanded(false)
+    setRecurrenceType('weekly')
+    setRecurrenceInterval(1)
+    setSelectedWeekdays([])
+    setRecurrenceStartDate('')
+    setRecurrenceEndDate('')
+    setRecurringDeleteMode(null)
+    setShowRecurringDeleteDialog(false)
   }
 
-  // タスク作成
-  const handleCreate = async () => {
-    if (!taskName || !startTime || !endTime) {
+  // 繰り返しタスクかどうかを判定
+  const isRecurringTask = existingTask && (existingTask.recurrence_parent_id || existingTask.recurrence_enabled)
+
+  // タスク作成/更新
+  const handleSave = async () => {
+    if (!taskName) {
       return
     }
 
@@ -144,69 +228,177 @@ export function TaskCreateDialog({
     setIsCreating(true)
 
     try {
-      // 入力された時刻を使って正確な日時を作成
-      const [startHour, startMinute] = startTimeInput.split(':').map(Number)
-      const [endHour, endMinute] = endTimeInput.split(':').map(Number)
+      if (editMode && existingTask) {
+        // 編集モード: タスクを更新（単一タスクのみ）
+        const updateData: UpdateSmallTaskData = {
+          name: taskName,
+          big_task_id: taskType === 'project' ? selectedBigTaskId : undefined,
+          project_id: taskType === 'project' ? selectedProjectId : undefined,
+          task_type: taskType,
+          is_reportable: taskType === 'project',
+        }
 
-      const scheduledStart = new Date(startTime)
-      scheduledStart.setHours(startHour, startMinute, 0, 0)
+        // 時刻が変更されている場合
+        if (startTimeInput && endTimeInput && existingTask.scheduled_start) {
+          const [startHour, startMinute] = startTimeInput.split(':').map(Number)
+          const [endHour, endMinute] = endTimeInput.split(':').map(Number)
+          
+          const scheduledStart = new Date(existingTask.scheduled_start)
+          scheduledStart.setHours(startHour, startMinute, 0, 0)
+          
+          const scheduledEnd = new Date(existingTask.scheduled_end || existingTask.scheduled_start)
+          scheduledEnd.setHours(endHour, endMinute, 0, 0)
+          
+          updateData.scheduled_start = scheduledStart.toISOString()
+          updateData.scheduled_end = scheduledEnd.toISOString()
+          updateData.estimated_minutes = Math.ceil((scheduledEnd.getTime() - scheduledStart.getTime()) / (1000 * 60))
+        }
 
-      const scheduledEnd = new Date(endTime)
-      scheduledEnd.setHours(endHour, endMinute, 0, 0)
+        // 繰り返し設定の更新
+        if (recurrenceEnabled) {
+          updateData.recurrence_enabled = true
+          updateData.recurrence_pattern = {
+            type: recurrenceType,
+            interval: recurrenceInterval,
+            weekdays: recurrenceType === 'weekly' ? selectedWeekdays : undefined,
+            start_date: recurrenceStartDate || (existingTask.scheduled_start || new Date().toISOString()),
+            end_condition: recurrenceEndDate 
+              ? { type: 'date', value: recurrenceEndDate }
+              : { type: 'never' },
+          }
+        } else {
+          updateData.recurrence_enabled = false
+          updateData.recurrence_pattern = undefined
+        }
 
-      const taskData: CreateSmallTaskData = {
-        name: taskName,
-        big_task_id: taskType === 'project' ? selectedBigTaskId : undefined,
-        project_id: taskType === 'project' ? selectedProjectId : undefined,
-        user_id: userId,
-        estimated_minutes: estimatedMinutes,
-        scheduled_start: scheduledStart.toISOString(),
-        scheduled_end: scheduledEnd.toISOString(),
-        task_type: taskType,
-        is_reportable: taskType === 'project',
+        // 単一タスクの更新のみ（繰り返しタスクでも個別に編集）
+        if (onUpdateTask) {
+          await onUpdateTask({ id: existingTask.id, data: updateData })
+        }
+        console.log('タスク更新成功')
+      } else {
+        // 新規作成モード
+        if (!startTime || !endTime) return
+        
+        const [startHour, startMinute] = startTimeInput.split(':').map(Number)
+        const [endHour, endMinute] = endTimeInput.split(':').map(Number)
+
+        const scheduledStart = new Date(startTime)
+        scheduledStart.setHours(startHour, startMinute, 0, 0)
+
+        const scheduledEnd = new Date(endTime)
+        scheduledEnd.setHours(endHour, endMinute, 0, 0)
+
+        // 繰り返しパターンを作成
+        let recurrencePattern: RecurrencePattern | undefined
+        if (recurrenceEnabled) {
+          recurrencePattern = {
+            type: recurrenceType,
+            interval: recurrenceInterval,
+            weekdays: recurrenceType === 'weekly' ? selectedWeekdays : undefined,
+            start_date: recurrenceStartDate || scheduledStart.toISOString(),
+            end_condition: recurrenceEndDate 
+              ? { type: 'date', value: recurrenceEndDate }
+              : { type: 'never' },
+          }
+        }
+
+        const taskData: CreateSmallTaskData = {
+          name: taskName,
+          big_task_id: taskType === 'project' ? selectedBigTaskId : undefined,
+          project_id: taskType === 'project' ? selectedProjectId : undefined,
+          user_id: userId,
+          estimated_minutes: estimatedMinutes,
+          scheduled_start: scheduledStart.toISOString(),
+          scheduled_end: scheduledEnd.toISOString(),
+          task_type: taskType,
+          is_reportable: taskType === 'project',
+          is_emergency: false,
+          recurrence_enabled: recurrenceEnabled,
+          recurrence_pattern: recurrencePattern,
+        }
+
+        await onCreateTask(taskData)
+        console.log('タスク作成成功')
       }
-
-      console.log('タスク作成データ:', {
-        ...taskData,
-        scheduled_start_formatted: format(scheduledStart, 'yyyy-MM-dd HH:mm'),
-        scheduled_end_formatted: format(scheduledEnd, 'yyyy-MM-dd HH:mm'),
-      })
-
-      await onCreateTask(taskData)
-      console.log('タスク作成成功')
+      
       resetForm()
       onOpenChange(false)
     } catch (error) {
-      console.error('Failed to create task:', error)
+      console.error('Failed to save task:', error)
     } finally {
       setIsCreating(false)
     }
   }
 
-  // ルーチンタスクのプリセット選択
+  // タスク削除
+  const handleDelete = async () => {
+    if (!editMode || !existingTask) return
+    
+    // 繰り返しタスクの削除の場合、モード選択ダイアログを表示
+    if (isRecurringTask) {
+      setShowRecurringDeleteDialog(true)
+      return
+    }
+    
+    // 通常タスクの削除
+    setIsDeleting(true)
+    try {
+      if (onDeleteTask) {
+        await onDeleteTask(existingTask.id)
+      }
+      resetForm()
+      onOpenChange(false)
+    } catch (error) {
+      console.error('Failed to delete task:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // フリータスクのプリセット選択
   const handlePresetSelect = (preset: (typeof ROUTINE_TASK_PRESETS)[0]) => {
     setTaskName(preset.name)
-    // 終了時刻を予定時間に基づいて自動設定
-    if (startTimeInput) {
-      const [startHour, startMinute] = startTimeInput.split(':').map(Number)
-      const endTotalMinutes = startHour * 60 + startMinute + preset.estimatedMinutes
-      const endHour = Math.floor(endTotalMinutes / 60)
-      const endMinute = endTotalMinutes % 60
-      setEndTimeInput(`${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`)
+  }
+
+  // 繰り返しタスク削除モード選択後の処理
+  const handleRecurringDeleteModeSelect = async (mode: 'this' | 'all') => {
+    setShowRecurringDeleteDialog(false)
+    
+    if (!editMode || !existingTask) return
+    
+    setIsDeleting(true)
+    try {
+      if (mode === 'all' && onDeleteRecurringTasks) {
+        const parentId = existingTask.recurrence_parent_id || existingTask.id
+        await onDeleteRecurringTasks({
+          parentId,
+          mode: 'all'
+        })
+      } else if (onDeleteTask) {
+        await onDeleteTask(existingTask.id)
+      }
+      resetForm()
+      onOpenChange(false)
+    } catch (error) {
+      console.error('Failed to delete task:', error)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-card border-border">
-        <DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] bg-card border-border flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-foreground flex items-center gap-2">
             <Calendar className="w-5 h-5 text-primary" />
-            新しいタスクを作成
+            {editMode ? 'タスクを編集' : '新しいタスクを作成'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
           {/* タスクタイプ選択 */}
           <div className="flex gap-2 p-1 bg-muted rounded-lg">
             <Button
@@ -227,7 +419,7 @@ export function TaskCreateDialog({
               className="flex-1 gap-2"
             >
               <Coffee className="w-4 h-4" />
-              ルーチンタスク
+              フリータスク
             </Button>
           </div>
           {taskType === 'project' ? (
@@ -321,7 +513,7 @@ export function TaskCreateDialog({
               </div>
             </>
           ) : (
-            /* ルーチンタスクのプリセット */
+            /* フリータスクのプリセット */
             <div className="grid gap-2">
               <Label className="text-muted-foreground">よく使うタスク</Label>
               <div className="grid grid-cols-4 gap-2">
@@ -392,36 +584,264 @@ export function TaskCreateDialog({
             )}
           </div>
 
-          {/* 日付表示 */}
-          {startTime && (
-            <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
-              <p className="font-medium">{format(startTime, 'yyyy年M月d日(E)', { locale: ja })}</p>
+          {/* 繰り返し設定 */}
+          <div className={cn(
+            "grid gap-3 border rounded-lg p-3 transition-all",
+            recurrenceEnabled 
+              ? "border-green-500/50" 
+              : "border-border"
+          )}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RefreshCw className={cn(
+                  "w-4 h-4 transition-colors",
+                  recurrenceEnabled ? "text-green-600 dark:text-green-500" : "text-muted-foreground"
+                )} />
+                <Label 
+                  htmlFor="recurrence-toggle" 
+                  className={cn(
+                    "transition-colors font-medium",
+                    recurrenceEnabled ? "text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  繰り返し設定
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="recurrence-toggle"
+                  checked={recurrenceEnabled}
+                  onCheckedChange={(checked) => {
+                    setRecurrenceEnabled(checked)
+                    if (checked) setRecurrenceExpanded(true)
+                  }}
+                />
+                {recurrenceEnabled && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRecurrenceExpanded(!recurrenceExpanded)}
+                    className="h-6 w-6 p-0"
+                  >
+                    {recurrenceExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
-          )}
+
+            {recurrenceEnabled && recurrenceExpanded && (
+              <div className="grid gap-3 pt-2 border-t border-border">
+                {/* 単位 */}
+                <div className="grid gap-2">
+                  <Label className="text-xs text-muted-foreground">単位</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={recurrenceType === 'daily' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRecurrenceType('daily')}
+                    >
+                      毎日
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={recurrenceType === 'weekly' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRecurrenceType('weekly')}
+                    >
+                      毎週
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={recurrenceType === 'monthly' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRecurrenceType('monthly')}
+                    >
+                      毎月
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 期間 */}
+                <div className="grid gap-2">
+                  <Label className="text-xs text-muted-foreground">期間</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={recurrenceStartDate}
+                      onChange={(e) => setRecurrenceStartDate(e.target.value)}
+                      className="flex-1 bg-background border-border focus:border-primary"
+                    />
+                    <span className="text-sm text-muted-foreground">〜</span>
+                    <Input
+                      type="date"
+                      value={recurrenceEndDate}
+                      onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                      placeholder="終了日（任意）"
+                      className="flex-1 bg-background border-border focus:border-primary"
+                    />
+                  </div>
+                  {!recurrenceEndDate && (
+                    <p className="text-xs text-muted-foreground">終了日を指定しない場合は無期限になります</p>
+                  )}
+                </div>
+
+                {/* 周期 */}
+                <div className="grid gap-2">
+                  <Label className="text-xs text-muted-foreground">周期</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={recurrenceInterval}
+                      onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
+                      className="w-20 bg-background border-border focus:border-primary"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {recurrenceType === 'daily' ? '日ごと' :
+                       recurrenceType === 'weekly' ? '週間ごと' :
+                       'ヶ月ごと'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 曜日（週単位の場合） */}
+                {recurrenceType === 'weekly' && (
+                  <div className="grid gap-2">
+                    <Label className="text-xs text-muted-foreground">曜日</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => {
+                        const isSelected = selectedWeekdays.includes(index)
+                        return (
+                          <div key={index} className="flex items-center gap-1">
+                            <Checkbox
+                              id={`weekday-${index}`}
+                              checked={isSelected}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedWeekdays([...selectedWeekdays, index])
+                                } else {
+                                  setSelectedWeekdays(selectedWeekdays.filter(d => d !== index))
+                                }
+                              }}
+                              className={cn(
+                                isSelected && "data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white"
+                              )}
+                            />
+                            <Label
+                              htmlFor={`weekday-${index}`}
+                              className="text-sm cursor-pointer"
+                            >
+                              {day}
+                            </Label>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 繰り返しパターンの説明 */}
+                {recurrenceEnabled && (
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                    {(() => {
+                      const pattern: RecurrencePattern = {
+                        type: recurrenceType,
+                        interval: recurrenceInterval,
+                        weekdays: recurrenceType === 'weekly' ? selectedWeekdays : undefined,
+                        start_date: recurrenceStartDate || (startTime?.toISOString() || new Date().toISOString()),
+                        end_condition: recurrenceEndDate
+                          ? { type: 'date', value: recurrenceEndDate }
+                          : { type: 'never' },
+                      }
+                      return getRecurrenceDescription(pattern)
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="border-border text-muted-foreground hover:bg-accent"
-          >
-            キャンセル
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={
-              !taskName ||
-              estimatedMinutes <= 0 ||
-              isCreating ||
-              (taskType === 'project' && (!selectedProjectId || !selectedBigTaskId))
-            }
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            {isCreating ? '作成中...' : 'タスクを作成'}
-          </Button>
+        <DialogFooter className="flex-shrink-0">
+          <div className="flex items-center justify-between w-full">
+            <div>
+              {editMode && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isDeleting ? '削除中...' : '削除'}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="border-border text-muted-foreground hover:bg-accent"
+              >
+                キャンセル
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={
+                  !taskName ||
+                  (editMode ? false : estimatedMinutes <= 0) ||
+                  isCreating ||
+                  (taskType === 'project' && (!selectedProjectId || !selectedBigTaskId))
+                }
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {isCreating ? (editMode ? '更新中...' : '作成中...') : (editMode ? '更新' : 'タスクを作成')}
+              </Button>
+            </div>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* 繰り返しタスク削除モード選択ダイアログ */}
+    <AlertDialog open={showRecurringDeleteDialog} onOpenChange={setShowRecurringDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>繰り返しタスクの削除</AlertDialogTitle>
+          <AlertDialogDescription>
+            このタスクは繰り返し設定されています。どのように削除しますか？
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <AlertDialogCancel 
+            onClick={() => {
+              setShowRecurringDeleteDialog(false)
+            }}
+          >
+            キャンセル
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => handleRecurringDeleteModeSelect('this')}
+            className="bg-secondary hover:bg-secondary/90"
+          >
+            この回のみ削除
+          </AlertDialogAction>
+          <AlertDialogAction
+            onClick={() => handleRecurringDeleteModeSelect('all')}
+            className="bg-primary hover:bg-primary/90"
+          >
+            すべての繰り返しを削除
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

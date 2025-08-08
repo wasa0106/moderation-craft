@@ -165,7 +165,8 @@ export class WorkSessionRepository
   async endSession(
     sessionId: string,
     endTime?: string,
-    focusLevel?: number
+    focusLevel?: number,
+    workNotes?: string
   ): Promise<WorkSession | null> {
     try {
       const session = await this.getById(sessionId)
@@ -196,6 +197,10 @@ export class WorkSessionRepository
 
       if (focusLevel !== undefined) {
         updates.focus_level = focusLevel
+      }
+
+      if (workNotes !== undefined) {
+        updates.work_notes = workNotes
       }
 
       return await this.update(sessionId, updates)

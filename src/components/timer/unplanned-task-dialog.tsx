@@ -6,28 +6,20 @@ import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Zap } from 'lucide-react'
-import { Project } from '@/types'
+import { Project, BigTask } from '@/types'
+import { cn } from '@/lib/utils'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 export interface UnplannedTaskData {
   name: string
   projectId?: string
+  bigTaskId?: string
 }
 
 interface UnplannedTaskDialogProps {
@@ -35,6 +27,8 @@ interface UnplannedTaskDialogProps {
   onOpenChange: (open: boolean) => void
   onConfirm: (taskData: UnplannedTaskData) => void
   projects: Project[]
+  bigTasks: BigTask[]
+  initialTaskName?: string
 }
 
 export function UnplannedTaskDialog({
@@ -42,17 +36,26 @@ export function UnplannedTaskDialog({
   onOpenChange,
   onConfirm,
   projects,
+  bigTasks,
+  initialTaskName,
 }: UnplannedTaskDialogProps) {
   const [taskName, setTaskName] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState<string>('none')
+  const [selectedBigTaskId, setSelectedBigTaskId] = useState<string>('none')
 
   // ダイアログが開いた時に値をリセット
   useEffect(() => {
     if (open) {
-      setTaskName('')
+      setTaskName(initialTaskName || '')
       setSelectedProjectId('none')
+      setSelectedBigTaskId('none')
     }
-  }, [open])
+  }, [open, initialTaskName])
+
+  // 選択されたプロジェクトのBigTasksをフィルタリング
+  const filteredBigTasks = selectedProjectId !== 'none' 
+    ? bigTasks.filter(task => task.project_id === selectedProjectId)
+    : []
 
   const handleSubmit = () => {
     if (!taskName.trim()) return
@@ -60,57 +63,130 @@ export function UnplannedTaskDialog({
     onConfirm({
       name: taskName.trim(),
       projectId: selectedProjectId === 'none' ? undefined : selectedProjectId,
+      bigTaskId: selectedBigTaskId === 'none' ? undefined : selectedBigTaskId,
     })
 
     onOpenChange(false)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && taskName.trim() && e.target instanceof HTMLInputElement) {
-      handleSubmit()
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-orange-500" />
-            緊急タスクの作成
-          </DialogTitle>
-          <DialogDescription>急遽発生した作業を登録します</DialogDescription>
+          <VisuallyHidden>
+            <DialogTitle>タスク設定</DialogTitle>
+          </VisuallyHidden>
         </DialogHeader>
-
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="task-name">タスク名</Label>
-            <Input
-              id="task-name"
-              placeholder="例: 緊急バグ修正、急な会議対応"
-              value={taskName}
-              onChange={e => setTaskName(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoFocus
-            />
+            <Label>タスク名</Label>
+            <div className="text-lg font-medium">
+              {taskName || '未設定'}
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="project">プロジェクト（任意）</Label>
-            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-              <SelectTrigger id="project">
-                <SelectValue placeholder="プロジェクトを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">プロジェクトなし</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>プロジェクト（任意）</Label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={selectedProjectId === 'none' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setSelectedProjectId('none')
+                  setSelectedBigTaskId('none')
+                }}
+                className="h-auto px-3 py-1.5 font-normal"
+              >
+                プロジェクトなし
+              </Button>
+              {projects.map(project => (
+                <Button
+                  key={project.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedProjectId(project.id)
+                    setSelectedBigTaskId('none')
+                  }}
+                  className={cn(
+                    'h-auto px-3 py-1.5 font-normal transition-all',
+                    selectedProjectId === project.id && 'ring-2 ring-offset-2'
+                  )}
+                  style={
+                    project.color
+                      ? {
+                          ...(selectedProjectId === project.id
+                            ? {
+                                backgroundColor: project.color,
+                                borderColor: project.color,
+                                color: 'white',
+                              }
+                            : {
+                                borderColor: project.color,
+                                color: project.color,
+                              }),
+                        }
+                      : undefined
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    {project.color && (
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor:
+                            selectedProjectId === project.id ? 'white' : project.color,
+                          opacity: selectedProjectId === project.id ? 0.8 : 1,
+                        }}
+                      />
+                    )}
+                    <span className="text-sm">{project.name}</span>
+                  </div>
+                </Button>
+              ))}
+            </div>
           </div>
+
+          {selectedProjectId !== 'none' && (
+            <div className="space-y-2">
+              <Label>大タスク（任意）</Label>
+              {filteredBigTasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  選択されたプロジェクトに大タスクがありません
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant={selectedBigTaskId === 'none' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedBigTaskId('none')}
+                    className="h-auto px-3 py-1.5 font-normal"
+                  >
+                    大タスクなし
+                  </Button>
+                  {filteredBigTasks.map(bigTask => (
+                    <Button
+                      key={bigTask.id}
+                      type="button"
+                      variant={selectedBigTaskId === bigTask.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedBigTaskId(bigTask.id)}
+                      className={cn(
+                        'h-auto px-3 py-1.5 font-normal transition-all max-w-xs',
+                        selectedBigTaskId === bigTask.id && 'ring-2 ring-offset-2'
+                      )}
+                    >
+                      <span className="text-sm truncate">{bigTask.name}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>

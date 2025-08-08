@@ -19,6 +19,10 @@ export interface Project extends DatabaseEntity {
   version: number
   estimated_total_hours?: number
   color?: string // HSL形式: "hsl(137, 42%, 55%)"
+  weekday_work_days?: number // 平日の作業可能日数 (0-5)
+  weekend_work_days?: number // 休日の作業可能日数 (0-2)
+  weekday_hours_per_day?: number // 平日の1日あたりの作業可能時間
+  weekend_hours_per_day?: number // 休日の1日あたりの作業可能時間
 }
 
 export interface BigTask extends DatabaseEntity {
@@ -33,6 +37,17 @@ export interface BigTask extends DatabaseEntity {
   start_date: string // YYYY-MM-DD形式
   end_date: string // YYYY-MM-DD形式
   description?: string
+}
+
+export interface RecurrencePattern {
+  type: 'daily' | 'weekly' | 'monthly'
+  interval: number
+  weekdays?: number[]
+  start_date: string
+  end_condition: {
+    type: 'date' | 'count' | 'never'
+    value?: string | number
+  }
 }
 
 export interface SmallTask extends DatabaseEntity {
@@ -50,6 +65,9 @@ export interface SmallTask extends DatabaseEntity {
   actual_minutes?: number
   task_type?: 'project' | 'routine'
   is_reportable?: boolean
+  recurrence_enabled?: boolean
+  recurrence_pattern?: RecurrencePattern
+  recurrence_parent_id?: string
 }
 
 export interface WorkSession extends DatabaseEntity {
@@ -60,6 +78,7 @@ export interface WorkSession extends DatabaseEntity {
   duration_seconds: number
   focus_level?: number
   mood_notes?: string
+  work_notes?: string
   is_synced: boolean
 }
 
@@ -74,7 +93,6 @@ export interface DopamineEntry extends DatabaseEntity {
   user_id: string
   timestamp: string
   event_description: string
-  notes?: string
 }
 
 export interface DailyCondition extends DatabaseEntity {
@@ -181,6 +199,7 @@ export interface ScheduleBlock {
   taskName: string
   tags?: string[]
   color?: string
+  isRecurring?: boolean
 }
 
 export interface WeeklySchedule {
@@ -399,7 +418,7 @@ export interface WorkSessionRepository extends RepositoryInterface<WorkSession> 
   getByUserId(userId: string): Promise<WorkSession[]>
   getSessionsForDate(userId: string, date: string): Promise<WorkSession[]>
   startSession(userId: string, taskId?: string, startTime?: string): Promise<WorkSession>
-  endSession(sessionId: string, endTime?: string, focusLevel?: number): Promise<WorkSession | null>
+  endSession(sessionId: string, endTime?: string, focusLevel?: number, workNotes?: string): Promise<WorkSession | null>
   pauseSession(sessionId: string): Promise<WorkSession>
   resumeSession(sessionId: string): Promise<WorkSession>
   addMoodNotes(sessionId: string, moodNotes: string): Promise<WorkSession>

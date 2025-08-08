@@ -147,6 +147,9 @@ export default function WeeklySchedulePage() {
           onDeleteTask={async id => {
             await calendarData.deleteSmallTask(id)
           }}
+          onDeleteRecurringTasks={async data => {
+            await calendarData.deleteRecurringTasks(data)
+          }}
           projects={calendarData.projects}
           bigTasks={currentWeekBigTasks}
           smallTasks={weekSmallTasks}

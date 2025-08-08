@@ -9,6 +9,7 @@ import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
 import { SmallTask, CreateSmallTaskData, UpdateSmallTaskData } from '@/types'
 import { db } from '@/lib/db/database'
+import { generateRecurringTasks } from '@/lib/utils/recurrence-utils'
 
 const syncService = SyncService.getInstance()
 
@@ -77,9 +78,66 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
     },
   })
 
-  // Create small task mutation
+  // Create small task mutation (繰り返し対応)
   const createSmallTaskMutation = useMutation({
     mutationFn: async (data: CreateSmallTaskData) => {
+      // 繰り返し設定がある場合
+      if (data.recurrence_enabled && data.recurrence_pattern) {
+        console.log('📝 Creating recurring task with pattern:', {
+          name: data.name,
+          recurrence_enabled: data.recurrence_enabled,
+          recurrence_pattern: data.recurrence_pattern,
+        })
+        
+        // 親タスクを作成（recurrence_enabledとrecurrence_patternを確実に含める）
+        const parentTaskData = {
+          ...data,
+          recurrence_enabled: true,
+          recurrence_pattern: data.recurrence_pattern,
+        }
+        const parentTask = await smallTaskRepository.create(parentTaskData)
+        await syncService.addToSyncQueue(
+          'small_task',
+          parentTask.id,
+          'create',
+          parentTask
+        )
+        
+        console.log('✅ Parent task created:', {
+          id: parentTask.id,
+          name: parentTask.name,
+          recurrence_enabled: parentTask.recurrence_enabled,
+          recurrence_pattern: parentTask.recurrence_pattern,
+        })
+        
+        // 繰り返しタスクを生成
+        const recurringTasks = generateRecurringTasks(data, data.recurrence_pattern!)
+        
+        // 子タスクをバッチ作成
+        const createdTasks = []
+        for (const taskData of recurringTasks) {
+          // 親タスクIDを設定し、繰り返しフラグを確実に設定
+          const childTaskData = {
+            ...taskData,
+            recurrence_parent_id: parentTask.id,
+            recurrence_enabled: false, // 子タスクは繰り返し無効
+          }
+          const createdTask = await smallTaskRepository.create(childTaskData)
+          await syncService.addToSyncQueue(
+            'small_task',
+            createdTask.id,
+            'create',
+            createdTask
+          )
+          createdTasks.push(createdTask)
+        }
+        
+        console.log(`✅ Created ${createdTasks.length} child tasks for recurring task`)
+        
+        return parentTask // 親タスクを返す
+      }
+      
+      // 通常のタスク作成
       const createdSmallTask = await smallTaskRepository.create(data)
       await syncService.addToSyncQueue(
         'small_task',
@@ -227,6 +285,61 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
     },
   })
 
+  // 繰り返しタスクの一括更新
+  const updateRecurringTasksMutation = useMutation({
+    mutationFn: async ({ 
+      parentId, 
+      data, 
+      mode = 'all' 
+    }: { 
+      parentId: string
+      data: UpdateSmallTaskData
+      mode?: 'all' | 'future' 
+    }) => {
+      const result = await smallTaskRepository.updateRecurringTasks(parentId, data, mode)
+      
+      // 各タスクを同期キューに追加
+      for (const task of result) {
+        await syncService.addToSyncQueue('small_task', task.id, 'update', task)
+      }
+      
+      return result
+    },
+    onSuccess: () => {
+      // すべての関連クエリを無効化
+      queryClient.invalidateQueries({
+        queryKey: ['small-tasks'],
+        refetchType: 'active',
+      })
+    },
+    onError: error => {
+      console.error('Failed to update recurring tasks:', error)
+    },
+  })
+
+  // 繰り返しタスクの一括削除
+  const deleteRecurringTasksMutation = useMutation({
+    mutationFn: async ({ 
+      parentId, 
+      mode = 'all' 
+    }: { 
+      parentId: string
+      mode?: 'all' | 'future' 
+    }) => {
+      await smallTaskRepository.deleteRecurringTasks(parentId, mode)
+    },
+    onSuccess: () => {
+      // すべての関連クエリを無効化
+      queryClient.invalidateQueries({
+        queryKey: ['small-tasks'],
+        refetchType: 'active',
+      })
+    },
+    onError: error => {
+      console.error('Failed to delete recurring tasks:', error)
+    },
+  })
+
   return {
     // Query state
     smallTasks: smallTasksQuery.data || [],
@@ -237,6 +350,8 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
     createSmallTask: createSmallTaskMutation.mutateAsync,
     updateSmallTask: updateSmallTaskMutation.mutateAsync,
     deleteSmallTask: deleteSmallTaskMutation.mutateAsync,
+    updateRecurringTasks: updateRecurringTasksMutation.mutateAsync,
+    deleteRecurringTasks: deleteRecurringTasksMutation.mutateAsync,
     startTask: startTaskMutation.mutateAsync,
     completeTask: completeTaskMutation.mutateAsync,
     rescheduleTask: rescheduleTaskMutation.mutateAsync,
