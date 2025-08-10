@@ -12,14 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Calendar, Clock, AlertTriangle, Plus } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { useProjectCreationStore } from '@/stores/project-creation-store'
 import { useProjects } from '@/hooks/use-projects'
@@ -49,10 +43,13 @@ export default function ProjectCreatePage() {
     endDate,
     totalWeeks,
     projectColor,
+    workableWeekdays,
     weekdayWorkDays,
     weekendWorkDays,
     weekdayHoursPerDay,
     weekendHoursPerDay,
+    excludeHolidays,
+    holidayWorkHours,
     weeklyAvailableHours,
     totalAvailableHours,
     tasks,
@@ -68,10 +65,11 @@ export default function ProjectCreatePage() {
     setStartDate,
     setEndDate,
     setProjectColor,
-    setWeekdayWorkDays,
-    setWeekendWorkDays,
+    setWorkableWeekdays,
     setWeekdayHoursPerDay,
     setWeekendHoursPerDay,
+    setExcludeHolidays,
+    setHolidayWorkHours,
     addTask,
     updateTask,
     deleteTask,
@@ -91,7 +89,7 @@ export default function ProjectCreatePage() {
   useEffect(() => {
     calculateTotalWeeks()
     calculateWeeklyHours()
-  }, [calculateTotalWeeks, calculateWeeklyHours])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 初期タスクの追加（初回マウント時のみ）
   useEffect(() => {
@@ -103,7 +101,7 @@ export default function ProjectCreatePage() {
   // タスク配分の計算
   useEffect(() => {
     calculateTaskAllocation()
-  }, [tasks, weeklyAvailableHours, totalWeeks, calculateTaskAllocation])
+  }, [tasks, weeklyAvailableHours, totalWeeks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // クリーンアップ
   useEffect(() => {
@@ -153,10 +151,13 @@ export default function ProjectCreatePage() {
         version: 1,
         estimated_total_hours: totalTaskHours,
         color: projectColor,
+        workable_weekdays: workableWeekdays,
         weekday_work_days: weekdayWorkDays,
         weekend_work_days: weekendWorkDays,
         weekday_hours_per_day: weekdayHoursPerDay,
         weekend_hours_per_day: weekendHoursPerDay,
+        exclude_holidays: excludeHolidays,
+        holiday_work_hours: holidayWorkHours,
       }
 
       if (process.env.NODE_ENV === 'development') {
@@ -315,12 +316,12 @@ export default function ProjectCreatePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-1 flex-col">
       <form onSubmit={handleSubmit} className="flex-1">
         <div className="space-y-6">
           {/* エラー表示 */}
           {submitError && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <div className="p-4 bg-destructive/10 border-b border-destructive/20">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
                 <p className="text-sm text-destructive">{submitError}</p>
@@ -329,7 +330,7 @@ export default function ProjectCreatePage() {
           )}
 
           {/* 1. プロジェクト基本情報 */}
-          <Card className="border border-border bg-surface-1">
+          <Card className="rounded-lg border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -406,50 +407,36 @@ export default function ProjectCreatePage() {
           </Card>
 
           {/* 2. 投下可能時間の計算 */}
-          <Card className="border border-border bg-surface-1">
+          <Card className="rounded-lg border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-card-foreground">
+              <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
                 投下可能時間の計算
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>平日の作業可能日数</Label>
-                  <Select
-                    value={weekdayWorkDays.toString()}
-                    onValueChange={value => setWeekdayWorkDays(parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[0, 1, 2, 3, 4, 5].map(days => (
-                        <SelectItem key={days} value={days.toString()}>
-                          {days}日
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>休日の作業可能日数</Label>
-                  <Select
-                    value={weekendWorkDays.toString()}
-                    onValueChange={value => setWeekendWorkDays(parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[0, 1, 2].map(days => (
-                        <SelectItem key={days} value={days.toString()}>
-                          {days}日
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <Label>作業可能な曜日</Label>
+                <div className="flex flex-wrap gap-4">
+                  {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
+                    <div key={day} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`weekday-${index}`}
+                        checked={workableWeekdays[index]}
+                        onCheckedChange={checked => {
+                          const newWeekdays = [...workableWeekdays]
+                          newWeekdays[index] = checked as boolean
+                          setWorkableWeekdays(newWeekdays)
+                        }}
+                      />
+                      <Label
+                        htmlFor={`weekday-${index}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {day}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -478,6 +465,36 @@ export default function ProjectCreatePage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="excludeHolidays"
+                    checked={excludeHolidays}
+                    onCheckedChange={checked => setExcludeHolidays(checked as boolean)}
+                  />
+                  <Label
+                    htmlFor="excludeHolidays"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    祝日を作業不可日とする
+                  </Label>
+                </div>
+                {!excludeHolidays && (
+                  <div className="ml-6 space-y-2">
+                    <Label className="text-sm">祝日の作業時間（時間/日）</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="24"
+                      step="0.5"
+                      value={holidayWorkHours === 0 ? '' : holidayWorkHours}
+                      onChange={e => setHolidayWorkHours(parseFloat(e.target.value) || 0)}
+                      className="w-32"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="p-3 bg-accent/10 rounded-lg border border-accent/20">
                 <p className="text-sm font-medium text-accent-foreground">
                   週間作業可能時間: {weeklyAvailableHours}時間
@@ -491,9 +508,9 @@ export default function ProjectCreatePage() {
           </Card>
 
           {/* 3. タスク一覧 */}
-          <Card className="border border-border bg-surface-1">
+          <Card className="rounded-lg border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-card-foreground">
+              <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
                 タスク一覧
               </CardTitle>
@@ -556,14 +573,14 @@ export default function ProjectCreatePage() {
 
           {/* ガントチャート */}
           {tasks.length > 0 && startDate && endDate && (
-            <Card className="border border-border bg-surface-1">
+            <Card className="rounded-lg border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   ガントチャート
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <GanttChart
                   tasks={tasks}
                   startDate={startDate}
@@ -572,13 +589,20 @@ export default function ProjectCreatePage() {
                   onTaskUpdate={updateTaskWeeks}
                   totalTaskHours={totalTaskHours}
                   totalAvailableHours={totalAvailableHours}
+                  workableWeekdays={workableWeekdays}
+                  weekdayHoursPerDay={weekdayHoursPerDay}
+                  weekendHoursPerDay={weekendHoursPerDay}
+                  excludeHolidays={excludeHolidays}
+                  holidayWorkHours={holidayWorkHours}
+                  showCapacityWarnings={true}
                 />
               </CardContent>
             </Card>
           )}
 
           {/* アクションボタン */}
-          <div className="flex gap-3">
+          <Card className="rounded-lg border">
+            <CardContent className="p-6 flex gap-3">
             <Button
               type="submit"
               disabled={isSubmitting || !projectName || !goal}
@@ -595,7 +619,8 @@ export default function ProjectCreatePage() {
             >
               キャンセル
             </Button>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </form>
     </div>

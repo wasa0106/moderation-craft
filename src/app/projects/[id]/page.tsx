@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProjectForm } from '@/components/project/project-form'
+import { GanttChart } from '@/components/project/gantt-chart'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,11 +27,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Settings,
+  BarChart3,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { format } from 'date-fns'
+import { format, eachDayOfInterval, getDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { getHolidaysOfYear } from 'holiday-jp-since'
 
 interface ProjectDetailPageProps {
   params: Promise<{
@@ -42,7 +45,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const router = useRouter()
   const { projects, updateProject, deleteProject } = useProjects('current-user')
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null)
-  const { bigTasks } = useBigTasks('current-user', resolvedParams?.id)
+  const { bigTasks, updateTaskStatus } = useBigTasks('current-user', resolvedParams?.id)
   const { smallTasks } = useSmallTasks('current-user', resolvedParams?.id)
 
   // Resolve params promise
@@ -116,6 +119,16 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       toast.error('プロジェクトの削除に失敗しました')
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleBigTaskStatusUpdate = async (taskId: string, status: 'completed' | 'pending') => {
+    try {
+      await updateTaskStatus({ id: taskId, status })
+      toast.success(`タスクを${status === 'completed' ? '完了' : '未完了'}にしました`)
+    } catch (error) {
+      console.error('Failed to update task status:', error)
+      toast.error('タスクステータスの更新に失敗しました')
     }
   }
 
@@ -226,9 +239,10 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">概要</TabsTrigger>
           <TabsTrigger value="tasks">タスク管理</TabsTrigger>
+          <TabsTrigger value="gantt">ガントチャート</TabsTrigger>
           <TabsTrigger value="settings">設定</TabsTrigger>
         </TabsList>
 
@@ -411,6 +425,124 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Gantt Chart Tab */}
+        <TabsContent value="gantt" className="space-y-6">
+          <div className="border border-border rounded-lg bg-surface-1">
+            <div className="p-6 pb-0">
+              <h3 className="flex items-center gap-2 font-semibold">
+                <BarChart3 className="h-5 w-5" />
+                ガントチャート
+              </h3>
+            </div>
+            {projectBigTasks.length === 0 ? (
+              <div className="text-center p-8">
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">タスクがないため、ガントチャートを表示できません</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  大タスクを作成してガントチャートを表示しましょう
+                </p>
+                <Button asChild>
+                  <Link href={`/projects/${resolvedParams.id}/tasks`}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    タスクを作成
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-6">
+                <GanttChart
+                    bigTasks={projectBigTasks}
+                    startDate={
+                      projectBigTasks.length > 0
+                        ? new Date(
+                            Math.min(
+                              ...projectBigTasks
+                                .filter(t => t.start_date)
+                                .map(t => new Date(t.start_date).getTime())
+                            )
+                          )
+                        : new Date()
+                    }
+                    endDate={new Date(project.deadline)}
+                    totalTaskHours={projectBigTasks.reduce(
+                      (sum, task) => sum + (task.estimated_hours || 0),
+                      0
+                    )}
+                    totalAvailableHours={
+                      (() => {
+                        // プロジェクトの開始日から終了日までの日数を計算
+                        const startDate =
+                          projectBigTasks.length > 0
+                            ? new Date(
+                                Math.min(
+                                  ...projectBigTasks
+                                    .filter(t => t.start_date)
+                                    .map(t => new Date(t.start_date).getTime())
+                                )
+                              )
+                            : new Date()
+                        const endDate = new Date(project.deadline)
+                        
+                        // 実際の作業可能時間を正確に計算
+                        const days = eachDayOfInterval({ start: startDate, end: endDate })
+                        let totalHours = 0
+                        
+                        // 各日の作業可能時間を計算
+                        days.forEach(day => {
+                          // 祝日判定
+                          if (project.exclude_holidays) {
+                            const holidays = getHolidaysOfYear(day.getFullYear())
+                            const dateStr = format(day, 'yyyy-MM-dd')
+                            const isHoliday = holidays.some(h => {
+                              const holidayDate = new Date(day.getFullYear(), h.month - 1, h.day)
+                              return format(holidayDate, 'yyyy-MM-dd') === dateStr
+                            })
+                            
+                            if (isHoliday) {
+                              totalHours += project.holiday_work_hours || 0
+                              return
+                            }
+                          }
+                          
+                          // 曜日判定（0=日, 1=月...6=土）
+                          const dayOfWeek = getDay(day)
+                          
+                          // workableWeekdaysの配列インデックスに変換
+                          // [月,火,水,木,金,土,日] なので
+                          const weekdayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+                          
+                          // 作業可能な曜日かチェック
+                          if (project.workable_weekdays && !project.workable_weekdays[weekdayIndex]) {
+                            return
+                          }
+                          
+                          // 週末（土日）の場合
+                          if (dayOfWeek === 0 || dayOfWeek === 6) {
+                            totalHours += project.weekend_hours_per_day || 0
+                          } else {
+                            // 平日の場合
+                            totalHours += project.weekday_hours_per_day || 8
+                          }
+                        })
+                        
+                        return totalHours
+                      })()
+                    }
+                    weekdayWorkDays={project.weekday_work_days}
+                    weekendWorkDays={project.weekend_work_days}
+                    weekdayHoursPerDay={project.weekday_hours_per_day}
+                    weekendHoursPerDay={project.weekend_hours_per_day}
+                    workableWeekdays={project.workable_weekdays}
+                    excludeHolidays={project.exclude_holidays}
+                    holidayWorkHours={project.holiday_work_hours}
+                    allowStatusChange={true}
+                    onBigTaskStatusUpdate={handleBigTaskStatusUpdate}
+                  />
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* Settings Tab */}

@@ -56,10 +56,13 @@ interface ProjectCreationState {
   projectColor: string
 
   // 投下可能時間の計算
-  weekdayWorkDays: number // 0-5
-  weekendWorkDays: number // 0-2
+  workableWeekdays: boolean[] // [月,火,水,木,金,土,日]の7要素配列
+  weekdayWorkDays: number // 0-5 - 後方互換性のため残す
+  weekendWorkDays: number // 0-2 - 後方互換性のため残す
   weekdayHoursPerDay: number
   weekendHoursPerDay: number
+  excludeHolidays: boolean // 祝日を作業不可日とするか
+  holidayWorkHours: number // 祝日に作業する場合の時間
   weeklyAvailableHours: number
 
   // タスク一覧
@@ -90,10 +93,13 @@ interface ProjectCreationActions {
   setProjectColor: (color: string) => void
 
   // 投下可能時間の計算
+  setWorkableWeekdays: (weekdays: boolean[]) => void
   setWeekdayWorkDays: (days: number) => void
   setWeekendWorkDays: (days: number) => void
   setWeekdayHoursPerDay: (hours: number) => void
   setWeekendHoursPerDay: (hours: number) => void
+  setExcludeHolidays: (exclude: boolean) => void
+  setHolidayWorkHours: (hours: number) => void
 
   // タスク一覧
   addTask: () => void
@@ -142,10 +148,13 @@ const initialState: ProjectCreationState = {
   projectColor: 'hsl(137, 42%, 55%)', // デフォルトは緑
 
   // 投下可能時間の計算
+  workableWeekdays: [true, true, true, true, true, false, false], // 月-金は作業、土日は休み
   weekdayWorkDays: 5,
   weekendWorkDays: 0,
   weekdayHoursPerDay: 2,
   weekendHoursPerDay: 0,
+  excludeHolidays: true, // デフォルトで祝日は作業しない
+  holidayWorkHours: 0,
   weeklyAvailableHours: 0,
 
   // タスク一覧
@@ -188,6 +197,15 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       setProjectColor: color => set({ projectColor: color }),
 
       // 投下可能時間の計算
+      setWorkableWeekdays: weekdays => {
+        set({ workableWeekdays: weekdays })
+        // 後方互換性のため、weekdayWorkDaysとweekendWorkDaysも更新
+        const weekdayCount = weekdays.slice(0, 5).filter(Boolean).length // 月-金
+        const weekendCount = weekdays.slice(5, 7).filter(Boolean).length // 土日
+        set({ weekdayWorkDays: weekdayCount, weekendWorkDays: weekendCount })
+        get().calculateWeeklyHours()
+        get().calculateTaskAllocation()
+      },
       setWeekdayWorkDays: days => {
         set({ weekdayWorkDays: days })
         get().calculateWeeklyHours()
@@ -205,6 +223,16 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       },
       setWeekendHoursPerDay: hours => {
         set({ weekendHoursPerDay: hours })
+        get().calculateWeeklyHours()
+        get().calculateTaskAllocation()
+      },
+      setExcludeHolidays: exclude => {
+        set({ excludeHolidays: exclude })
+        get().calculateWeeklyHours()
+        get().calculateTaskAllocation()
+      },
+      setHolidayWorkHours: hours => {
+        set({ holidayWorkHours: hours })
         get().calculateWeeklyHours()
         get().calculateTaskAllocation()
       },
@@ -299,9 +327,24 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
 
       // 計算
       calculateWeeklyHours: () => {
-        const { weekdayWorkDays, weekendWorkDays, weekdayHoursPerDay, weekendHoursPerDay } = get()
-        const weeklyHours =
-          weekdayWorkDays * weekdayHoursPerDay + weekendWorkDays * weekendHoursPerDay
+        const { workableWeekdays, weekdayHoursPerDay, weekendHoursPerDay } = get()
+        
+        // workableWeekdaysから週の作業時間を計算
+        let weeklyHours = 0
+        if (workableWeekdays) {
+          // 月-金（インデックス0-4）
+          const weekdayCount = workableWeekdays.slice(0, 5).filter(Boolean).length
+          weeklyHours += weekdayCount * weekdayHoursPerDay
+          
+          // 土日（インデックス5-6）
+          const weekendCount = workableWeekdays.slice(5, 7).filter(Boolean).length
+          weeklyHours += weekendCount * weekendHoursPerDay
+        } else {
+          // 後方互換性: workableWeekdaysがない場合は従来の方法で計算
+          const { weekdayWorkDays, weekendWorkDays } = get()
+          weeklyHours = weekdayWorkDays * weekdayHoursPerDay + weekendWorkDays * weekendHoursPerDay
+        }
+        
         set({ weeklyAvailableHours: weeklyHours })
       },
 

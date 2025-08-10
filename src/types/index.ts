@@ -19,10 +19,13 @@ export interface Project extends DatabaseEntity {
   version: number
   estimated_total_hours?: number
   color?: string // HSL形式: "hsl(137, 42%, 55%)"
-  weekday_work_days?: number // 平日の作業可能日数 (0-5)
-  weekend_work_days?: number // 休日の作業可能日数 (0-2)
+  workable_weekdays?: boolean[] // [月,火,水,木,金,土,日]の7要素配列
+  weekday_work_days?: number // 平日の作業可能日数 (0-5) - 後方互換性のため残す
+  weekend_work_days?: number // 休日の作業可能日数 (0-2) - 後方互換性のため残す
   weekday_hours_per_day?: number // 平日の1日あたりの作業可能時間
   weekend_hours_per_day?: number // 休日の1日あたりの作業可能時間
+  exclude_holidays?: boolean // 祝日を作業不可日とするか
+  holiday_work_hours?: number // 祝日に作業する場合の時間
 }
 
 export interface BigTask extends DatabaseEntity {
