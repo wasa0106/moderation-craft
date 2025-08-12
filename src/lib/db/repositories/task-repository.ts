@@ -21,6 +21,7 @@ import {
   getTaskTotalMinutes,
   enrichTasksWithSessions,
 } from '@/lib/utils/task-session-utils'
+import { normalizeDate } from '@/lib/utils/task-scheduling'
 
 export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTaskRepository {
   protected table: Table<BigTask> = db.big_tasks
@@ -28,7 +29,16 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
 
   async getByProjectId(projectId: string): Promise<BigTask[]> {
     try {
-      return await this.table.where('project_id').equals(projectId).sortBy('start_date')
+      const tasks = await this.table.where('project_id').equals(projectId).toArray()
+      // orderフィールドでソート、orderがない場合はstart_dateでソート
+      return tasks.sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order
+        }
+        if (a.order !== undefined) return -1
+        if (b.order !== undefined) return 1
+        return new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+      })
     } catch (error) {
       throw new Error(`Failed to get big tasks by project ID: ${error}`)
     }
@@ -124,6 +134,20 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
     }
   }
 
+  /**
+   * BigTaskの並び順を更新
+   */
+  async reorderBigTasks(updates: Array<{ id: string; order: number }>): Promise<void> {
+    try {
+      const updatePromises = updates.map(({ id, order }) =>
+        this.update(id, { order })
+      )
+      await Promise.all(updatePromises)
+    } catch (error) {
+      throw new Error(`Failed to reorder big tasks: ${error}`)
+    }
+  }
+
   async getOverdueTasks(userId: string): Promise<BigTask[]> {
     try {
       const projects = await db.projects.where('user_id').equals(userId).toArray()
@@ -186,6 +210,74 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
 export class SmallTaskRepository extends BaseRepository<SmallTask> implements ISmallTaskRepository {
   protected table: Table<SmallTask> = db.small_tasks
   protected entityType = 'small_task'
+
+  /**
+   * タスクデータの正規化（1970年日付をnullに変換）
+   */
+  private normalizeTask(task: SmallTask): SmallTask {
+    return {
+      ...task,
+      scheduled_start: normalizeDate(task.scheduled_start),
+      scheduled_end: normalizeDate(task.scheduled_end),
+    }
+  }
+
+  /**
+   * createをオーバーライドして正規化を適用
+   */
+  async create(data: Omit<SmallTask, 'id' | 'created_at' | 'updated_at'>): Promise<SmallTask> {
+    const normalizedData = {
+      ...data,
+      scheduled_start: normalizeDate(data.scheduled_start),
+      scheduled_end: normalizeDate(data.scheduled_end),
+    }
+    const result = await super.create(normalizedData)
+    return this.normalizeTask(result)
+  }
+
+  /**
+   * getByIdをオーバーライドして正規化を適用
+   */
+  async getById(id: string): Promise<SmallTask | undefined> {
+    const task = await super.getById(id)
+    return task ? this.normalizeTask(task) : undefined
+  }
+
+  /**
+   * getAllをオーバーライドして正規化を適用
+   */
+  async getAll(): Promise<SmallTask[]> {
+    const tasks = await super.getAll()
+    return tasks.map(task => this.normalizeTask(task))
+  }
+
+  /**
+   * updateをオーバーライドして正規化を適用
+   */
+  async update(id: string, data: Partial<SmallTask>): Promise<SmallTask> {
+    const normalizedData = {
+      ...data,
+      scheduled_start: data.scheduled_start !== undefined ? normalizeDate(data.scheduled_start) : undefined,
+      scheduled_end: data.scheduled_end !== undefined ? normalizeDate(data.scheduled_end) : undefined,
+    }
+    const result = await super.update(id, normalizedData)
+    return this.normalizeTask(result)
+  }
+
+  /**
+   * ユーザーIDで全タスクを取得
+   */
+  async getByUserId(userId: string): Promise<SmallTask[]> {
+    try {
+      const tasks = await this.table
+        .where('user_id')
+        .equals(userId)
+        .toArray()
+      return tasks.map(task => this.normalizeTask(task))
+    } catch (error) {
+      throw new Error(`Failed to get tasks by user ID: ${error}`)
+    }
+  }
 
   /**
    * 同じ親IDを持つすべての繰り返しタスクを取得
@@ -654,6 +746,70 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
         .sortBy('updated_at')
     } catch (error) {
       throw new Error(`Failed to get tasks by status: ${error}`)
+    }
+  }
+
+  /**
+   * プロジェクトIDでタスクを取得
+   */
+  async getByProjectId(projectId: string): Promise<SmallTask[]> {
+    try {
+      return await this.table
+        .where('project_id')
+        .equals(projectId)
+        .sortBy('order')
+    } catch (error) {
+      throw new Error(`Failed to get tasks by project ID: ${error}`)
+    }
+  }
+
+  /**
+   * タスクの並び順を更新
+   */
+  async updateOrder(taskId: string, order: number): Promise<SmallTask> {
+    try {
+      await this.table.update(taskId, { order, updated_at: new Date().toISOString() })
+      const task = await this.table.get(taskId)
+      if (!task) {
+        throw new Error('Task not found after order update')
+      }
+      return task
+    } catch (error) {
+      throw new Error(`Failed to update task order: ${error}`)
+    }
+  }
+
+  /**
+   * タスクのカンバン列を更新
+   */
+  async updateKanbanColumn(taskId: string, column: string): Promise<SmallTask> {
+    try {
+      await this.table.update(taskId, { kanban_column: column, updated_at: new Date().toISOString() })
+      const task = await this.table.get(taskId)
+      if (!task) {
+        throw new Error('Task not found after column update')
+      }
+      return task
+    } catch (error) {
+      throw new Error(`Failed to update task kanban column: ${error}`)
+    }
+  }
+
+  /**
+   * 複数タスクの並び順を一括更新
+   */
+  async reorderTasks(updates: Array<{ id: string; order: number }>): Promise<void> {
+    try {
+      const updatedAt = new Date().toISOString()
+      
+      // トランザクション内で一括更新
+      await db.transaction('rw', this.table, async () => {
+        for (const { id, order } of updates) {
+          await this.table.update(id, { order, updated_at: updatedAt })
+        }
+      })
+    } catch (error) {
+      throw new Error(`Failed to reorder tasks: ${error}`)
     }
   }
 }

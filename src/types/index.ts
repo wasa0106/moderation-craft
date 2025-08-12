@@ -20,10 +20,7 @@ export interface Project extends DatabaseEntity {
   estimated_total_hours?: number
   color?: string // HSL形式: "hsl(137, 42%, 55%)"
   workable_weekdays?: boolean[] // [月,火,水,木,金,土,日]の7要素配列
-  weekday_work_days?: number // 平日の作業可能日数 (0-5) - 後方互換性のため残す
-  weekend_work_days?: number // 休日の作業可能日数 (0-2) - 後方互換性のため残す
-  weekday_hours_per_day?: number // 平日の1日あたりの作業可能時間
-  weekend_hours_per_day?: number // 休日の1日あたりの作業可能時間
+  weekday_hours?: number[] // [月,火,水,木,金,土,日]の各曜日の作業時間（7要素配列）
   exclude_holidays?: boolean // 祝日を作業不可日とするか
   holiday_work_hours?: number // 祝日に作業する場合の時間
 }
@@ -34,12 +31,13 @@ export interface BigTask extends DatabaseEntity {
   name: string
   estimated_hours: number
   actual_hours: number
-  status: 'pending' | 'active' | 'completed' | 'cancelled'
+  status: 'active' | 'completed' | 'cancelled'
   priority?: 'low' | 'medium' | 'high' | 'urgent'
   category?: string // 開発、設計、テスト、その他
   start_date: string // YYYY-MM-DD形式
   end_date: string // YYYY-MM-DD形式
   description?: string
+  order?: number // カンバンボードでの表示順
 }
 
 export interface RecurrencePattern {
@@ -58,12 +56,10 @@ export interface SmallTask extends DatabaseEntity {
   user_id: string
   name: string
   estimated_minutes: number
-  scheduled_start: string
-  scheduled_end: string
+  scheduled_start: string | null
+  scheduled_end: string | null
   status?: SmallTaskStatus
   is_emergency?: boolean
-  description?: string
-  tags?: string[]
   project_id?: string
   actual_minutes?: number
   task_type?: 'project' | 'routine'
@@ -71,6 +67,8 @@ export interface SmallTask extends DatabaseEntity {
   recurrence_enabled?: boolean
   recurrence_pattern?: RecurrencePattern
   recurrence_parent_id?: string
+  order?: number
+  kanban_column?: string
 }
 
 export interface WorkSession extends DatabaseEntity {
@@ -200,7 +198,6 @@ export interface ScheduleBlock {
   projectId: string
   projectName: string
   taskName: string
-  tags?: string[]
   color?: string
   isRecurring?: boolean
 }
@@ -405,12 +402,16 @@ export interface BigTaskRepository extends RepositoryInterface<BigTask> {
 
 export interface SmallTaskRepository extends RepositoryInterface<SmallTask> {
   getByBigTaskId(bigTaskId: string): Promise<SmallTask[]>
+  getByProjectId(projectId: string): Promise<SmallTask[]>
   getByDateRange(userId: string, startDate: string, endDate: string): Promise<SmallTask[]>
   getScheduledForDate(userId: string, date: string): Promise<SmallTask[]>
   getEmergencyTasks(userId: string): Promise<SmallTask[]>
   getActiveTasks(userId: string): Promise<SmallTask[]>
   startTask(taskId: string, startTime?: string): Promise<SmallTask>
   completeTask(taskId: string, endTime?: string, focusLevel?: number): Promise<SmallTask>
+  updateOrder(taskId: string, order: number): Promise<SmallTask>
+  updateKanbanColumn(taskId: string, column: string): Promise<SmallTask>
+  reorderTasks(updates: Array<{ id: string; order: number }>): Promise<void>
 }
 
 export interface WorkSessionRepository extends RepositoryInterface<WorkSession> {

@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SmallTask, WorkSession, Project } from '@/types'
 import { useTodayTotal } from '@/hooks/use-today-total'
 import { isToday } from 'date-fns'
+import { getProjectBorderColor, getProjectAccentColor } from '@/lib/utils/project-colors'
 import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -100,14 +101,14 @@ export function WorkProgressCard({
                 <div
                   key={project.id}
                   className="space-y-1 pl-2 border-l-4"
-                  style={{ borderLeftColor: project.color || 'var(--accent)' }}
+                  style={{ borderLeftColor: project.color ? getProjectBorderColor(project.color) : 'var(--accent)' }}
                 >
                   {/* プロジェクトヘッダー */}
                   <div className="flex items-center justify-between text-base font-medium">
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-3 h-3 rounded-sm shrink-0"
-                        style={{ backgroundColor: project.color || 'var(--accent)' }}
+                        style={{ backgroundColor: project.color ? getProjectAccentColor(project.color) : 'var(--accent)' }}
                       />
                       <span className="truncate">{project.name}</span>
                     </div>

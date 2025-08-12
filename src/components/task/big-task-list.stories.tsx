@@ -62,7 +62,7 @@ export const WithTasks: Story = {
         estimated_hours: 16,
         actual_hours: 8,
         priority: 'medium',
-        status: 'pending',
+        status: 'active',
         project_id: 'project-1',
         user_id: 'user-1',
         start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],

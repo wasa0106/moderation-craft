@@ -4,7 +4,7 @@
 ) }}
 
 WITH sleep_data AS (
-    SELECT 
+    SELECT
         user_id,
         sleep_date AS date,
         total_sleep_hours,
@@ -115,7 +115,7 @@ SELECT
         2
     ) AS overall_health_score,
     -- データ完全性フラグ
-    CASE 
+    CASE
         WHEN total_sleep_hours IS NOT NULL AND steps IS NOT NULL THEN TRUE
         ELSE FALSE
     END AS has_complete_data,

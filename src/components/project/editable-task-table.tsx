@@ -260,7 +260,6 @@ const SortableRow = memo(
               }
             }}
             type="text"
-            list={`category-options-${rowIndex}`}
             value={task.category}
             onChange={value => {
               onUpdateCellValue(rowIndex, 2, value as string)
@@ -276,11 +275,6 @@ const SortableRow = memo(
               focusedCell?.row === rowIndex && focusedCell?.col === 2 ? 'cell-focused' : ''
             }`}
           />
-          <datalist id={`category-options-${rowIndex}`}>
-            {projectCategories.map(category => (
-              <option key={category} value={category} />
-            ))}
-          </datalist>
         </td>
 
         {/* タスク名 */}
@@ -455,23 +449,23 @@ export function EditableTaskTable({
   // キーボードイベントハンドラー
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, row: number, col: number) => {
+      // 見積時間欄（col === 4）での上下矢印キーによる値の増減
+      if (col === 4 && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault()
+        const task = tasks[row]
+        if (task) {
+          const currentValue = task.estimatedHours || 0
+          const newValue = e.key === 'ArrowUp' 
+            ? currentValue + 0.5 
+            : Math.max(0, currentValue - 0.5)
+          onUpdateTask(task.id, { estimatedHours: newValue })
+        }
+        return
+      }
+      
       switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault()
-          focusCell(row - 1, col)
-          break
-        case 'ArrowDown':
-          e.preventDefault()
-          focusCell(row + 1, col)
-          break
-        case 'ArrowLeft':
-          e.preventDefault()
-          focusCell(row, col - 1)
-          break
-        case 'ArrowRight':
-          e.preventDefault()
-          focusCell(row, col + 1)
-          break
+        // ArrowUp, ArrowDown, ArrowLeft, ArrowRightはすべて削除
+        // デフォルトの動作を許可（テキスト欄では何もしない、数値欄ではブラウザのデフォルト動作）
         case 'Tab':
           e.preventDefault()
           if (e.shiftKey) {
@@ -527,7 +521,7 @@ export function EditableTaskTable({
           break
       }
     },
-    [focusCell, onDeleteTask, addNewTask, tasks] // tasksを追加して削除時の正しいtaskIdを取得
+    [focusCell, onDeleteTask, addNewTask, tasks, onUpdateTask] // onUpdateTaskを追加
   )
 
   // セルの値を更新

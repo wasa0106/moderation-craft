@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from utils.database import get_connection, run_query, get_available_tables
+from utils.database import get_connection, get_mock_connection, run_query, get_available_tables
 from utils.mock_data import setup_mock_database
 
 # ページ設定
@@ -59,13 +59,22 @@ with st.sidebar:
     )
 
     # データベース初期化
-    conn = get_connection()
-
-    # モックデータ使用時の処理
-    if data_source == "モックデータ" or not get_available_tables():
+    if data_source == "モックデータ":
+        # モックデータ用のメモリDB接続
+        mock_conn = get_mock_connection()
         with st.spinner("モックデータを生成中..."):
-            tables = setup_mock_database(conn)
+            tables = setup_mock_database(mock_conn)
             st.success(f"✅ {len(tables)}個のテーブルを作成しました")
+        # グローバル接続を更新（run_queryで使用される）
+        conn = mock_conn
+    else:
+        # DBファイル使用時
+        conn = get_connection()
+        tables = get_available_tables()
+        if tables:
+            st.sidebar.info(f"📊 {len(tables)}個のテーブルが利用可能")
+        else:
+            st.sidebar.warning("⚠️ テーブルが見つかりません")
 
 # データ取得
 @st.cache_data(ttl=300)  # 5分間キャッシュ
@@ -81,15 +90,10 @@ def load_dashboard_data(days: int):
 
     try:
         df = run_query(query)
-        if df.empty:
-            st.warning("データが見つかりません。モックデータを使用します。")
-            setup_mock_database(conn)
-            df = run_query(query)
         return df
-    except:
-        # エラー時はモックデータを使用
-        setup_mock_database(conn)
-        return run_query(query)
+    except Exception as e:
+        st.warning(f"データ取得エラー: {str(e)[:100]}")
+        return pd.DataFrame()
 
 # データ読み込み
 df = load_dashboard_data(date_range)

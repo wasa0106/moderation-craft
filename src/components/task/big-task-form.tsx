@@ -39,7 +39,7 @@ const bigTaskFormSchema = z.object({
     .min(0.5, '見積時間は0.5時間以上である必要があります')
     .max(168, '見積時間は168時間以下である必要があります'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
-  status: z.enum(['pending', 'active', 'completed', 'cancelled']).optional().default('pending'),
+  status: z.enum(['active', 'completed', 'cancelled']).optional().default('active'),
 })
 
 type BigTaskFormData = z.infer<typeof bigTaskFormSchema>
@@ -74,7 +74,7 @@ export function BigTaskForm({
       category: task?.category || 'その他',
       estimated_hours: task?.estimated_hours || 8,
       priority: task?.priority || 'medium',
-      status: task?.status || 'pending',
+      status: task?.status || 'active',
     },
   })
 
@@ -281,7 +281,6 @@ export function BigTaskForm({
                     <SelectValue placeholder="ステータスを選択" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">待機中</SelectItem>
                     <SelectItem value="active">実行中</SelectItem>
                     <SelectItem value="completed">完了</SelectItem>
                     <SelectItem value="cancelled">キャンセル</SelectItem>

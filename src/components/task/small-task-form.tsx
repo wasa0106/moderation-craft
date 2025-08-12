@@ -19,7 +19,6 @@ import { cn } from '@/lib/utils'
 
 const smallTaskFormSchema = z.object({
   name: z.string().min(1, 'タスク名は必須です').max(100, 'タスク名は100文字以内で入力してください'),
-  description: z.string().max(500, '説明は500文字以内で入力してください').optional(),
   scheduled_start: z.string().min(1, '開始予定時刻は必須です'),
   scheduled_end: z.string().min(1, '終了予定時刻は必須です'),
   estimated_minutes: z
@@ -54,7 +53,6 @@ export function SmallTaskForm({
     resolver: zodResolver(smallTaskFormSchema),
     defaultValues: {
       name: task?.name || '',
-      description: task?.description || '',
       scheduled_start: task?.scheduled_start
         ? new Date(task.scheduled_start).toISOString().slice(0, 16)
         : new Date().toISOString().slice(0, 16),
@@ -121,23 +119,6 @@ export function SmallTaskForm({
             />
             {form.formState.errors.name && (
               <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">説明</Label>
-            <Textarea
-              id="description"
-              placeholder="タスクの詳細を入力"
-              rows={3}
-              {...form.register('description')}
-              className={cn(
-                form.formState.errors.description && 'border-red-500 focus:border-red-500'
-              )}
-            />
-            {form.formState.errors.description && (
-              <p className="text-sm text-red-600">{form.formState.errors.description.message}</p>
             )}
           </div>
 

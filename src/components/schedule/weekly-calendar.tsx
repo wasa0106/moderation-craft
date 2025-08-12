@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { format, eachDayOfInterval, setHours, setMinutes, parseISO, isWeekend } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Clock, ChevronLeft, ChevronRight, Moon, Calendar } from 'lucide-react'
+import { Clock, ChevronLeft, ChevronRight, Moon } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   DndContext,
   DragEndEvent,
@@ -31,6 +32,7 @@ import {
   SleepSchedule,
 } from '@/types'
 import { cn } from '@/lib/utils'
+import { isScheduled, filterUnscheduledTasks } from '@/lib/utils/task-scheduling'
 import { TaskCreateDialog } from './task-create-dialog'
 import { TaskEditDialog } from './task-edit-dialog'
 import { WeeklySleepScheduleDialog } from './weekly-sleep-schedule-dialog'
@@ -115,19 +117,6 @@ function DraggableTask({
         <Clock className="h-3 w-3" />
         <span>{task.estimated_minutes}分</span>
       </div>
-      {task.tags && task.tags.length > 0 && (
-        <div className="flex gap-1 mt-1 flex-wrap">
-          {task.tags.slice(0, 2).map(tag => (
-            <Badge
-              key={tag}
-              variant="secondary"
-              className="text-xs px-1 py-0 bg-muted/50 text-muted-foreground border-border"
-            >
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -458,6 +447,11 @@ export function WeeklyCalendar({
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showWeeklySleepDialog, setShowWeeklySleepDialog] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  
+  // 未スケジュールタスクをフィルタリング
+  const unscheduledTasks = useMemo(() => {
+    return filterUnscheduledTasks(smallTasks)
+  }, [smallTasks])
 
   // scheduleBlocksの内容をデバッグ表示
   useEffect(() => {
@@ -608,6 +602,46 @@ export function WeeklyCalendar({
     return progressMap
   }, [smallTasks])
 
+  // Calculate scheduled minutes for each BigTask in this week
+  const weeklyScheduledMinutes = useMemo(() => {
+    const scheduledMap = new Map<string, number>()
+    
+    // smallTasksから各BigTaskのスケジュール済み時間を集計
+    smallTasks.forEach(task => {
+      if (task.big_task_id && task.scheduled_start && task.scheduled_end) {
+        const current = scheduledMap.get(task.big_task_id) || 0
+        scheduledMap.set(task.big_task_id, current + task.estimated_minutes)
+      }
+    })
+    
+    return scheduledMap
+  }, [smallTasks])
+
+  // Calculate scheduled hours for each project in this week
+  const projectScheduledHours = useMemo(() => {
+    const projectHoursMap = new Map<string, number>()
+    
+    // scheduleBlocksから各プロジェクトのスケジュール済み時間を集計
+    weeklySchedule.scheduleBlocks.forEach(block => {
+      if (block.projectId) {
+        const startTime = parseISO(block.startTime)
+        const endTime = parseISO(block.endTime)
+        const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+        
+        const current = projectHoursMap.get(block.projectId) || 0
+        projectHoursMap.set(block.projectId, current + durationMinutes)
+      }
+    })
+    
+    // 分を時間に変換（小数点1桁）
+    const hoursMap = new Map<string, number>()
+    projectHoursMap.forEach((minutes, projectId) => {
+      hoursMap.set(projectId, Math.round(minutes / 6) / 10) // 0.1時間単位で丸める
+    })
+    
+    return hoursMap
+  }, [weeklySchedule.scheduleBlocks])
+
   // Handle time slot click for task creation
   const handleTimeSlotClick = useCallback(
     (date: Date, hour: number, minute: number) => {
@@ -729,7 +763,6 @@ export function WeeklyCalendar({
           ),
           scheduled_start: block.startTime,
           scheduled_end: block.endTime,
-          tags: block.tags || [],
           notes: '',
           status: 'pending',
           is_emergency: false,
@@ -787,26 +820,38 @@ export function WeeklyCalendar({
     const taskId = active.id as string
     const dragData = active.data.current as any
     
-    // Check if this is a scheduled task being moved
-    if (dragData?.isScheduled) {
-      const dropData = over.data.current as TimeSlot
+    // ドロップ先のタイムスロット情報を取得
+    const dropData = over.data.current as TimeSlot
+    if (!dropData?.date || dropData?.hour === undefined) {
+      setActiveId(null)
+      return
+    }
+    
+    // タスクを取得（未スケジュール or スケジュール済み）
+    const task = dragData?.task || smallTasks.find(t => t.id === taskId)
+    
+    if (task) {
       const startTime = setHours(setMinutes(dropData.date, dropData.minute || 0), dropData.hour)
-      const durationMinutes = dragData.estimatedMinutes || 30
+      
+      // 未スケジュールタスクの場合はデフォルト30分、それ以外は元の時間を使用
+      const durationMinutes = !isScheduled(task) ? 30 : (dragData.estimatedMinutes || task.estimated_minutes || 30)
+      
       const endMinutes = (dropData.minute || 0) + durationMinutes
       const endHour = dropData.hour + Math.floor(endMinutes / 60)
       const endMinute = endMinutes % 60
       const endTime = setHours(setMinutes(dropData.date, endMinute), endHour)
 
-      // Update the task with new time
+      // タスクの時間を更新
       await onUpdateTask({
         id: taskId,
         data: {
           scheduled_start: startTime.toISOString(),
           scheduled_end: endTime.toISOString(),
+          estimated_minutes: durationMinutes, // 未スケジュールタスクの場合は時間も設定
         }
       })
-    } else {
-      // Original logic for unscheduled tasks
+    } else if (dragData?.isScheduled) {
+      // 既存のスケジュール済みタスクの処理（後方互換性のため残す）
       const task = weeklySchedule.unscheduledTasks.find(t => t.id === taskId)
 
       if (!task) {
@@ -859,7 +904,6 @@ export function WeeklyCalendar({
 
     const tasks = weeklySchedule.scheduleBlocks.filter(block => {
       const taskStart = parseISO(block.startTime)
-      const taskEnd = parseISO(block.endTime)
 
       // Check if task starts in this hour
       const startsInHour =
@@ -890,7 +934,7 @@ export function WeeklyCalendar({
   }
 
   // Get active task for drag overlay
-  const activeTask = activeId ? weeklySchedule.unscheduledTasks.find(t => t.id === activeId) : null
+  const activeTask = activeId ? (smallTasks.find(t => t.id === activeId) || weeklySchedule.unscheduledTasks.find(t => t.id === activeId)) : null
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -1063,125 +1107,169 @@ export function WeeklyCalendar({
             </div>
           </div>
 
-          {/* 今週のタスクセクション */}
-          <div className="p-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              今週のタスク
-              <Badge variant="secondary" className="text-xs bg-secondary text-secondary-foreground">
-                {bigTasks.filter(task => task.category !== 'その他').length}
-              </Badge>
-            </h3>
-          </div>
+          {/* タブコンテンツ */}
+          <Tabs defaultValue="weekly-tasks" className="flex-1 flex flex-col">
+            <TabsList className="w-full rounded-none border-b">
+              <TabsTrigger value="weekly-tasks" className="flex-1">
+                今週のタスク
+              </TabsTrigger>
+              <TabsTrigger value="unscheduled" className="flex-1">
+                未登録タスク
+                {unscheduledTasks.length > 0 && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {unscheduledTasks.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="flex-1 overflow-y-auto">
-            <div className="py-2">
-              {bigTasks.filter(task => task.category !== 'その他').length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  今週のタスクはありません
-                </p>
-              ) : (
-                // プロジェクトごとにグループ化（シンプルなリスト形式）
-                projects.map(project => {
-                  const projectBigTasks = bigTasks.filter(
-                    task => task.project_id === project.id && task.category !== 'その他'
-                  )
-                  if (projectBigTasks.length === 0) return null
+            {/* 今週のタスクタブ */}
+            <TabsContent value="weekly-tasks" className="flex-1 overflow-y-auto m-0">
+              <div className="py-2">
+                {bigTasks.filter(task => task.category !== 'その他').length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    今週のタスクはありません
+                  </p>
+                ) : (
+                  // プロジェクトごとにグループ化（シンプルなリスト形式）
+                  projects.map(project => {
+                    const projectBigTasks = bigTasks.filter(
+                      task => task.project_id === project.id && task.category !== 'その他'
+                    )
+                    if (projectBigTasks.length === 0) return null
 
-                  return (
-                    <div key={project.id} className="mb-3">
-                      {/* プロジェクトヘッダー（軽量化） */}
-                      <div className="flex items-center gap-2 px-3 py-1 border-b border-border/50">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={project.color ? { backgroundColor: project.color } : {}}
-                        />
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="text-sm font-semibold text-foreground hover:underline focus:outline-none focus:underline text-left">
-                              {project.name}
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80">
-                            <div className="space-y-3">
-                              <div className="font-medium text-foreground">{project.name}</div>
-                              <div className="space-y-2 text-sm">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Clock className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-muted-foreground">作業可能時間</span>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">平日:</span>
-                                    <span className="font-mono">
-                                      {project.weekday_work_days !== undefined &&
-                                      project.weekday_hours_per_day !== undefined
-                                        ? `${project.weekday_work_days}日 × ${project.weekday_hours_per_day}時間 = ${
-                                            project.weekday_work_days * project.weekday_hours_per_day
-                                          }時間`
-                                        : '未設定'}
-                                    </span>
+                    return (
+                      <div key={project.id} className="mb-3">
+                        {/* プロジェクトヘッダー（軽量化） */}
+                        <div className="flex items-center gap-2 px-3 py-1 border-b border-border/50">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={project.color ? { backgroundColor: project.color } : {}}
+                          />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="text-sm font-semibold text-foreground hover:underline focus:outline-none focus:underline text-left">
+                                {project.name}
+                                {project.weekday_hours && project.weekday_hours.length === 7 && (
+                                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                    {projectScheduledHours.get(project.id) || 0}h/{project.weekday_hours.reduce((sum, h) => sum + h, 0)}h
+                                  </span>
+                                )}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 bg-card border border-border shadow-lg">
+                              <div className="space-y-3">
+                                <div className="font-medium text-foreground">{project.name}</div>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">作業可能時間</span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">休日:</span>
-                                    <span className="font-mono">
-                                      {project.weekend_work_days !== undefined &&
-                                      project.weekend_hours_per_day !== undefined
-                                        ? `${project.weekend_work_days}日 × ${project.weekend_hours_per_day}時間 = ${
-                                            project.weekend_work_days * project.weekend_hours_per_day
-                                          }時間`
-                                        : '未設定'}
-                                    </span>
+                                  <div className="space-y-1">
+                                    {project.weekday_hours && project.weekday_hours.length === 7 ? (
+                                      <>
+                                        {['月', '火', '水', '木', '金', '土', '日'].map((day, i) => {
+                                          const hours = project.weekday_hours![i]
+                                          if (hours === 0) return null
+                                          return (
+                                            <div key={day} className="flex justify-between">
+                                              <span className="text-muted-foreground">{day}曜日:</span>
+                                              <span className="font-mono">{hours}時間</span>
+                                            </div>
+                                          )
+                                        })}
+                                      </>
+                                    ) : (
+                                      <div className="text-muted-foreground text-sm">未設定</div>
+                                    )}
                                   </div>
-                                </div>
-                                {project.weekday_work_days !== undefined &&
-                                  project.weekend_work_days !== undefined &&
-                                  project.weekday_hours_per_day !== undefined &&
-                                  project.weekend_hours_per_day !== undefined && (
-                                    <div className="pt-2 mt-2 border-t border-border">
+                                  {project.weekday_hours && project.weekday_hours.length === 7 && (
+                                    <div className="pt-2 mt-2 border-t border-border space-y-1">
                                       <div className="flex justify-between">
                                         <span className="text-muted-foreground">週間合計:</span>
                                         <span className="font-mono font-medium text-foreground">
-                                          {project.weekday_work_days * project.weekday_hours_per_day +
-                                            project.weekend_work_days * project.weekend_hours_per_day}
-                                          時間
+                                          {project.weekday_hours.reduce((sum, h) => sum + h, 0)}時間
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">スケジュール済み:</span>
+                                        <span className="font-mono font-medium text-foreground">
+                                          {projectScheduledHours.get(project.id) || 0}時間
                                         </span>
                                       </div>
                                     </div>
                                   )}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+
+                        {/* タスクリスト（シンプル化） */}
+                        <div className="space-y-0.5">
+                          {projectBigTasks.map(task => (
+                            <div
+                              key={task.id}
+                              className="pl-9 pr-3 py-1 hover:bg-surface-1 rounded-sm cursor-pointer transition-colors group"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm text-foreground flex-1 truncate min-w-0">
+                                  {task.name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {(() => {
+                                    const completedMinutes = bigTaskProgress.get(task.id) || 0
+                                    const completedHours = (completedMinutes / 60).toFixed(1)
+                                    return `${completedHours}h/${task.estimated_hours}h`
+                                  })()}
+                                </span>
                               </div>
                             </div>
-                          </PopoverContent>
-                        </Popover>
+                          ))}
+                        </div>
                       </div>
+                    )
+                  })
+                )}
+              </div>
+            </TabsContent>
 
-                      {/* タスクリスト（シンプル化） */}
-                      <div className="space-y-0.5">
-                        {projectBigTasks.map(task => (
-                          <div
-                            key={task.id}
-                            className="pl-9 pr-3 py-1 hover:bg-surface-1 rounded-sm cursor-pointer transition-colors group"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-sm text-foreground flex-1 truncate min-w-0">
-                                {task.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {(() => {
-                                  const completedMinutes = bigTaskProgress.get(task.id) || 0
-                                  const completedHours = (completedMinutes / 60).toFixed(1)
-                                  return `${completedHours}h/${task.estimated_hours}h`
-                                })()}
-                              </span>
-                            </div>
+            {/* 未登録タスクタブ */}
+            <TabsContent value="unscheduled" className="flex-1 overflow-y-auto m-0">
+              <div className="p-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
+                  <Clock className="w-4 h-4" />
+                  未登録タスク
+                </h3>
+                {unscheduledTasks.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    未登録のタスクはありません
+                  </p>
+                ) : (
+                  <>
+                    <div className="space-y-1 overflow-y-auto">
+                      {unscheduledTasks.map(task => {
+                        const project = projects.find(p => p.id === task.project_id)
+                        
+                        return (
+                          <div key={task.id} className="bg-card rounded p-1 border border-border/50">
+                            <DraggableTask
+                              task={task}
+                              color="bg-muted text-muted-foreground"
+                              project={project}
+                            />
                           </div>
-                        ))}
-                      </div>
+                        )
+                      })}
                     </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      カレンダーにドラッグして時間を設定
+                    </div>
+                  </>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

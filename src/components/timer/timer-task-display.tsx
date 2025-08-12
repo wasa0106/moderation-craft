@@ -14,6 +14,7 @@ import { useTimerStore } from '@/stores/timer-store'
 import { SmallTask, Project } from '@/types'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { getProjectOverlayColor, getProjectBorderColor } from '@/lib/utils/project-colors'
 
 interface TimerTaskDisplayProps {
   smallTasks: SmallTask[]
@@ -207,10 +208,10 @@ export const TimerTaskDisplay = forwardRef<TimerTaskDisplayRef, TimerTaskDisplay
                       <Badge 
                         variant={isToday ? 'secondary' : 'outline'} 
                         className="text-xs"
-                        style={{
-                          backgroundColor: project.color ? `${project.color}20` : undefined,
-                          borderColor: project.color || undefined,
-                        }}
+                        style={project.color ? {
+                          backgroundColor: getProjectOverlayColor(project.color),
+                          borderColor: getProjectBorderColor(project.color),
+                        } : undefined}
                       >
                         {project.name}
                       </Badge>

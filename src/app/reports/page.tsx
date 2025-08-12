@@ -100,14 +100,14 @@ export default function ReportsPage() {
     total: filteredBigTasks.length,
     completed: filteredBigTasks.filter(t => t.status === 'completed').length,
     active: filteredBigTasks.filter(t => t.status === 'active').length,
-    pending: filteredBigTasks.filter(t => t.status === 'pending').length,
+    cancelled: filteredBigTasks.filter(t => t.status === 'cancelled').length,
     totalEstimatedHours: filteredBigTasks.reduce((sum, t) => sum + t.estimated_hours, 0),
     totalActualHours: filteredBigTasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0),
   }
 
   // 状態別のタスク数を集計
   const tasksByStatus = {
-    pending: filteredSmallTasks.filter(t => (t.status || 'pending') === 'pending'),
+    pending: filteredSmallTasks.filter(t => !t.status || t.status === 'pending'),
     completed: filteredSmallTasks.filter(t => t.status === 'completed'),
     cancelled: filteredSmallTasks.filter(t => t.status === 'cancelled'),
   }
@@ -140,7 +140,7 @@ export default function ReportsPage() {
     ),
     overdue: filteredSmallTasks.filter(t => {
       const taskEnd = parseISO(t.scheduled_end)
-      return taskEnd < new Date() && (t.status || 'pending') === 'pending'
+      return taskEnd < new Date() && (!t.status || t.status === 'pending')
     }).length,
     // 新しい指標
     completionRate:
@@ -621,9 +621,9 @@ export default function ReportsPage() {
                         <span className="font-medium text-primary">{bigTaskStats.active}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>待機中:</span>
+                        <span>キャンセル:</span>
                         <span className="font-medium text-muted-foreground">
-                          {bigTaskStats.pending}
+                          {bigTaskStats.cancelled}
                         </span>
                       </div>
                     </div>

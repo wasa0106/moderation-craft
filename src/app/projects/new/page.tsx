@@ -44,10 +44,7 @@ export default function ProjectCreatePage() {
     totalWeeks,
     projectColor,
     workableWeekdays,
-    weekdayWorkDays,
-    weekendWorkDays,
-    weekdayHoursPerDay,
-    weekendHoursPerDay,
+    weekdayHours,
     excludeHolidays,
     holidayWorkHours,
     weeklyAvailableHours,
@@ -66,8 +63,7 @@ export default function ProjectCreatePage() {
     setEndDate,
     setProjectColor,
     setWorkableWeekdays,
-    setWeekdayHoursPerDay,
-    setWeekendHoursPerDay,
+    setWeekdayHours,
     setExcludeHolidays,
     setHolidayWorkHours,
     addTask,
@@ -152,10 +148,7 @@ export default function ProjectCreatePage() {
         estimated_total_hours: totalTaskHours,
         color: projectColor,
         workable_weekdays: workableWeekdays,
-        weekday_work_days: weekdayWorkDays,
-        weekend_work_days: weekendWorkDays,
-        weekday_hours_per_day: weekdayHoursPerDay,
-        weekend_hours_per_day: weekendHoursPerDay,
+        weekday_hours: weekdayHours,
         exclude_holidays: excludeHolidays,
         holiday_work_hours: holidayWorkHours,
       }
@@ -196,7 +189,7 @@ export default function ProjectCreatePage() {
             start_date: schedule.startDate,
             end_date: schedule.endDate,
             estimated_hours: task.estimatedHours,
-            status: 'pending' as const,
+            status: 'active' as const,
           }
 
           if (process.env.NODE_ENV === 'development') {
@@ -225,7 +218,7 @@ export default function ProjectCreatePage() {
             start_date: format(startDate, 'yyyy-MM-dd'),
             end_date: format(endDate, 'yyyy-MM-dd'),
             estimated_hours: 1,
-            status: 'pending' as const,
+            status: 'active' as const,
           }
 
           if (process.env.NODE_ENV === 'development') {
@@ -415,11 +408,11 @@ export default function ProjectCreatePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>作業可能な曜日</Label>
-                <div className="flex flex-wrap gap-4">
+              <div className="space-y-3">
+                <Label>各曜日の作業時間</Label>
+                <div className="space-y-2">
                   {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
-                    <div key={day} className="flex items-center space-x-2">
+                    <div key={day} className="flex items-center gap-3">
                       <Checkbox
                         id={`weekday-${index}`}
                         checked={workableWeekdays[index]}
@@ -428,40 +421,31 @@ export default function ProjectCreatePage() {
                           newWeekdays[index] = checked as boolean
                           setWorkableWeekdays(newWeekdays)
                         }}
+                        className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
                       />
                       <Label
                         htmlFor={`weekday-${index}`}
-                        className="text-sm font-normal cursor-pointer"
+                        className="text-sm font-normal cursor-pointer w-8"
                       >
                         {day}
                       </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="24"
+                        step="0.5"
+                        value={weekdayHours[index] === 0 ? '' : weekdayHours[index]}
+                        onChange={e => {
+                          const newHours = [...weekdayHours]
+                          newHours[index] = parseFloat(e.target.value) || 0
+                          setWeekdayHours(newHours)
+                        }}
+                        disabled={!workableWeekdays[index]}
+                        className="w-20"
+                      />
+                      <span className="text-sm text-muted-foreground">時間/日</span>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>平日の作業時間（時間/日）</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="24"
-                    step="0.5"
-                    value={weekdayHoursPerDay === 0 ? '' : weekdayHoursPerDay}
-                    onChange={e => setWeekdayHoursPerDay(parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>休日の作業時間（時間/日）</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="24"
-                    step="0.5"
-                    value={weekendHoursPerDay === 0 ? '' : weekendHoursPerDay}
-                    onChange={e => setWeekendHoursPerDay(parseFloat(e.target.value) || 0)}
-                  />
                 </div>
               </div>
 
@@ -471,6 +455,7 @@ export default function ProjectCreatePage() {
                     id="excludeHolidays"
                     checked={excludeHolidays}
                     onCheckedChange={checked => setExcludeHolidays(checked as boolean)}
+                    className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
                   />
                   <Label
                     htmlFor="excludeHolidays"
@@ -500,8 +485,10 @@ export default function ProjectCreatePage() {
                   週間作業可能時間: {weeklyAvailableHours}時間
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {weekdayWorkDays}日 × {weekdayHoursPerDay}h + {weekendWorkDays}日 ×{' '}
-                  {weekendHoursPerDay}h
+                  {['月', '火', '水', '木', '金', '土', '日']
+                    .map((day, i) => weekdayHours[i] > 0 ? `${day}: ${weekdayHours[i]}h` : null)
+                    .filter(Boolean)
+                    .join(' + ')}
                 </p>
               </div>
             </CardContent>
@@ -590,8 +577,7 @@ export default function ProjectCreatePage() {
                   totalTaskHours={totalTaskHours}
                   totalAvailableHours={totalAvailableHours}
                   workableWeekdays={workableWeekdays}
-                  weekdayHoursPerDay={weekdayHoursPerDay}
-                  weekendHoursPerDay={weekendHoursPerDay}
+                  weekdayHours={weekdayHours}
                   excludeHolidays={excludeHolidays}
                   holidayWorkHours={holidayWorkHours}
                   showCapacityWarnings={true}

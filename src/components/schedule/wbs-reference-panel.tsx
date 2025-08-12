@@ -166,7 +166,7 @@ export function WBSReferencePanel({
         return 'default'
       case 'active':
         return 'secondary'
-      case 'pending':
+      case 'cancelled':
         return 'outline'
       default:
         return 'outline'

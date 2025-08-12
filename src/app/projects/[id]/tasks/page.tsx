@@ -233,7 +233,7 @@ export default function TaskManagementPage({ params }: TaskManagementPageProps) 
       total: projectBigTasks.length,
       completed: projectBigTasks.filter(t => t.status === 'completed').length,
       active: projectBigTasks.filter(t => t.status === 'active').length,
-      pending: projectBigTasks.filter(t => t.status === 'pending').length,
+      cancelled: projectBigTasks.filter(t => t.status === 'cancelled').length,
     },
     smallTasks: {
       total: projectSmallTasks.length,

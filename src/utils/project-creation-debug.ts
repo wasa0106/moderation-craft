@@ -108,7 +108,7 @@ export const projectCreationDebug = {
         category: 'テスト',
         estimated_hours: 10,
         actual_hours: 0,
-        status: 'pending' as const,
+        status: 'active' as const,
         start_date: '2025-01-06',
         end_date: '2025-01-12',
       }

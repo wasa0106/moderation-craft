@@ -122,10 +122,10 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
     }
   }
 
-  const handleBigTaskStatusUpdate = async (taskId: string, status: 'completed' | 'pending') => {
+  const handleBigTaskStatusUpdate = async (taskId: string, status: 'completed' | 'active') => {
     try {
       await updateTaskStatus({ id: taskId, status })
-      toast.success(`タスクを${status === 'completed' ? '完了' : '未完了'}にしました`)
+      toast.success(`タスクを${status === 'completed' ? '完了' : '実行中'}にしました`)
     } catch (error) {
       console.error('Failed to update task status:', error)
       toast.error('タスクステータスの更新に失敗しました')
@@ -165,7 +165,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       total: projectBigTasks.length,
       completed: projectBigTasks.filter(t => t.status === 'completed').length,
       active: projectBigTasks.filter(t => t.status === 'active').length,
-      pending: projectBigTasks.filter(t => t.status === 'pending').length,
+      cancelled: projectBigTasks.filter(t => t.status === 'cancelled').length,
     },
     smallTasks: {
       total: projectSmallTasks.length,
@@ -368,8 +368,8 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                           <span className="font-medium">{stats.bigTasks.active}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>待機中</span>
-                          <span className="font-medium">{stats.bigTasks.pending}</span>
+                          <span>キャンセル</span>
+                          <span className="font-medium">{stats.bigTasks.cancelled}</span>
                         </div>
                       </div>
                     </div>
@@ -518,23 +518,20 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                             return
                           }
                           
-                          // 週末（土日）の場合
-                          if (dayOfWeek === 0 || dayOfWeek === 6) {
-                            totalHours += project.weekend_hours_per_day || 0
+                          // weekday_hoursがある場合はそれを使用
+                          if (project.weekday_hours && project.weekday_hours.length === 7) {
+                            totalHours += project.weekday_hours[weekdayIndex] || 0
                           } else {
-                            // 平日の場合
-                            totalHours += project.weekday_hours_per_day || 8
+                            // 後方互換性: 古いデータの場合はデフォルト値を使用
+                            totalHours += 8
                           }
                         })
                         
                         return totalHours
                       })()
                     }
-                    weekdayWorkDays={project.weekday_work_days}
-                    weekendWorkDays={project.weekend_work_days}
-                    weekdayHoursPerDay={project.weekday_hours_per_day}
-                    weekendHoursPerDay={project.weekend_hours_per_day}
                     workableWeekdays={project.workable_weekdays}
+                    weekdayHours={project.weekday_hours}
                     excludeHolidays={project.exclude_holidays}
                     holidayWorkHours={project.holiday_work_hours}
                     allowStatusChange={true}

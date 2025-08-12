@@ -4,12 +4,14 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { smallTaskRepository } from '@/lib/db/repositories'
 import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
 import { SmallTask, CreateSmallTaskData, UpdateSmallTaskData, RecurrencePattern } from '@/types'
 import { db } from '@/lib/db/database'
 import { generateRecurringTasks } from '@/lib/utils/recurrence-utils'
+import { shouldShowInKanban } from '@/lib/utils/task-scheduling'
 
 const syncService = SyncService.getInstance()
 
@@ -413,4 +415,80 @@ export function useEmergencyTasks(userId: string) {
 export function useCreateSmallTask(userId: string) {
   const { createSmallTask } = useSmallTasks(userId)
   return { createSmallTask }
+}
+
+/**
+ * 全てのSmallTaskを取得するフック
+ */
+export function useAllSmallTasks(userId: string) {
+  const allTasksQuery = useQuery({
+    queryKey: ['smallTasks', 'all', userId],
+    queryFn: async () => {
+      try {
+        return await smallTaskRepository.getByUserId(userId)
+      } catch (error) {
+        console.error('Failed to get all small tasks:', error)
+        throw error
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId,
+  })
+
+  return {
+    smallTasks: allTasksQuery.data || [],
+    isLoading: allTasksQuery.isLoading,
+    error: allTasksQuery.error,
+    refetch: allTasksQuery.refetch,
+  }
+}
+
+/**
+ * スケジュール画面用のSmallTask取得フック
+ * 週範囲のタスク + 未スケジュールのカンバンタスクを統合
+ */
+export function useSmallTasksForSchedule(userId: string, weekStartStr: string, weekEndStr: string) {
+  // 週範囲のタスク
+  const { smallTasks: rangedTasks, isLoading: isLoadingRanged } = useSmallTasksByDateRange(
+    userId,
+    weekStartStr,
+    weekEndStr
+  )
+
+  // 全タスク
+  const { smallTasks: allTasks, isLoading: isLoadingAll } = useAllSmallTasks(userId)
+
+  // 統合処理
+  const mergedTasks = useMemo(() => {
+    // カンバン未スケジュールタスクを抽出
+    const kanbanUnscheduled = allTasks.filter(shouldShowInKanban)
+    
+    // 重複排除のためのIDセット
+    const taskIds = new Set<string>()
+    const result: SmallTask[] = []
+
+    // 週範囲のタスクを追加
+    rangedTasks.forEach(task => {
+      if (!taskIds.has(task.id)) {
+        taskIds.add(task.id)
+        result.push(task)
+      }
+    })
+
+    // カンバン未スケジュールタスクを追加
+    kanbanUnscheduled.forEach(task => {
+      if (!taskIds.has(task.id)) {
+        taskIds.add(task.id)
+        result.push(task)
+      }
+    })
+
+    return result
+  }, [rangedTasks, allTasks])
+
+  return {
+    smallTasks: mergedTasks,
+    isLoading: isLoadingRanged || isLoadingAll,
+    error: null,
+  }
 }

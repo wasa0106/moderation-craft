@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useWeeklySchedule } from '@/hooks/use-weekly-schedule'
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasksByDateRange } from '@/hooks/use-big-tasks'
-import { useSmallTasksByDateRange } from '@/hooks/use-small-tasks'
+import { useSmallTasksForSchedule } from '@/hooks/use-small-tasks'
 import { useScheduleMemo } from '@/hooks/use-schedule-memo'
 import { dateUtils } from '@/lib/utils/date-utils'
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns'
@@ -79,8 +79,8 @@ export default function WeeklySchedulePage() {
   // 日付範囲でBigTasksを取得
   const { bigTasks: weekBigTasks } = useBigTasksByDateRange(userId, weekStartStr, weekEndStr)
 
-  // 日付範囲でSmallTasksを取得
-  const { smallTasks: weekSmallTasks } = useSmallTasksByDateRange(userId, weekStartStr, weekEndStr)
+  // スケジュール用のSmallTasksを取得（週範囲 + カンバン未スケジュール）
+  const { smallTasks: weekSmallTasks } = useSmallTasksForSchedule(userId, weekStartStr, weekEndStr)
 
   // Weekly Calendar用のデータ
   const calendarData = useWeeklySchedule(userId, currentWeek || new Date())

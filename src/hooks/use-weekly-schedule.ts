@@ -111,7 +111,6 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
           projectId: task.project_id || '',
           projectName: project?.name || '',
           taskName: task.name,
-          tags: task.tags || [],
           color:
             project?.color ||
             getProjectColor(

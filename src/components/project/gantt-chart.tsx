@@ -11,7 +11,7 @@ import { format, eachDayOfInterval, differenceInDays, getDay, addDays } from 'da
 import { ja } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { dateUtils } from '@/lib/utils/date-utils'
-import { AlertTriangle, CheckCircle2, Clock, Square, CheckSquare } from 'lucide-react'
+import { CheckCircle2, Clock, Square, CheckSquare } from 'lucide-react'
 import { getHolidaysOfYear } from 'holiday-jp-since'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
 import {
@@ -48,10 +48,7 @@ interface GanttChartProps {
 
   // プロジェクト作業設定（日付単位表示用）
   workableWeekdays?: boolean[] // [月,火,水,木,金,土,日]の7要素配列
-  weekdayWorkDays?: number // 平日の作業可能日数 (0-5) - 後方互換性
-  weekendWorkDays?: number // 休日の作業可能日数 (0-2) - 後方互換性
-  weekdayHoursPerDay?: number // 平日の1日あたりの作業可能時間
-  weekendHoursPerDay?: number // 休日の1日あたりの作業可能時間
+  weekdayHours?: number[] // [月,火,水,木,金,土,日]の各曜日の作業時間（7要素配列）
   excludeHolidays?: boolean // 祝日を作業不可日とするか
   holidayWorkHours?: number // 祝日に作業する場合の時間
 
@@ -63,7 +60,7 @@ interface GanttChartProps {
 
   // BigTaskステータス変更（新規追加）
   allowStatusChange?: boolean // デフォルト: false
-  onBigTaskStatusUpdate?: (taskId: string, status: 'completed' | 'pending') => void
+  onBigTaskStatusUpdate?: (taskId: string, status: 'completed' | 'active') => void
 }
 
 export function GanttChart({
@@ -78,10 +75,7 @@ export function GanttChart({
   totalTaskHours,
   totalAvailableHours,
   workableWeekdays = [true, true, true, true, true, false, false], // デフォルト: 月-金
-  weekdayWorkDays = 5,
-  weekendWorkDays = 0,
-  weekdayHoursPerDay = 8,
-  weekendHoursPerDay = 0,
+  weekdayHours = [8, 8, 8, 8, 8, 0, 0], // デフォルト: 平日8時間、土日休み
   excludeHolidays = true,
   holidayWorkHours = 0,
   showCapacityWarnings = false, // デフォルト: 警告非表示
@@ -94,7 +88,7 @@ export function GanttChart({
   const [editingField, setEditingField] = useState<'start' | 'end' | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [popoverOpen, setPopoverOpen] = useState(false)
-  const [taskStatuses, setTaskStatuses] = useState<Map<string, 'completed' | 'pending'>>(new Map())
+  const [taskStatuses, setTaskStatuses] = useState<Map<string, 'completed' | 'active'>>(new Map())
   
   // SmallTasksを取得（選択されたBigTaskがある場合のみ）
   const { smallTasks } = useSmallTasks(CURRENT_USER_ID, selectedTaskId || undefined)
@@ -234,35 +228,33 @@ export function GanttChart({
   // 日付ごとの作業可能時間を計算
   const getDailyCapacity = useCallback((date: Date): number => {
     // 祝日判定
-    if (excludeHolidays) {
-      const holidays = getHolidaysForYear(date.getFullYear())
-      const dateStr = format(date, 'yyyy-MM-dd')
-      const isHoliday = holidays.some(h => 
-        format(h.date, 'yyyy-MM-dd') === dateStr
-      )
-      
-      if (isHoliday) {
-        return holidayWorkHours // 祝日の作業時間（通常は0）
+    const holidays = getHolidaysForYear(date.getFullYear())
+    const dateStr = format(date, 'yyyy-MM-dd')
+    const isHoliday = holidays.some(h => 
+      format(h.date, 'yyyy-MM-dd') === dateStr
+    )
+    
+    if (isHoliday) {
+      if (excludeHolidays) {
+        return 0 // 祝日を作業不可日とする場合は0
+      } else {
+        return holidayWorkHours // 祝日でも作業する場合はholidayWorkHours
       }
     }
     
     const dayOfWeek = getDay(date) // 0=日, 1=月...6=土
     
-    // workableWeekdaysの配列インデックスに変換
+    // weekdayHoursの配列インデックスに変換
     // [月,火,水,木,金,土,日] なので
     const weekdayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1
     
-    if (!workableWeekdays || !workableWeekdays[weekdayIndex]) {
+    if (!weekdayHours || !workableWeekdays || !workableWeekdays[weekdayIndex]) {
       return 0
     }
     
-    // 週末（土日）の場合
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return weekendHoursPerDay
-    }
-    // 平日の場合
-    return weekdayHoursPerDay
-  }, [workableWeekdays, weekdayHoursPerDay, weekendHoursPerDay, excludeHolidays, holidayWorkHours, getHolidaysForYear])
+    // 各曜日の設定時間を返す
+    return weekdayHours[weekdayIndex]
+  }, [workableWeekdays, weekdayHours, excludeHolidays, holidayWorkHours, getHolidaysForYear])
 
   // カテゴリごとにタスクをグループ化（order順を維持）
   const tasksByCategory = useMemo(() => {
@@ -302,26 +294,28 @@ export function GanttChart({
     // useEffect内でのインライン関数（無限ループ防止）
     const getCapacity = (date: Date): number => {
       // 祝日判定
-      if (excludeHolidays) {
-        const year = date.getFullYear()
-        // 祝日データを直接取得
-        if (!holidayCache.current.has(year)) {
-          const holidays = getHolidaysOfYear(year)
-          const formattedHolidays = holidays.map(h => ({
-            date: new Date(year, h.month - 1, h.day),
-            name: h.name
-          }))
-          holidayCache.current.set(year, formattedHolidays)
-        }
-        const holidays = holidayCache.current.get(year)!
-        
-        const dateStr = format(date, 'yyyy-MM-dd')
-        const isHoliday = holidays.some(h => 
-          format(h.date, 'yyyy-MM-dd') === dateStr
-        )
-        
-        if (isHoliday) {
-          return holidayWorkHours
+      const year = date.getFullYear()
+      // 祝日データを直接取得
+      if (!holidayCache.current.has(year)) {
+        const holidays = getHolidaysOfYear(year)
+        const formattedHolidays = holidays.map(h => ({
+          date: new Date(year, h.month - 1, h.day),
+          name: h.name
+        }))
+        holidayCache.current.set(year, formattedHolidays)
+      }
+      const holidays = holidayCache.current.get(year)!
+      
+      const dateStr = format(date, 'yyyy-MM-dd')
+      const isHoliday = holidays.some(h => 
+        format(h.date, 'yyyy-MM-dd') === dateStr
+      )
+      
+      if (isHoliday) {
+        if (excludeHolidays) {
+          return 0 // 祝日を作業不可日とする場合は0
+        } else {
+          return holidayWorkHours // 祝日でも作業する場合はholidayWorkHours
         }
       }
       
@@ -332,10 +326,11 @@ export function GanttChart({
         return 0
       }
       
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        return weekendHoursPerDay
+      // 各曜日の設定時間を返す
+      if (!weekdayHours) {
+        return 0
       }
-      return weekdayHoursPerDay
+      return weekdayHours[weekdayIndex]
     }
 
     // BigTasksベースの新しい実装
@@ -391,9 +386,9 @@ export function GanttChart({
       setGanttTasks(ganttTasksFromBigTasks)
       
       // BigTaskのステータスを初期化
-      const statusMap = new Map<string, 'completed' | 'pending'>()
+      const statusMap = new Map<string, 'completed' | 'active'>()
       bigTasks.forEach(bigTask => {
-        statusMap.set(bigTask.id, bigTask.status === 'completed' ? 'completed' : 'pending')
+        statusMap.set(bigTask.id, bigTask.status === 'completed' ? 'completed' : 'active')
       })
       setTaskStatuses(statusMap)
       
@@ -413,7 +408,8 @@ export function GanttChart({
 
     // プロジェクト期間を計算（actualTotalDaysの代わりに直接計算）
     const projectDays = differenceInDays(endDate, startDate) + 1
-    const estimatedDaysNeeded = Math.ceil(sortedTasks.reduce((sum, task) => sum + task.estimatedHours, 0) / (weekdayHoursPerDay || 8)) * 2 // 概算で2倍の余裕を持たせる
+    const avgHoursPerDay = weekdayHours ? weekdayHours.reduce((sum, h) => sum + h, 0) / weekdayHours.filter(h => h > 0).length : 8
+    const estimatedDaysNeeded = Math.ceil(sortedTasks.reduce((sum, task) => sum + task.estimatedHours, 0) / avgHoursPerDay) * 2 // 概算で2倍の余裕を持たせる
     const totalDaysForAllocation = Math.max(projectDays, estimatedDaysNeeded)
 
     sortedTasks.forEach(task => {
@@ -476,7 +472,7 @@ export function GanttChart({
     })
 
     setGanttTasks(allocated)
-  }, [tasks, bigTasks, weeklyAllocations, weeklyAvailableHours, startDate, endDate, workableWeekdays, weekdayHoursPerDay, weekendHoursPerDay, excludeHolidays, holidayWorkHours])
+  }, [tasks, bigTasks, weeklyAllocations, weeklyAvailableHours, startDate, endDate, workableWeekdays, weekdayHours, excludeHolidays, holidayWorkHours])
 
   // 日ごとの作業時間を計算（実際の配分に基づく）
   const dailyWorkload = useMemo(() => {
@@ -506,16 +502,16 @@ export function GanttChart({
             <thead>
               {/* 月の行 */}
               <tr className="bg-muted">
-                <th rowSpan={3} className="sticky left-0 z-[5] bg-muted border-r border-b px-2 py-2 text-left text-xs font-medium" style={{ width: '160px', minWidth: '160px', maxWidth: '160px' }}>
+                <th rowSpan={4} className="sticky left-0 z-[5] bg-muted border-r border-b px-2 py-2 text-left text-xs font-medium" style={{ width: '160px', minWidth: '160px', maxWidth: '160px' }}>
                   タスク名
                 </th>
-                <th rowSpan={3} className="sticky z-[5] bg-muted border-r border-b px-2 py-2 text-center text-xs font-medium" style={{ left: '160px', width: '60px' }}>
+                <th rowSpan={4} className="sticky z-[5] bg-muted border-r border-b px-2 py-2 text-center text-xs font-medium" style={{ left: '160px', width: '60px' }}>
                   開始日
                 </th>
-                <th rowSpan={3} className="sticky z-[5] bg-muted border-r border-b px-2 py-2 text-center text-xs font-medium" style={{ left: '220px', width: '60px' }}>
+                <th rowSpan={4} className="sticky z-[5] bg-muted border-r border-b px-2 py-2 text-center text-xs font-medium" style={{ left: '220px', width: '60px' }}>
                   終了日
                 </th>
-                <th rowSpan={3} className="sticky z-[5] bg-muted border-r border-b px-2 py-2 text-center text-xs font-medium" style={{ left: '280px', width: '48px' }}>
+                <th rowSpan={4} className="sticky z-[5] bg-muted border-r border-b px-2 py-2 text-center text-xs font-medium" style={{ left: '280px', width: '48px' }}>
                   時間
                 </th>
                 {monthGroups.map((group, i) => (
@@ -552,8 +548,8 @@ export function GanttChart({
                       key={`weekday-${i}`}
                       className={cn(
                         "border-r border-b px-1 py-1 text-center text-xs font-medium relative",
-                        dayCapacity === 0 ? "text-muted-foreground" :  // 1. 作業しない日：グレー文字
-                        holidayName ? "text-red-600" :                  // 2. 作業する祝日：赤文字（背景なし）
+                        holidayName ? "text-red-600" :                  // 1. 祝日は常に赤文字
+                        dayCapacity === 0 ? "text-muted-foreground" :  // 2. 作業しない日：グレー文字
                         isWeekendDay ? "text-red-600" :                 // 3. 作業する週末：赤文字
                         "text-blue-600"                                 // 4. 作業する平日：青文字
                       )}
@@ -561,6 +557,29 @@ export function GanttChart({
                       title={holidayName || undefined}
                     >
                       <div>{dayChar}</div>
+                    </th>
+                  )
+                })}
+              </tr>
+              {/* 作業可能時間の行 */}
+              <tr className="bg-muted">
+                {days.map((day, i) => {
+                  const dayCapacity = getDailyCapacity(day)
+                  const holidayName = getHolidayName(day)
+                  const isWeekendDay = isWeekend(day)
+                  return (
+                    <th
+                      key={`capacity-${i}`}
+                      className={cn(
+                        "border-r border-b px-1 py-1 text-center text-[10px] font-normal",
+                        holidayName ? "text-red-600" :                // 祝日は赤文字
+                        dayCapacity === 0 ? "text-muted-foreground" : // 作業しない日はグレー
+                        isWeekendDay ? "text-red-600" :               // 週末は赤文字
+                        "text-blue-600"                               // 平日は青文字
+                      )}
+                      style={{ minWidth: '40px', width: '40px' }}
+                    >
+                      {dayCapacity > 0 ? `${dayCapacity}h` : '-'}
                     </th>
                   )
                 })}
@@ -603,8 +622,8 @@ export function GanttChart({
                             {allowStatusChange && (
                               <button
                                 onClick={() => {
-                                  const currentStatus = taskStatuses.get(task.id) || 'pending'
-                                  const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+                                  const currentStatus = taskStatuses.get(task.id) || 'active'
+                                  const newStatus = currentStatus === 'completed' ? 'active' : 'completed'
                                   setTaskStatuses(prev => {
                                     const newMap = new Map(prev)
                                     newMap.set(task.id, newStatus)
@@ -786,28 +805,6 @@ export function GanttChart({
                                   right: isEnd ? '4px' : '0',
                                 }}
                               />
-                            )}
-                            {isOverCapacity && (
-                              <div
-                                className="absolute top-0 right-0 m-1 group"
-                                title={`超過: ${(dailyWorkload[dayIndex] - dayCapacity).toFixed(1)}時間`}
-                              >
-                                <AlertTriangle className="h-3 w-3 text-destructive" />
-                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-popover text-popover-foreground text-xs rounded px-2 py-1 whitespace-nowrap z-50 border">
-                                  超過: {(dailyWorkload[dayIndex] - dayCapacity).toFixed(1)}時間
-                                </div>
-                              </div>
-                            )}
-                            {isAfterProjectEnd && isInRange && (
-                              <div
-                                className="absolute bottom-0 right-0 m-1 group"
-                                title="プロジェクト期間外"
-                              >
-                                <AlertTriangle className="h-3 w-3 text-warning" />
-                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-popover text-popover-foreground text-xs rounded px-2 py-1 whitespace-nowrap z-50 border">
-                                  プロジェクト期間外
-                                </div>
-                              </div>
                             )}
                           </td>
                         )

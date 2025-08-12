@@ -29,6 +29,11 @@ def get_connection() -> duckdb.DuckDBPyConnection:
         st.sidebar.warning("⚠️ DBファイルが見つかりません。モックデータを使用します。")
         return duckdb.connect(":memory:")
 
+@st.cache_resource
+def get_mock_connection() -> duckdb.DuckDBPyConnection:
+    """モックデータ用のメモリDB接続を取得"""
+    return duckdb.connect(":memory:")
+
 @st.cache_data(ttl=60)  # 1分間キャッシュ
 def run_query(query: str) -> pd.DataFrame:
     """SQLクエリを実行してDataFrameを返す"""
