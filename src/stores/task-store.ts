@@ -186,7 +186,7 @@ export const useTaskStore = create<TaskState>()(
         console.warn('TaskStore.getOverdueTasks is deprecated. Use with WorkSessions instead.')
         const { smallTasks } = get()
         const now = new Date().toISOString()
-        return smallTasks.filter(t => t.scheduled_end < now) // TODO: Filter by WorkSession status
+        return smallTasks.filter(t => t.scheduled_end !== null && t.scheduled_end < now) // TODO: Filter by WorkSession status
       },
 
       getEmergencyTasks: () => {
