@@ -476,7 +476,7 @@ export function CombinedScheduleView({
                   compact={task.estimated_minutes <= 45}
                   style={{
                     position: 'absolute',
-                    top: `${getItemTop(task.scheduled_start)}px`,
+                    top: `${getItemTop(task.scheduled_start!)}px`,
                     height: `${getItemHeight(task.estimated_minutes)}px`,
                     left: 2,
                     right: 16,

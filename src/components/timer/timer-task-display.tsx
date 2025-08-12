@@ -156,6 +156,10 @@ export const TimerTaskDisplay = forwardRef<TimerTaskDisplayRef, TimerTaskDisplay
               if (aIsToday && !bIsToday) return -1
               if (!aIsToday && bIsToday) return 1
               
+              if (!a.scheduled_start || !b.scheduled_start) {
+                return a.name.localeCompare(b.name)
+              }
+              
               const aDate = new Date(a.scheduled_start)
               const bDate = new Date(b.scheduled_start)
               if (aDate < bDate) return -1

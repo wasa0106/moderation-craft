@@ -166,7 +166,7 @@ export const useTaskStore = create<TaskState>()(
         const startOfDay = `${date}T00:00:00.000Z`
         const endOfDay = `${date}T23:59:59.999Z`
         return smallTasks.filter(
-          t => t.scheduled_start >= startOfDay && t.scheduled_start <= endOfDay
+          t => t.scheduled_start !== null && t.scheduled_start >= startOfDay && t.scheduled_start <= endOfDay
         )
       },
 

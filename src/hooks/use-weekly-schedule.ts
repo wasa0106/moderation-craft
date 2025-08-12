@@ -106,8 +106,8 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
         return {
           id: task.id,
           taskId: task.id,
-          startTime: task.scheduled_start,
-          endTime: task.scheduled_end,
+          startTime: task.scheduled_start!,
+          endTime: task.scheduled_end!,
           projectId: task.project_id || '',
           projectName: project?.name || '',
           taskName: task.name,

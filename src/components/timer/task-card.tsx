@@ -219,6 +219,9 @@ function TaskCardComponent({
 
   // 時刻表示をフォーマット
   const formatTimeRange = (short = false) => {
+    if (!task.scheduled_start || !task.scheduled_end) {
+      return ''
+    }
     const start = new Date(task.scheduled_start)
     const end = new Date(task.scheduled_end)
     if (short) {

@@ -65,10 +65,12 @@ export function SmallTaskList({
               <p className="text-sm text-muted-foreground">
                 {getBigTaskName(task.big_task_id || '')}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {format(parseISO(task.scheduled_start), 'MM/dd HH:mm', { locale: ja })} -
-                {format(parseISO(task.scheduled_end), 'HH:mm', { locale: ja })}
-              </p>
+              {task.scheduled_start && task.scheduled_end && (
+                <p className="text-sm text-muted-foreground">
+                  {format(parseISO(task.scheduled_start), 'MM/dd HH:mm', { locale: ja })} -
+                  {format(parseISO(task.scheduled_end), 'HH:mm', { locale: ja })}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => onEdit(task)}>

@@ -125,10 +125,11 @@ export function TaskEditDialog({
       const [startHour, startMinute] = startTimeInput.split(':').map(Number)
       const [endHour, endMinute] = endTimeInput.split(':').map(Number)
       
-      const scheduledStart = new Date(task.scheduled_start)
+      // scheduled_startがnullの場合は現在時刻を使用
+      const scheduledStart = new Date(task.scheduled_start || new Date().toISOString())
       scheduledStart.setHours(startHour, startMinute, 0, 0)
       
-      const scheduledEnd = new Date(task.scheduled_end || task.scheduled_start)
+      const scheduledEnd = new Date(task.scheduled_end || task.scheduled_start || new Date().toISOString())
       scheduledEnd.setHours(endHour, endMinute, 0, 0)
       
       const updateData: UpdateSmallTaskData = {

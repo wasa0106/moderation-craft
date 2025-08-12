@@ -80,6 +80,9 @@ export default function ReportsPage() {
     const bigTask = bigTasks.find(bt => bt.id === task.big_task_id)
     if (!bigTask) return false
 
+    // scheduled_startがnullの場合はフィルタから除外
+    if (!task.scheduled_start) return false
+
     const isProjectMatch = selectedProject === 'all' || bigTask.project_id === selectedProject
     const taskDate = parseISO(task.scheduled_start)
     const isInPeriod = isWithinInterval(taskDate, periodRange)
@@ -139,6 +142,7 @@ export default function ReportsPage() {
       0
     ),
     overdue: filteredSmallTasks.filter(t => {
+      if (!t.scheduled_end) return false
       const taskEnd = parseISO(t.scheduled_end)
       return taskEnd < new Date() && (!t.status || t.status === 'pending')
     }).length,

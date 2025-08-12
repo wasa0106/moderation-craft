@@ -86,7 +86,7 @@ export function DailyScheduleView({
 
   // タスクの開始位置を計算（分単位）
   const getTaskTop = (task: SmallTask): number => {
-    const startTime = parseISO(task.scheduled_start)
+    const startTime = parseISO(task.scheduled_start!)
     return startTime.getMinutes() * 2 // 1分 = 2px
   }
 
@@ -140,7 +140,7 @@ export function DailyScheduleView({
           })}
           {/* タスク */}
           {tasks.map((task, index) => {
-            const startTime = parseISO(task.scheduled_start)
+            const startTime = parseISO(task.scheduled_start!)
             const taskHour = startTime.getHours()
             const isActive = task.id === currentTaskId
             const isCompleted = task.actual_minutes && task.actual_minutes > 0
@@ -185,13 +185,15 @@ export function DailyScheduleView({
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 mt-1 text-xs opacity-80">
-                    <Clock className="h-3 w-3" />
-                    <span>
-                      {format(parseISO(task.scheduled_start), 'HH:mm')} -
-                      {format(parseISO(task.scheduled_end), 'HH:mm')}
-                    </span>
-                  </div>
+                  {task.scheduled_end && (
+                    <div className="flex items-center gap-1 mt-1 text-xs opacity-80">
+                      <Clock className="h-3 w-3" />
+                      <span>
+                        {format(parseISO(task.scheduled_start!), 'HH:mm')} -
+                        {format(parseISO(task.scheduled_end!), 'HH:mm')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             )

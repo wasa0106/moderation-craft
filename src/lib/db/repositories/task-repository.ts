@@ -228,8 +228,8 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
   async create(data: Omit<SmallTask, 'id' | 'created_at' | 'updated_at'>): Promise<SmallTask> {
     const normalizedData = {
       ...data,
-      scheduled_start: normalizeDate(data.scheduled_start),
-      scheduled_end: normalizeDate(data.scheduled_end),
+      scheduled_start: normalizeDate(data.scheduled_start as string | null | undefined),
+      scheduled_end: normalizeDate(data.scheduled_end as string | null | undefined),
     }
     const result = await super.create(normalizedData)
     return this.normalizeTask(result)
@@ -245,10 +245,16 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
 
   /**
    * getAllをオーバーライドして正規化を適用
+   * BaseRepositoryにgetAllが存在しないため、独自実装
    */
   async getAll(): Promise<SmallTask[]> {
-    const tasks = await super.getAll()
-    return tasks.map(task => this.normalizeTask(task))
+    try {
+      const tasks = await this.table.toArray()
+      return tasks.map(task => this.normalizeTask(task))
+    } catch (error) {
+      console.error('Failed to get all tasks:', error)
+      throw error
+    }
   }
 
   /**
@@ -366,7 +372,7 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
       return await this.table
         .where('user_id')
         .equals(userId)
-        .and(task => task.scheduled_start >= startOfDay && task.scheduled_start <= endOfDay)
+        .and(task => task.scheduled_start !== null && task.scheduled_start >= startOfDay && task.scheduled_start <= endOfDay)
         .sortBy('scheduled_start')
     } catch (error) {
       throw new Error(`Failed to get tasks scheduled for date: ${error}`)
@@ -498,14 +504,17 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
       const tasks = await this.table
         .where('user_id')
         .equals(userId)
-        .and(task => task.scheduled_end < now)
+        .and(task => task.scheduled_end !== null && task.scheduled_end < now)
         .toArray()
       const sessions = await db.work_sessions.where('user_id').equals(userId).toArray()
 
       // Filter out completed tasks
       const overdueTasks = tasks.filter(task => !isTaskCompleted(task.id, sessions))
 
-      return overdueTasks.sort((a, b) => a.scheduled_end.localeCompare(b.scheduled_end))
+      return overdueTasks.sort((a, b) => {
+        if (!a.scheduled_end || !b.scheduled_end) return 0
+        return a.scheduled_end.localeCompare(b.scheduled_end)
+      })
     } catch (error) {
       throw new Error(`Failed to get overdue tasks: ${error}`)
     }
