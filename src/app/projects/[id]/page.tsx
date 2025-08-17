@@ -45,7 +45,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const router = useRouter()
   const { projects, updateProject, deleteProject } = useProjects('current-user')
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null)
-  const { bigTasks, updateTaskStatus } = useBigTasks('current-user', resolvedParams?.id)
+  const { bigTasks, updateTaskStatus, updateBigTask } = useBigTasks('current-user', resolvedParams?.id)
   const { smallTasks } = useSmallTasks('current-user', resolvedParams?.id)
 
   // Resolve params promise
@@ -129,6 +129,32 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
     } catch (error) {
       console.error('Failed to update task status:', error)
       toast.error('タスクステータスの更新に失敗しました')
+    }
+  }
+
+  const handleBigTaskHoursUpdate = async (taskId: string, estimatedHours: number) => {
+    try {
+      await updateBigTask({ id: taskId, data: { estimated_hours: estimatedHours } })
+      toast.success('タスクの予定工数を更新しました')
+    } catch (error) {
+      console.error('Failed to update task hours:', error)
+      toast.error('タスクの予定工数の更新に失敗しました')
+    }
+  }
+
+  const handleBigTaskDateUpdate = async (taskId: string, startDate: Date, endDate: Date) => {
+    try {
+      await updateBigTask({ 
+        id: taskId, 
+        data: { 
+          start_date: format(startDate, 'yyyy-MM-dd'),
+          end_date: format(endDate, 'yyyy-MM-dd')
+        } 
+      })
+      // トースト通知はしない（連鎖更新が多いため）
+    } catch (error) {
+      console.error('Failed to update task dates:', error)
+      toast.error('タスクの日付更新に失敗しました')
     }
   }
 
@@ -238,11 +264,11 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue="gantt" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="gantt">ガントチャート</TabsTrigger>
           <TabsTrigger value="overview">概要</TabsTrigger>
           <TabsTrigger value="tasks">タスク管理</TabsTrigger>
-          <TabsTrigger value="gantt">ガントチャート</TabsTrigger>
           <TabsTrigger value="settings">設定</TabsTrigger>
         </TabsList>
 
@@ -536,6 +562,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                     holidayWorkHours={project.holiday_work_hours}
                     allowStatusChange={true}
                     onBigTaskStatusUpdate={handleBigTaskStatusUpdate}
+                    onBigTaskHoursUpdate={handleBigTaskHoursUpdate}
+                    onBigTaskDateUpdate={handleBigTaskDateUpdate}
+                    reflowScope="category"
                   />
               </div>
             )}

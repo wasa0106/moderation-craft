@@ -12,6 +12,9 @@ import { SmallTask, CreateSmallTaskData, UpdateSmallTaskData, RecurrencePattern 
 import { db } from '@/lib/db/database'
 import { generateRecurringTasks } from '@/lib/utils/recurrence-utils'
 import { shouldShowInKanban } from '@/lib/utils/task-scheduling'
+import { toast } from 'sonner'
+import { getWeekBoundariesUTC, isTaskOutOfWeekRange } from '@/utils/date-range-utils'
+import { startOfWeek } from 'date-fns'
 
 const syncService = SyncService.getInstance()
 
@@ -271,13 +274,32 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
       id,
       newStartTime,
       newEndTime,
+      weekContext,
     }: {
       id: string
       newStartTime: string
       newEndTime: string
+      weekContext?: Date  // 現在表示中の週（オプション）
     }) => {
       const result = await smallTaskRepository.rescheduleTask(id, newStartTime, newEndTime)
       await syncService.addToSyncQueue('small_task', id, 'update', result)
+      
+      // 週の範囲外に移動したかチェック（weekContextが提供された場合）
+      if (weekContext) {
+        const { startISO, endExclusiveISO } = getWeekBoundariesUTC(weekContext)
+        if (isTaskOutOfWeekRange(newStartTime, newEndTime, startISO, endExclusiveISO)) {
+          // 次週か前週かを判定
+          const taskStart = new Date(newStartTime)
+          const weekStart = new Date(startISO)
+          
+          if (taskStart < weekStart) {
+            toast.info('タスクが前週に移動しました')
+          } else {
+            toast.info('タスクが翌週に移動しました')
+          }
+        }
+      }
+      
       return result
     },
     onSuccess: smallTask => {

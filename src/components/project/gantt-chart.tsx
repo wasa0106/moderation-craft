@@ -22,6 +22,107 @@ import {
 
 const CURRENT_USER_ID = 'current-user'
 
+// 逐次スケジューラ用の型定義
+type DayUsage = Map<number, number>
+
+// ヘルパー関数: 日付キャッシュを必要に応じて延長
+function ensureCapacityIndex(
+  idx: number,
+  startDate: Date,
+  daysCache: Date[],
+  getDailyCapacity: (d: Date) => number
+): Date {
+  while (idx >= daysCache.length) {
+    const next = addDays(daysCache[daysCache.length - 1], 1)
+    daysCache.push(next)
+  }
+  return daysCache[idx]
+}
+
+// ヘルパー関数: 次の利用可能な日を探す
+function advanceToNextAvailableIndex(
+  startIdx: number,
+  daysCache: Date[],
+  getDailyCapacity: (d: Date) => number,
+  usage: DayUsage
+): number {
+  const from = Math.max(0, startIdx)
+  for (let i = from; i < daysCache.length; i++) {
+    const d = daysCache[i]
+    const cap = getDailyCapacity(d)
+    const used = usage.get(i) ?? 0
+    if (cap - used > 0.0001) return i
+  }
+  return daysCache.length - 1
+}
+
+// 逐次スケジューラ本体
+function scheduleSequentially(
+  source: GanttTask[],
+  startDate: Date,
+  endDate: Date,
+  daysCache: Date[], // 既存 useMemo の days をコピーして渡す。必要なら延長される
+  getDailyCapacity: (d: Date) => number,
+  initialUsage?: DayUsage,   // カテゴリ外の固定分などを seed
+): { tasks: GanttTask[], lastDayIndex: number } {
+  const tasks = [...source].sort((a, b) => a.order - b.order)
+
+  // 初期使用量をベースにする（カテゴリ外を固定として先に埋める想定）
+  const usage: DayUsage = new Map(initialUsage ? Array.from(initialUsage.entries()) : [])
+
+  let cursor = 0
+  let globalLastIdx = 0
+  const scheduled: GanttTask[] = []
+
+  for (const t of tasks) {
+    let remaining = Math.max(0, t.estimatedHours ?? 0)
+    const daily = new Map<number, number>()
+
+    const minStartRaw = Math.max(cursor, differenceInDays(t.actual_start_date, startDate))
+    let di = Math.max(0, minStartRaw)
+    let firstIdx: number | null = null
+    let lastIdx: number | null = null
+
+    while (remaining > 0.0001) {
+      const dateAtIndex = ensureCapacityIndex(di, startDate, daysCache, getDailyCapacity)
+      const cap = getDailyCapacity(dateAtIndex)
+      const used = usage.get(di) ?? 0
+      const free = Math.max(0, cap - used)
+
+      if (free > 0.0001) {
+        const put = Math.min(free, remaining)
+        daily.set(di, (daily.get(di) ?? 0) + put)
+        usage.set(di, used + put)
+        remaining -= put
+        if (firstIdx === null) firstIdx = di
+        lastIdx = di
+      }
+
+      di += 1
+      if (firstIdx !== null) {
+        cursor = Math.max(cursor, firstIdx)
+      }
+    }
+
+    const startIdx = Math.max(0, firstIdx ?? di)
+    const endIdx = Math.max(startIdx, lastIdx ?? startIdx)
+    globalLastIdx = Math.max(globalLastIdx, endIdx)
+
+    scheduled.push({
+      ...t,
+      dailyHours: daily,
+      date_start: startIdx,
+      date_end: endIdx,
+      actual_start_date: addDays(startDate, startIdx),
+      actual_end_date: addDays(startDate, endIdx),
+    })
+
+    cursor = advanceToNextAvailableIndex(cursor, daysCache, getDailyCapacity, usage)
+  }
+
+  return { tasks: scheduled, lastDayIndex: globalLastIdx }
+}
+
 export interface GanttTask extends Task {
   date_start: number // 日付インデックス（プロジェクト開始日からの日数）
   date_end: number   // 日付インデックス（プロジェクト開始日からの日数）
@@ -61,6 +162,16 @@ interface GanttChartProps {
   // BigTaskステータス変更（新規追加）
   allowStatusChange?: boolean // デフォルト: false
   onBigTaskStatusUpdate?: (taskId: string, status: 'completed' | 'active') => void
+
+  // 時間編集用のコールバック
+  onBigTaskHoursUpdate?: (taskId: string, estimatedHours: number) => void
+  onTaskHoursUpdate?: (taskId: string, estimatedHours: number) => void // 旧Task用（任意）
+  
+  // 日付更新用のコールバック（時間変更による再配置時）
+  onBigTaskDateUpdate?: (taskId: string, startDate: Date, endDate: Date) => void
+  
+  // 連鎖再配置のスコープ（デフォルト: 'category'）
+  reflowScope?: 'category' | 'all' | 'none'
 }
 
 export function GanttChart({
@@ -81,6 +192,10 @@ export function GanttChart({
   showCapacityWarnings = false, // デフォルト: 警告非表示
   allowStatusChange = false, // デフォルト: ステータス変更不可
   onBigTaskStatusUpdate,
+  onBigTaskHoursUpdate,
+  onTaskHoursUpdate,
+  onBigTaskDateUpdate,
+  reflowScope = 'category', // デフォルト: カテゴリ内で連鎖再配置
 }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [ganttTasks, setGanttTasks] = useState<GanttTask[]>([])
@@ -89,6 +204,8 @@ export function GanttChart({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [taskStatuses, setTaskStatuses] = useState<Map<string, 'completed' | 'active'>>(new Map())
+  const [editingHoursTaskId, setEditingHoursTaskId] = useState<string | null>(null)
+  const [tempHours, setTempHours] = useState<string>('') // 入力中の値（文字列）
   
   // SmallTasksを取得（選択されたBigTaskがある場合のみ）
   const { smallTasks } = useSmallTasks(CURRENT_USER_ID, selectedTaskId || undefined)
@@ -166,6 +283,99 @@ export function GanttChart({
     return dayChars[getDay(date)]
   }
 
+  // 日付ごとの作業可能時間を計算
+  const getDailyCapacity = useCallback((date: Date): number => {
+    // 祝日判定
+    const holidays = getHolidaysForYear(date.getFullYear())
+    const dateStr = format(date, 'yyyy-MM-dd')
+    const isHoliday = holidays.some(h => 
+      format(h.date, 'yyyy-MM-dd') === dateStr
+    )
+    
+    if (isHoliday) {
+      if (excludeHolidays) {
+        return 0 // 祝日を作業不可日とする場合は0
+      } else {
+        return holidayWorkHours // 祝日でも作業する場合はholidayWorkHours
+      }
+    }
+    
+    const dayOfWeek = getDay(date) // 0=日, 1=月...6=土
+    
+    // weekdayHoursの配列インデックスに変換
+    // [月,火,水,木,金,土,日] なので
+    const weekdayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    
+    if (!weekdayHours || !workableWeekdays || !workableWeekdays[weekdayIndex]) {
+      return 0
+    }
+    
+    // 各曜日の設定時間を返す
+    return weekdayHours[weekdayIndex]
+  }, [workableWeekdays, weekdayHours, excludeHolidays, holidayWorkHours, getHolidaysForYear])
+
+
+  // 時間変更の確定処理（逐次スケジューラ使用）
+  const commitHoursChange = useCallback((taskId: string, newHoursNum: number) => {
+    setGanttTasks(prev => {
+      const edited = prev.map(t => t.id === taskId ? { ...t, estimatedHours: newHoursNum } : t)
+
+      // スコープ決定
+      let targetIds: string[]
+      if (reflowScope === 'none') {
+        targetIds = [taskId]
+      } else if (reflowScope === 'category') {
+        const cat = edited.find(t => t.id === taskId)?.category || 'その他'
+        targetIds = edited.filter(t => (t.category || 'その他') === cat).map(t => t.id)
+      } else {
+        targetIds = edited.map(t => t.id) // 'all'
+      }
+
+      // スコープ外の "固定" 使用量を seed（同日の残キャパを正しく差し引く）
+      const baseline: Map<number, number> = new Map()
+      edited
+        .filter(t => !targetIds.includes(t.id))
+        .forEach(t => {
+          t.dailyHours.forEach((h, di) => {
+            baseline.set(di, (baseline.get(di) ?? 0) + h)
+          })
+        })
+
+      const scoped = edited
+        .filter(t => targetIds.includes(t.id))
+        .sort((a, b) => a.order - b.order)
+
+      const daysCache = [...days]
+      const { tasks: rescheduled } = scheduleSequentially(
+        scoped,
+        startDate,
+        endDate,
+        daysCache,
+        getDailyCapacity,
+        baseline, // カテゴリ外を固定化
+      )
+
+      // マージ
+      const mapById = new Map(rescheduled.map(t => [t.id, t] as const))
+      const merged = edited.map(t => mapById.get(t.id) ?? t)
+
+      // 既存コールバック
+      if (bigTasks && bigTasks.length > 0 && onBigTaskHoursUpdate) onBigTaskHoursUpdate(taskId, newHoursNum)
+      else if (!bigTasks && onTaskHoursUpdate) onTaskHoursUpdate(taskId, newHoursNum)
+
+      if (onBigTaskDateUpdate && bigTasks && bigTasks.length > 0) {
+        for (const t of rescheduled) onBigTaskDateUpdate(t.id, t.actual_start_date, t.actual_end_date)
+      } else if (onTaskDateUpdate) {
+        for (const t of rescheduled) onTaskDateUpdate(t.id, t.actual_start_date, t.actual_end_date)
+      }
+
+      return merged
+    })
+
+    setEditingHoursTaskId(null)
+    setTempHours('')
+  }, [bigTasks, days, endDate, getDailyCapacity, onBigTaskDateUpdate, onBigTaskHoursUpdate, onTaskDateUpdate, onTaskHoursUpdate, reflowScope, startDate])
+
   // タスクの日付変更ハンドラー
   const handleTaskDateChange = useCallback((taskId: string, type: 'start' | 'end', value: string) => {
     const newDate = new Date(value)
@@ -224,37 +434,6 @@ export function GanttChart({
     
     return holiday ? holiday.name : null
   }, [excludeHolidays, getHolidaysForYear])
-
-  // 日付ごとの作業可能時間を計算
-  const getDailyCapacity = useCallback((date: Date): number => {
-    // 祝日判定
-    const holidays = getHolidaysForYear(date.getFullYear())
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const isHoliday = holidays.some(h => 
-      format(h.date, 'yyyy-MM-dd') === dateStr
-    )
-    
-    if (isHoliday) {
-      if (excludeHolidays) {
-        return 0 // 祝日を作業不可日とする場合は0
-      } else {
-        return holidayWorkHours // 祝日でも作業する場合はholidayWorkHours
-      }
-    }
-    
-    const dayOfWeek = getDay(date) // 0=日, 1=月...6=土
-    
-    // weekdayHoursの配列インデックスに変換
-    // [月,火,水,木,金,土,日] なので
-    const weekdayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    
-    if (!weekdayHours || !workableWeekdays || !workableWeekdays[weekdayIndex]) {
-      return 0
-    }
-    
-    // 各曜日の設定時間を返す
-    return weekdayHours[weekdayIndex]
-  }, [workableWeekdays, weekdayHours, excludeHolidays, holidayWorkHours, getHolidaysForYear])
 
   // カテゴリごとにタスクをグループ化（order順を維持）
   const tasksByCategory = useMemo(() => {
@@ -333,57 +512,38 @@ export function GanttChart({
       return weekdayHours[weekdayIndex]
     }
 
-    // BigTasksベースの新しい実装
+    // BigTasksベースの新しい実装（逐次スケジューラを使用）
     if (bigTasks && bigTasks.length > 0) {
-      const ganttTasksFromBigTasks: GanttTask[] = bigTasks.map((bigTask, index) => {
-        // 開始日と終了日から日付インデックスを計算
-        const taskStartDate = dateUtils.toJSTDate(bigTask.start_date)
-        const taskEndDate = dateUtils.toJSTDate(bigTask.end_date)
-
-        const dateStart = differenceInDays(taskStartDate, startDate)
-        const dateEnd = differenceInDays(taskEndDate, startDate)
-
-        // 日ごとの時間配分を計算（作業可能日のみに配分）
-        const dailyHours = new Map<number, number>()
-        let remainingHours = bigTask.estimated_hours
-        const taskDays = eachDayOfInterval({ start: taskStartDate, end: taskEndDate })
-
-        // 作業可能日を取得
-        const workDays = taskDays.filter(day => {
-          const capacity = getCapacity(day)
-          return capacity > 0
+      const seed: GanttTask[] = bigTasks
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((bt, index) => {
+          const s = dateUtils.toJSTDate(bt.start_date)
+          const e = dateUtils.toJSTDate(bt.end_date)
+          return {
+            id: bt.id,
+            name: bt.name,
+            category: bt.category || 'その他',
+            estimatedHours: bt.estimated_hours,
+            order: bt.order ?? index,
+            date_start: Math.max(0, differenceInDays(s, startDate)),
+            date_end: Math.max(0, differenceInDays(e, startDate)),
+            actual_start_date: s,
+            actual_end_date: e,
+            dailyHours: new Map(),
+          } as GanttTask
         })
 
-        if (workDays.length > 0) {
-          const hoursPerDay = bigTask.estimated_hours / workDays.length
+      const daysCache = [...days] // ヘッダ days をコピー（必要に応じて延長可）
 
-          workDays.forEach(day => {
-            const dayIndex = differenceInDays(day, startDate)
-            const capacity = getCapacity(day)
-            const allocatedHours = Math.min(hoursPerDay, capacity, remainingHours)
+      const { tasks: scheduled } = scheduleSequentially(
+        seed,
+        startDate,
+        endDate,
+        daysCache,
+        getCapacity,
+      )
 
-            if (allocatedHours > 0) {
-              dailyHours.set(dayIndex, allocatedHours)
-              remainingHours -= allocatedHours
-            }
-          })
-        }
-
-        return {
-          id: bigTask.id,
-          name: bigTask.name,
-          category: bigTask.category || 'その他',
-          estimatedHours: bigTask.estimated_hours,
-          order: index,
-          date_start: dateStart,
-          date_end: dateEnd,
-          actual_start_date: taskStartDate,
-          actual_end_date: taskEndDate,
-          dailyHours,
-        }
-      })
-
-      setGanttTasks(ganttTasksFromBigTasks)
+      setGanttTasks(scheduled)
       
       // BigTaskのステータスを初期化
       const statusMap = new Map<string, 'completed' | 'active'>()
@@ -472,7 +632,7 @@ export function GanttChart({
     })
 
     setGanttTasks(allocated)
-  }, [tasks, bigTasks, weeklyAllocations, weeklyAvailableHours, startDate, endDate, workableWeekdays, weekdayHours, excludeHolidays, holidayWorkHours])
+  }, [tasks, bigTasks, weeklyAllocations, weeklyAvailableHours, startDate, endDate, workableWeekdays, weekdayHours, excludeHolidays, holidayWorkHours, days])
 
   // 日ごとの作業時間を計算（実際の配分に基づく）
   const dailyWorkload = useMemo(() => {
@@ -765,7 +925,47 @@ export function GanttChart({
                         )}
                       </td>
                       <td className="sticky z-[2] bg-background border-r px-1 py-1 text-center text-xs shadow-sm" style={{ left: '280px', width: '48px' }}>
-                        {task.estimatedHours}
+                        {editingHoursTaskId === task.id ? (
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.25}
+                            value={tempHours}
+                            onChange={(e) => setTempHours(e.target.value)}
+                            onBlur={() => {
+                              const v = Number(tempHours)
+                              if (!Number.isFinite(v) || v < 0) {
+                                setEditingHoursTaskId(null)
+                                setTempHours('')
+                                return
+                              }
+                              commitHoursChange(task.id, v)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const v = Number(tempHours)
+                                if (!Number.isFinite(v) || v < 0) return
+                                commitHoursChange(task.id, v)
+                              } else if (e.key === 'Escape') {
+                                setEditingHoursTaskId(null)
+                                setTempHours('')
+                              }
+                            }}
+                            className="w-full px-1 py-0.5 bg-transparent border border-border rounded text-center text-[10px] focus:outline-none focus:ring-1 focus:ring-primary"
+                            autoFocus
+                          />
+                        ) : (
+                          <div
+                            className="cursor-pointer hover:bg-accent rounded px-1 py-0.5"
+                            title="クリックで予定工数を編集"
+                            onClick={() => {
+                              setEditingHoursTaskId(task.id)
+                              setTempHours(String(task.estimatedHours ?? 0))
+                            }}
+                          >
+                            {task.estimatedHours ?? 0}
+                          </div>
+                        )}
                       </td>
                       {days.map((day, dayIndex) => {
                         const isInRange = dayIndex >= task.date_start && dayIndex <= task.date_end

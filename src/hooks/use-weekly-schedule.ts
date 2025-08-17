@@ -9,7 +9,11 @@ import { ja } from 'date-fns/locale'
 import { useProjects } from './use-projects'
 import { useBigTasks } from './use-big-tasks'
 import { useSmallTasks, useSmallTasksByDateRange } from './use-small-tasks'
-import { filterTasksByDateRange } from '@/utils/date-range-utils'
+import { 
+  filterTasksByDateRange, 
+  getWeekBoundariesUTC,
+  filterBigTasksByOverlap 
+} from '@/utils/date-range-utils'
 import {
   SmallTask,
   CreateSmallTaskData,
@@ -21,20 +25,23 @@ import {
 export function useWeeklySchedule(userId: string, selectedWeek: Date) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
 
-  // Calculate week start and end dates
+  // Calculate week start and end dates with UTC conversion
   const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 }) // Monday
   const weekEnd = endOfWeek(selectedWeek, { weekStartsOn: 1 }) // Sunday
   const weekStartStr = format(weekStart, 'yyyy-MM-dd')
   const weekEndStr = format(weekEnd, 'yyyy-MM-dd')
+  
+  // 週境界をUTC ISOで取得（排他的上限）
+  const { startISO: weekStartUTC, endExclusiveISO: weekEndUTC } = getWeekBoundariesUTC(selectedWeek)
 
   // Fetch data
   const { projects, isLoading: projectsLoading } = useProjects(userId)
   const { bigTasks, isLoading: bigTasksLoading } = useBigTasks(userId)
-  // useSmallTasksByDateRangeは読み取り専用なので、別途useSmallTasksを使用
+  // UTC ISO文字列を使用してタスクを取得（排他的上限での重なり判定）
   const { smallTasks: weekTasks, isLoading: tasksLoading } = useSmallTasksByDateRange(
     userId,
-    weekStartStr,
-    weekEndStr
+    weekStartUTC,
+    weekEndUTC
   )
 
   // 作成・更新・削除用のフック（繰り返しタスク対応を含む）
@@ -144,8 +151,8 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
     await updateSmallTask({
       id: taskId,
       data: {
-        scheduled_start: '',
-        scheduled_end: '',
+        scheduled_start: null,  // 空文字ではなくnullを使用
+        scheduled_end: null,
       },
     })
   }

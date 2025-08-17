@@ -20,6 +20,34 @@
 - グリッドレイアウト: `grid gap-4 md:grid-cols-*`形式
 - 境界線: 必要最小限、`border border-border`
 
+### モーダル/ダイアログ
+- **基本構成**: shadcn/ui の Dialog コンポーネントを使用
+- **背景色設定**:
+  - DialogContent: `bg-background` クラス（テーマ自動切替）
+    - ライトモード: HSL(214 17% 94%)
+    - ダークモード: HSL(220 13% 9%)
+  - DialogOverlay: `bg-black/50`（50%透明の黒）
+- **実装ルール**:
+  - 直接的な色指定（bg-white, bg-gray-900等）は禁止
+  - 必ずセマンティックカラークラスを使用
+  - 境界線: `border border-border`
+  - アニメーション: shadcn/ui デフォルト設定を使用
+- **コンポーネント構造**:
+  ```tsx
+  <Dialog>
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>タイトル</DialogTitle>
+        <DialogDescription>説明文</DialogDescription>
+      </DialogHeader>
+      {/* コンテンツ */}
+      <DialogFooter>
+        {/* アクションボタン */}
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  ```
+
 ### レイアウト
 - ページ共通: `flex flex-1 flex-col gap-6 p-4 md:p-6`
 - Card: 必ず`border border-border`を追加

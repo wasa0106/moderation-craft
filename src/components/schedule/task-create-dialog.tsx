@@ -26,7 +26,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Clock, Calendar, ListTodo, Coffee, RefreshCw, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Clock, Calendar, ListTodo, Coffee, RefreshCw, ChevronDown, ChevronUp, Trash2, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Project, BigTask, SmallTask, CreateSmallTaskData, UpdateSmallTaskData, RecurrencePattern } from '@/types'
@@ -96,6 +97,16 @@ export function TaskCreateDialog({
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([])
   const [recurrenceStartDate, setRecurrenceStartDate] = useState('')
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('')
+  
+  // タスク詳細フィールドの状態（デフォルトで開いた状態）
+  const [detailsExpanded, setDetailsExpanded] = useState(true)
+  const [taskGoal, setTaskGoal] = useState('')
+  const [taskDod, setTaskDod] = useState('')
+  const [taskInputs, setTaskInputs] = useState('')
+  const [taskOutputs, setTaskOutputs] = useState('')
+  const [taskProcess, setTaskProcess] = useState('')
+  const [taskMissingInputs, setTaskMissingInputs] = useState('')
+  const [taskNonGoals, setTaskNonGoals] = useState('')
 
   // 選択されたプロジェクトの全BigTasksを取得
   const { bigTasks: allProjectBigTasks } = useBigTasks(userId, selectedProjectId)
@@ -146,6 +157,15 @@ export function TaskCreateDialog({
         const end = new Date(existingTask.scheduled_end)
         setEndTimeInput(format(end, 'HH:mm'))
       }
+      
+      // タスク詳細フィールドの復元
+      setTaskGoal(existingTask.goal || '')
+      setTaskDod(existingTask.dod || '')
+      setTaskInputs(existingTask.inputs || '')
+      setTaskOutputs(existingTask.outputs || '')
+      setTaskProcess(existingTask.process || '')
+      setTaskMissingInputs(existingTask.missing_inputs || '')
+      setTaskNonGoals(existingTask.non_goals || '')
       
       // 繰り返し設定の復元
       if (existingTask.recurrence_enabled && existingTask.recurrence_pattern) {
@@ -209,6 +229,16 @@ export function TaskCreateDialog({
     setRecurrenceEndDate('')
     setRecurringDeleteMode(null)
     setShowRecurringDeleteDialog(false)
+    // タスク詳細フィールドをクリア
+    setTaskGoal('')
+    setTaskDod('')
+    setTaskInputs('')
+    setTaskOutputs('')
+    setTaskProcess('')
+    setTaskMissingInputs('')
+    setTaskNonGoals('')
+    // タスク詳細は開いた状態を維持
+    setDetailsExpanded(true)
   }
 
   // 繰り返しタスクかどうかを判定
@@ -254,6 +284,15 @@ export function TaskCreateDialog({
           updateData.estimated_minutes = Math.ceil((scheduledEnd.getTime() - scheduledStart.getTime()) / (1000 * 60))
         }
 
+        // タスク詳細フィールドの更新
+        updateData.goal = taskGoal || undefined
+        updateData.dod = taskDod || undefined
+        updateData.inputs = taskInputs || undefined
+        updateData.outputs = taskOutputs || undefined
+        updateData.process = taskProcess || undefined
+        updateData.missing_inputs = taskMissingInputs || undefined
+        updateData.non_goals = taskNonGoals || undefined
+        
         // 繰り返し設定の更新
         if (recurrenceEnabled) {
           updateData.recurrence_enabled = true
@@ -316,6 +355,14 @@ export function TaskCreateDialog({
           is_emergency: false,
           recurrence_enabled: recurrenceEnabled,
           recurrence_pattern: recurrencePattern,
+          // タスク詳細フィールド（任意）
+          goal: taskGoal || undefined,
+          dod: taskDod || undefined,
+          inputs: taskInputs || undefined,
+          outputs: taskOutputs || undefined,
+          process: taskProcess || undefined,
+          missing_inputs: taskMissingInputs || undefined,
+          non_goals: taskNonGoals || undefined,
         }
 
         await onCreateTask(taskData)
@@ -764,6 +811,120 @@ export function TaskCreateDialog({
                     })()}
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* タスク詳細設定（折りたたみ可能） */}
+          <div className="grid gap-3">
+            <button
+              type="button"
+              onClick={() => setDetailsExpanded(!detailsExpanded)}
+              className="flex items-center justify-between p-2 hover:bg-muted rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">タスク詳細（任意）</span>
+              </div>
+              {detailsExpanded ? (
+                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+
+            {detailsExpanded && (
+              <div className="grid gap-3 pl-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="goal" className="text-xs text-muted-foreground">
+                    Goal - このタスクで実現したいこと
+                  </Label>
+                  <Textarea
+                    id="goal"
+                    value={taskGoal}
+                    onChange={(e) => setTaskGoal(e.target.value)}
+                    placeholder=""
+                    className="min-h-[50px] resize-none text-sm"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="dod" className="text-xs text-muted-foreground">
+                    DoD - 完了条件（QCD基準を含めて具体的に）
+                  </Label>
+                  <Textarea
+                    id="dod"
+                    value={taskDod}
+                    onChange={(e) => setTaskDod(e.target.value)}
+                    placeholder=""
+                    className="min-h-[50px] resize-none text-sm"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="inputs" className="text-xs text-muted-foreground">
+                    Inputs - 手元にある材料、情報
+                  </Label>
+                  <Textarea
+                    id="inputs"
+                    value={taskInputs}
+                    onChange={(e) => setTaskInputs(e.target.value)}
+                    placeholder=""
+                    className="min-h-[50px] resize-none text-sm"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="outputs" className="text-xs text-muted-foreground">
+                    Outputs - 成果物
+                  </Label>
+                  <Textarea
+                    id="outputs"
+                    value={taskOutputs}
+                    onChange={(e) => setTaskOutputs(e.target.value)}
+                    placeholder=""
+                    className="min-h-[50px] resize-none text-sm"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="process" className="text-xs text-muted-foreground">
+                    Process - 作業手順
+                  </Label>
+                  <Textarea
+                    id="process"
+                    value={taskProcess}
+                    onChange={(e) => setTaskProcess(e.target.value)}
+                    placeholder=""
+                    className="min-h-[60px] resize-none text-sm"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="missing_inputs" className="text-xs text-muted-foreground">
+                    Missing Inputs - 不足している情報
+                  </Label>
+                  <Textarea
+                    id="missing_inputs"
+                    value={taskMissingInputs}
+                    onChange={(e) => setTaskMissingInputs(e.target.value)}
+                    placeholder=""
+                    className="min-h-[50px] resize-none text-sm"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="non_goals" className="text-xs text-muted-foreground">
+                    Non Goals - 今回はやらないこと
+                  </Label>
+                  <Textarea
+                    id="non_goals"
+                    value={taskNonGoals}
+                    onChange={(e) => setTaskNonGoals(e.target.value)}
+                    placeholder=""
+                    className="min-h-[50px] resize-none text-sm"
+                  />
+                </div>
               </div>
             )}
           </div>

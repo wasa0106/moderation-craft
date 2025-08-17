@@ -389,9 +389,10 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
 
   async getByDateRange(userId: string, startDate: string, endDate: string): Promise<SmallTask[]> {
     try {
-      // startDateとendDateをISO形式の日時に変換
-      const startDateTime = `${startDate}T00:00:00.000Z`
-      const endDateTime = `${endDate}T23:59:59.999Z`
+      // 引数は既にISO形式を想定（排他的上限）
+      // 旧実装との互換性のため、時刻が含まれていない場合は補完
+      const startDateTime = startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`
+      const endDateTime = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`
 
       console.log('getByDateRange:', {
         userId,
@@ -405,15 +406,17 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
         .where('user_id')
         .equals(userId)
         .and(task => {
-          // scheduled_startがnullまたは空文字の場合はスキップ
-          if (!task.scheduled_start) return false
-
-          // ISO形式の日時として比較
-          return task.scheduled_start >= startDateTime && task.scheduled_start <= endDateTime
+          // scheduled_startとscheduled_endが両方必要
+          if (!task.scheduled_start || !task.scheduled_end) return false
+          
+          // 重なり判定: タスクが範囲と重なる条件
+          // - タスク開始 < 範囲終了 AND
+          // - タスク終了 > 範囲開始
+          return task.scheduled_start < endDateTime && task.scheduled_end > startDateTime
         })
         .sortBy('scheduled_start')
 
-      console.log(`Found ${tasks.length} tasks for date range`)
+      console.log(`Found ${tasks.length} tasks for date range (overlap check)`)
       return tasks
     } catch (error) {
       throw new Error(`Failed to get small tasks by date range: ${error}`)

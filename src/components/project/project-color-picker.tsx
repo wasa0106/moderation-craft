@@ -310,7 +310,7 @@ export function ProjectColorPicker({
                   {customColor && (
                     <div className="space-y-2">
                       <Label className="text-xs">プレビュー</Label>
-                      <div className="flex items-center gap-3 p-3 border border-border rounded-md bg-surface-1">
+                      <div className="flex items-center gap-3 p-3 border border-border rounded-md bg-background">
                         <div
                           className="w-10 h-10 rounded-md border border-border"
                           style={{

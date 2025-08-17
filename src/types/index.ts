@@ -69,6 +69,14 @@ export interface SmallTask extends DatabaseEntity {
   recurrence_parent_id?: string
   order?: number
   kanban_column?: string
+  // タスク詳細フィールド
+  goal?: string // このタスクで実現したいこと
+  dod?: string // 完了条件（Definition of Done）
+  inputs?: string // 手元にある材料、情報
+  outputs?: string // 成果物
+  process?: string // 作業手順
+  missing_inputs?: string // 不足している情報
+  non_goals?: string // 今回はやらないこと
 }
 
 export interface WorkSession extends DatabaseEntity {

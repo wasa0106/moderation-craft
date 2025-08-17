@@ -18,7 +18,10 @@ import { DopamineDialog } from '@/components/timer/dopamine-dialog'
 import { FocusDialog } from '@/components/timer/focus-dialog'
 import { UnplannedTaskDialog, UnplannedTaskData } from '@/components/timer/unplanned-task-dialog'
 import { CombinedScheduleView } from '@/components/timer/combined-schedule-view'
-import { WorkProgressCard } from '@/components/timer/work-progress-card'
+import { ProjectProgressCard } from '@/components/timer/project-progress-card'
+import { TaskDetailsCard } from '@/components/timer/task-details-card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent } from '@/components/ui/card'
 import { TimerTaskDisplay, TimerTaskDisplayRef } from '@/components/timer/timer-task-display'
 import { TimerControls } from '@/components/timer/timer-controls'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -346,13 +349,51 @@ export default function TimerPage() {
             </div>
           </div>
 
-          {/* プロジェクトタスクのみ（ルーティンタスクを除外） */}
-          <WorkProgressCard
-            dayTasks={dayTasks.filter(task => task.task_type !== 'routine')}
-            todaySessions={todaySessions}
-            projects={projects}
-            selectedDate={selectedDate || new Date()}
-          />
+          {/* タブコンテンツ */}
+          <Card className="bg-surface-1 shadow-surface-1 border border-border rounded-none">
+            <CardContent className="py-4">
+              <Tabs defaultValue="task-details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg">
+                  <TabsTrigger 
+                    value="project-tasks"
+                    className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground transition-all"
+                  >
+                    プロジェクト進捗
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="task-details"
+                    className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground transition-all"
+                  >
+                    タスク詳細
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="project-tasks" className="mt-4">
+                  <ProjectProgressCard
+                    dayTasks={dayTasks.filter(task => task.task_type !== 'routine')}
+                    todaySessions={todaySessions}
+                    projects={projects}
+                    selectedDate={selectedDate || new Date()}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="task-details" className="mt-4">
+                  <TaskDetailsCard
+                    dayTasks={dayTasks.filter(task => task.task_type !== 'routine')}
+                    currentTask={currentTask}
+                    onTaskUpdate={(updatedTask) => {
+                      // 更新されたタスクを直接設定（再取得を避ける）
+                      if (currentTask && currentTask.id === updatedTask.id) {
+                        setCurrentTask(updatedTask)
+                      }
+                      // smallTasksリストも更新が必要な場合のみリロード
+                      // ただし、タスク詳細フィールドの更新では不要
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
