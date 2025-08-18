@@ -114,7 +114,7 @@ export function BigTaskEditPopover({
               <Label htmlFor="name" className="text-sm">タスク名</Label>
               <Input
                 id="name"
-                value={formData.name || ''}
+                value={(formData.name ?? '') as string}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="h-8"
               />
@@ -129,7 +129,7 @@ export function BigTaskEditPopover({
                 min={0.5}
                 max={168}
                 step={0.5}
-                value={formData.estimated_hours || 0}
+                value={(formData.estimated_hours ?? 0) as number}
                 onChange={(e) => setFormData({ ...formData, estimated_hours: parseFloat(e.target.value) })}
                 className="h-8"
               />
@@ -139,7 +139,7 @@ export function BigTaskEditPopover({
             <div className="space-y-1">
               <Label htmlFor="status" className="text-sm">ステータス</Label>
               <Select
-                value={formData.status || 'active'}
+                value={(formData.status ?? 'active') as BigTask['status']}
                 onValueChange={(value: BigTask['status']) => setFormData({ ...formData, status: value })}
               >
                 <SelectTrigger className="h-8">
