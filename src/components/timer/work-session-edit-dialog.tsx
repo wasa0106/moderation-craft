@@ -116,8 +116,8 @@ export function WorkSessionEditDialog({
         }
 
         updates.end_time = newEndTime.toISOString()
-        updates.duration_minutes = Math.floor(
-          (newEndTime.getTime() - newStartTime.getTime()) / (1000 * 60)
+        updates.duration_seconds = Math.floor(
+          (newEndTime.getTime() - newStartTime.getTime()) / 1000
         )
       }
 

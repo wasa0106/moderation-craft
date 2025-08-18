@@ -31,6 +31,7 @@ interface CombinedScheduleViewProps {
   dopamineEntries?: DopamineEntry[]
   moodEntries?: MoodEntry[]
   onRecordsUpdate?: () => void
+  onSessionsUpdate?: () => void
 }
 
 export function CombinedScheduleView({
@@ -45,6 +46,7 @@ export function CombinedScheduleView({
   dopamineEntries = [],
   moodEntries = [],
   onRecordsUpdate,
+  onSessionsUpdate,
 }: CombinedScheduleViewProps) {
   const { toast } = useToast()
   const [selectedSession, setSelectedSession] = useState<WorkSession | null>(null)
@@ -187,8 +189,15 @@ export function CombinedScheduleView({
       const updatedSession = await workSessionRepository.update(sessionId, updates)
       await syncService.addToSyncQueue('work_session', sessionId, 'update', updatedSession)
 
-      // 親コンポーネントのセッション一覧を更新するため、ページをリロード
-      window.location.reload()
+      // 親コンポーネントにセッション更新を通知
+      if (onSessionsUpdate) {
+        onSessionsUpdate()
+      }
+
+      toast({
+        title: '更新しました',
+        description: 'セッション情報を更新しました',
+      })
     } catch (error) {
       console.error('Failed to update session:', error)
       toast({
@@ -205,8 +214,15 @@ export function CombinedScheduleView({
       await workSessionRepository.delete(sessionId)
       await syncService.addToSyncQueue('work_session', sessionId, 'delete')
 
-      // 親コンポーネントのセッション一覧を更新するため、ページをリロード
-      window.location.reload()
+      // 親コンポーネントにセッション更新を通知
+      if (onSessionsUpdate) {
+        onSessionsUpdate()
+      }
+
+      toast({
+        title: '削除しました',
+        description: 'セッションを削除しました',
+      })
     } catch (error) {
       console.error('Failed to delete session:', error)
       toast({

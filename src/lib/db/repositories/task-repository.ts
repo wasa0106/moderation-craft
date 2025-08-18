@@ -389,10 +389,18 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
 
   async getByDateRange(userId: string, startDate: string, endDate: string): Promise<SmallTask[]> {
     try {
-      // 引数は既にISO形式を想定（排他的上限）
-      // 旧実装との互換性のため、時刻が含まれていない場合は補完
+      // 引数は排他的上限のISO形式を想定
+      // endDateは排他的上限（その時刻を含まない）として扱う
+      // 時刻が含まれていない場合のみ補完（後方互換性のため）
       const startDateTime = startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`
-      const endDateTime = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`
+      // endDateがT含まない場合は、翌日の00:00を排他的上限とする
+      const endDateTime = endDate.includes('T') 
+        ? endDate 
+        : (() => {
+            const nextDay = new Date(endDate)
+            nextDay.setDate(nextDay.getDate() + 1)
+            return nextDay.toISOString().split('T')[0] + 'T00:00:00.000Z'
+          })()
 
       console.log('getByDateRange:', {
         userId,
@@ -409,9 +417,9 @@ export class SmallTaskRepository extends BaseRepository<SmallTask> implements IS
           // scheduled_startとscheduled_endが両方必要
           if (!task.scheduled_start || !task.scheduled_end) return false
           
-          // 重なり判定: タスクが範囲と重なる条件
-          // - タスク開始 < 範囲終了 AND
-          // - タスク終了 > 範囲開始
+          // 重なり判定: タスクが範囲と重なる条件（排他的上限）
+          // - タスク開始 < 範囲終了（排他） AND
+          // - タスク終了 > 範囲開始（包含）
           return task.scheduled_start < endDateTime && task.scheduled_end > startDateTime
         })
         .sortBy('scheduled_start')

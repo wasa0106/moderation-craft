@@ -144,7 +144,12 @@ export function useWeeklySchedule(userId: string, selectedWeek: Date) {
 
   // Schedule/unschedule task
   const scheduleTask = async (taskId: string, startTime: string, endTime: string) => {
-    await rescheduleTask({ id: taskId, newStartTime: startTime, newEndTime: endTime })
+    await rescheduleTask({ 
+      id: taskId, 
+      newStartTime: startTime, 
+      newEndTime: endTime,
+      weekContext: selectedWeek // 週移動を検知してトースト表示
+    })
   }
 
   const unscheduleTask = async (taskId: string) => {

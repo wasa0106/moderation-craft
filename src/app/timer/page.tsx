@@ -314,6 +314,7 @@ export default function TimerPage() {
               dopamineEntries={dopamineEntries}
               moodEntries={moodEntries}
               onRecordsUpdate={fetchRecords}
+              onSessionsUpdate={loadSessions}
             />
           </div>
         </div>

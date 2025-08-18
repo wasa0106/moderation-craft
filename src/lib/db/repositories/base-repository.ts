@@ -152,8 +152,13 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
   }
 
   async update(id: string, data: Partial<Omit<T, 'id' | 'created_at'>>): Promise<T> {
+    // undefinedキーを除去して意図しないnull上書きを防止
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== undefined)
+    )
+    
     const updateData = {
-      ...data,
+      ...cleanedData,
       ...db.updateTimestamp(),
     }
 

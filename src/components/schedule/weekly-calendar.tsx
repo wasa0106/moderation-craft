@@ -246,14 +246,19 @@ function DraggableScheduledTask({
         })
       } else {
         // 下辺のリサイズ: 開始時間は固定、終了時間を変更
-        const newEndTime = new Date(taskStart)
+        // taskStartが確実に存在することを保証（block.startTimeからのフォールバック）
+        const currentStartTime = taskStart || 
+          (block.startTime ? parseISO(block.startTime) : resizeStartRef.current.originalStart)
+        
+        const newEndTime = new Date(currentStartTime)
         newEndTime.setMinutes(newEndTime.getMinutes() + newDurationMinutes)
 
-        // Update task
+        // Update task - 必ずstart/end/estimatedを同時に送信
         await onUpdateTask({
           id: block.taskId,
           data: {
             estimated_minutes: newDurationMinutes,
+            scheduled_start: currentStartTime.toISOString(), // 確実に存在する開始時間を送信
             scheduled_end: newEndTime.toISOString(),
           }
         })

@@ -3,7 +3,7 @@
  * Provides CRUD operations for small tasks with optimistic updates
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { smallTaskRepository } from '@/lib/db/repositories'
 import { SyncService } from '@/lib/sync/sync-service'
@@ -17,6 +17,30 @@ import { getWeekBoundariesUTC, isTaskOutOfWeekRange } from '@/utils/date-range-u
 import { startOfWeek } from 'date-fns'
 
 const syncService = SyncService.getInstance()
+
+/**
+ * undefinedを除去してオブジェクトを返す
+ * API呼び出し前にundefinedキーを削除し、意図しないnull上書きを防止
+ */
+const pruneUndefined = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value !== undefined)
+  ) as Partial<T>
+}
+
+/**
+ * definedなキーのみをマージする
+ * 楽観更新で既存値を保持しつつ、definedな値のみ更新
+ */
+const mergeDefined = <T extends Record<string, any>>(base: T, patch: Partial<T>): T => {
+  const result = { ...base }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) {
+      (result as any)[key] = value
+    }
+  }
+  return result
+}
 
 export function useSmallTasks(userId: string, bigTaskId?: string, date?: string) {
   const queryClient = useQueryClient()
@@ -182,9 +206,42 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
   // Update small task mutation
   const updateSmallTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateSmallTaskData }) => {
-      const result = await smallTaskRepository.update(id, data)
+      // undefinedを除去してからAPIを呼び出す
+      const cleanedData = pruneUndefined(data)
+      const result = await smallTaskRepository.update(id, cleanedData)
       await syncService.addToSyncQueue('small_task', id, 'update', result)
       return result
+    },
+    onMutate: async ({ id, data }) => {
+      // 既存のクエリをキャンセル
+      await queryClient.cancelQueries({ queryKey: ['small-tasks', 'date-range'] })
+      
+      // スナップショットを保存
+      const snapshots = queryClient.getQueriesData<SmallTask[]>({ 
+        queryKey: ['small-tasks', 'date-range'] 
+      })
+      
+      // すべての関連キャッシュを楽観的に更新（undefinedを無視するマージ）
+      snapshots.forEach(([key, oldData]) => {
+        if (!oldData) return
+        const updatedTasks = oldData.map(task => 
+          task.id === id 
+            ? mergeDefined(task, { ...data, id, updated_at: new Date().toISOString() })
+            : task
+        )
+        queryClient.setQueryData(key, updatedTasks)
+      })
+      
+      return { snapshots }
+    },
+    onError: (error, variables, context) => {
+      console.error('Failed to update small task:', error)
+      // エラー時はスナップショットから復元
+      if (context?.snapshots) {
+        context.snapshots.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data)
+        })
+      }
     },
     onSuccess: smallTask => {
       invalidateQueries.smallTask(smallTask.id)
@@ -195,15 +252,13 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
         invalidateQueries.smallTasksByDate(userId, date)
       }
       invalidateQueries.activeTasks(userId)
-
-      // date-rangeクエリも無効化
+    },
+    onSettled: () => {
+      // 最終的に date-range クエリを再検証（アクティブなもののみ）
       queryClient.invalidateQueries({
         queryKey: ['small-tasks', 'date-range'],
         refetchType: 'active',
       })
-    },
-    onError: error => {
-      console.error('Failed to update small task:', error)
     },
   })
 
@@ -302,13 +357,55 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
       
       return result
     },
+    onMutate: async ({ id, newStartTime, newEndTime }) => {
+      // 既存のクエリをキャンセル
+      await queryClient.cancelQueries({ queryKey: ['small-tasks', 'date-range'] })
+      
+      // スナップショットを保存
+      const snapshots = queryClient.getQueriesData<SmallTask[]>({ 
+        queryKey: ['small-tasks', 'date-range'] 
+      })
+      
+      // 新しい期間を計算
+      const start = new Date(newStartTime)
+      const end = new Date(newEndTime)
+      const durationMinutes = Math.round((end.getTime() - start.getTime()) / (1000 * 60))
+      
+      // すべての関連キャッシュを楽観的に更新（undefinedを無視するマージ）
+      snapshots.forEach(([key, oldData]) => {
+        if (!oldData) return
+        const updatedTasks = oldData.map(task => 
+          task.id === id 
+            ? mergeDefined(task, { 
+                scheduled_start: newStartTime,
+                scheduled_end: newEndTime,
+                estimated_minutes: durationMinutes,
+                updated_at: new Date().toISOString() 
+              })
+            : task
+        )
+        queryClient.setQueryData(key, updatedTasks)
+      })
+      
+      return { snapshots }
+    },
+    onError: (error, variables, context) => {
+      console.error('Failed to reschedule task:', error)
+      // エラー時はスナップショットから復元
+      if (context?.snapshots) {
+        context.snapshots.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data)
+        })
+      }
+    },
     onSuccess: smallTask => {
       invalidateQueries.smallTask(smallTask.id)
       if (date) {
         invalidateQueries.smallTasksByDate(userId, date)
       }
-
-      // date-rangeクエリも無効化
+    },
+    onSettled: () => {
+      // 最終的に date-range クエリを再検証（アクティブなもののみ）
       queryClient.invalidateQueries({
         queryKey: ['small-tasks', 'date-range'],
         refetchType: 'active',
@@ -405,6 +502,8 @@ export function useSmallTasksByDateRange(userId: string, startDate: string, endD
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!userId && !!startDate && !!endDate,
+    placeholderData: keepPreviousData, // React Query v5でのkeepPreviousData使用法
+    refetchOnWindowFocus: false, // ウィンドウフォーカス時の再取得を無効化
   })
 
   return {
