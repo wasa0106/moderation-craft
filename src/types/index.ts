@@ -32,11 +32,9 @@ export interface BigTask extends DatabaseEntity {
   estimated_hours: number
   actual_hours: number
   status: 'active' | 'completed' | 'cancelled'
-  priority?: 'low' | 'medium' | 'high' | 'urgent'
   category?: string // 開発、設計、テスト、その他
   start_date: string // YYYY-MM-DD形式
   end_date: string // YYYY-MM-DD形式
-  description?: string
   order?: number // カンバンボードでの表示順
 }
 

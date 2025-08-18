@@ -228,6 +228,11 @@ export abstract class BaseRepository<T extends DatabaseEntity> implements Reposi
     try {
       const entity = await this.table.get(id)
       if (!entity) {
+        // sync_queueの場合は警告ログのみで正常終了
+        if (this.entityType === 'sync_queue') {
+          console.warn(`sync_queue with ID ${id} not found - already deleted or doesn't exist`)
+          return
+        }
         throw new Error(`${this.entityType} with ID ${id} not found`)
       }
 

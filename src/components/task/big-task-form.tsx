@@ -30,7 +30,6 @@ import { CalendarIcon } from 'lucide-react'
 
 const bigTaskFormSchema = z.object({
   name: z.string().min(1, 'タスク名は必須です').max(100, 'タスク名は100文字以内で入力してください'),
-  description: z.string().max(500, '説明は500文字以内で入力してください').optional(),
   start_date: z.string().min(1, '開始日は必須です'),
   end_date: z.string().min(1, '終了日は必須です'),
   category: z.string().min(1, 'カテゴリーは必須です'),
@@ -38,7 +37,6 @@ const bigTaskFormSchema = z.object({
     .number()
     .min(0.5, '見積時間は0.5時間以上である必要があります')
     .max(168, '見積時間は168時間以下である必要があります'),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
   status: z.enum(['active', 'completed', 'cancelled']).optional().default('active'),
 })
 
@@ -67,13 +65,11 @@ export function BigTaskForm({
     resolver: zodResolver(bigTaskFormSchema),
     defaultValues: {
       name: task?.name || '',
-      description: task?.description || '',
       start_date:
         task?.start_date || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
       end_date: task?.end_date || format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
       category: task?.category || 'その他',
       estimated_hours: task?.estimated_hours || 8,
-      priority: task?.priority || 'medium',
       status: task?.status || 'active',
     },
   })
@@ -110,23 +106,6 @@ export function BigTaskForm({
             />
             {form.formState.errors.name && (
               <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">説明</Label>
-            <Textarea
-              id="description"
-              placeholder="タスクの詳細を入力"
-              rows={3}
-              {...form.register('description')}
-              className={cn(
-                form.formState.errors.description && 'border-red-500 focus:border-red-500'
-              )}
-            />
-            {form.formState.errors.description && (
-              <p className="text-sm text-red-600">{form.formState.errors.description.message}</p>
             )}
           </div>
 
@@ -250,45 +229,25 @@ export function BigTaskForm({
             </div>
           </div>
 
-          {/* Priority and Status */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Status */}
+          {isEditing && (
             <div className="space-y-2">
-              <Label htmlFor="priority">優先度</Label>
+              <Label htmlFor="status">ステータス</Label>
               <Select
-                value={form.watch('priority') || undefined}
-                onValueChange={value => form.setValue('priority', value as BigTask['priority'])}
+                value={form.watch('status')}
+                onValueChange={value => form.setValue('status', value as BigTask['status'])}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="優先度を選択" />
+                  <SelectValue placeholder="ステータスを選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">低</SelectItem>
-                  <SelectItem value="medium">中</SelectItem>
-                  <SelectItem value="high">高</SelectItem>
-                  <SelectItem value="urgent">緊急</SelectItem>
+                  <SelectItem value="active">実行中</SelectItem>
+                  <SelectItem value="completed">完了</SelectItem>
+                  <SelectItem value="cancelled">キャンセル</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            {isEditing && (
-              <div className="space-y-2">
-                <Label htmlFor="status">ステータス</Label>
-                <Select
-                  value={form.watch('status')}
-                  onValueChange={value => form.setValue('status', value as BigTask['status'])}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="ステータスを選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">実行中</SelectItem>
-                    <SelectItem value="completed">完了</SelectItem>
-                    <SelectItem value="cancelled">キャンセル</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">

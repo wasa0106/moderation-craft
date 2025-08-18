@@ -9,8 +9,11 @@ const meta: Meta<typeof BigTaskList> = {
   args: {
     bigTasks: [],
     onEdit: task => console.log('Edit:', task),
+    onUpdate: async (params) => {
+      console.log('Update:', params)
+      return params.data as any
+    },
     onDelete: taskId => console.log('Delete:', taskId),
-    onCreateSmallTask: bigTaskId => console.log('Create small task for:', bigTaskId),
     isLoading: false,
   },
 }

@@ -213,7 +213,13 @@ export class SyncService {
         await this.processItem(item)
 
         // Mark as completed and remove from queue
-        await syncQueueRepository.delete(item.id)
+        // 削除前に存在チェック（既に削除されている可能性があるため）
+        const existingItem = await syncQueueRepository.getById(item.id)
+        if (existingItem) {
+          await syncQueueRepository.delete(item.id)
+        } else {
+          syncLogger.debug(`Sync queue item ${item.id} already deleted`)
+        }
         syncStore.removeFromSyncQueue(item.id)
       } catch (error) {
         syncLogger.error(`Failed to sync item ${item.id}:`, error)

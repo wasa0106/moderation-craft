@@ -1,27 +1,44 @@
 /**
- * BigTaskList - Big tasks list component (placeholder)
- * Displays list of big tasks with actions
+ * BigTaskList - Big tasks list component with table format
+ * Displays list of big tasks in a table with inline editing via popover
  */
 
-import { BigTask } from '@/types'
+'use client'
+
+import { useState } from 'react'
+import { BigTask, UpdateBigTaskData } from '@/types'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { BigTaskEditPopover } from './big-task-edit-popover'
+import { Edit2, Trash2 } from 'lucide-react'
+import { format } from 'date-fns'
+import { ja } from 'date-fns/locale'
+import { cn } from '@/lib/utils'
 
 interface BigTaskListProps {
   bigTasks: BigTask[]
   onEdit: (task: BigTask) => void
+  onUpdate: (params: { id: string; data: UpdateBigTaskData }) => Promise<BigTask>
   onDelete: (taskId: string) => void
-  onCreateSmallTask: (bigTaskId: string) => void
   isLoading: boolean
 }
 
 export function BigTaskList({
   bigTasks,
   onEdit,
+  onUpdate,
   onDelete,
-  onCreateSmallTask,
   isLoading,
 }: BigTaskListProps) {
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+
   if (isLoading) {
     return <div className="text-center py-8">読み込み中...</div>
   }
@@ -29,35 +46,98 @@ export function BigTaskList({
   if (bigTasks.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">大タスクがありません</p>
+        <p className="text-muted-foreground">タスクがありません</p>
       </div>
     )
   }
 
+  const getStatusLabel = (status: BigTask['status']) => {
+    switch (status) {
+      case 'active':
+        return '実行中'
+      case 'completed':
+        return '完了'
+      case 'cancelled':
+        return 'キャンセル'
+      default:
+        return status
+    }
+  }
+
+  const getStatusColor = (status: BigTask['status']) => {
+    switch (status) {
+      case 'active':
+        return 'text-blue-600'
+      case 'completed':
+        return 'text-green-600'
+      case 'cancelled':
+        return 'text-gray-500'
+      default:
+        return ''
+    }
+  }
+
   return (
-    <div className="space-y-4">
-      {bigTasks.map(task => (
-        <div key={task.id} className="border rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-medium">{task.name}</h3>
-              <p className="text-sm text-muted-foreground">{task.description}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => onEdit(task)}>
-                編集
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => onCreateSmallTask(task.id)}>
-                <Plus className="h-4 w-4 mr-1" />
-                小タスク
-              </Button>
-              <Button size="sm" variant="destructive" onClick={() => onDelete(task.id)}>
-                削除
-              </Button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[30%]">タスク名</TableHead>
+          <TableHead className="w-[15%]">見積時間</TableHead>
+          <TableHead className="w-[15%]">ステータス</TableHead>
+          <TableHead className="w-[15%]">開始日</TableHead>
+          <TableHead className="w-[15%]">終了日</TableHead>
+          <TableHead className="w-[10%] text-right">アクション</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {bigTasks.map(task => (
+          <TableRow key={task.id}>
+            <TableCell className="font-medium">{task.name}</TableCell>
+            <TableCell>{task.estimated_hours}時間</TableCell>
+            <TableCell>
+              <span className={cn('font-medium', getStatusColor(task.status))}>
+                {getStatusLabel(task.status)}
+              </span>
+            </TableCell>
+            <TableCell>
+              {task.start_date
+                ? format(new Date(task.start_date), 'M/d', { locale: ja })
+                : '-'}
+            </TableCell>
+            <TableCell>
+              {task.end_date
+                ? format(new Date(task.end_date), 'M/d', { locale: ja })
+                : '-'}
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center justify-end gap-2">
+                <BigTaskEditPopover
+                  task={task}
+                  onUpdate={onUpdate}
+                  isOpen={editingTaskId === task.id}
+                  onOpenChange={(open) => setEditingTaskId(open ? task.id : null)}
+                >
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingTaskId(task.id)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </BigTaskEditPopover>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onDelete(task.id)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }

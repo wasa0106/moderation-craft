@@ -9,14 +9,23 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProjectForm } from '@/components/project/project-form'
 import { GanttChart } from '@/components/project/gantt-chart'
+import { BigTaskList } from '@/components/task/big-task-list'
+import { BigTaskForm } from '@/components/task/big-task-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
-import { Project, UpdateProjectData } from '@/types'
+import { Project, UpdateProjectData, CreateBigTaskData, UpdateBigTaskData, BigTask } from '@/types'
 import {
   ArrowLeft,
   Edit,
@@ -45,7 +54,14 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const router = useRouter()
   const { projects, updateProject, deleteProject } = useProjects('current-user')
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null)
-  const { bigTasks, updateTaskStatus, updateBigTask } = useBigTasks('current-user', resolvedParams?.id)
+  const { 
+    bigTasks, 
+    createBigTask,
+    updateBigTask,
+    deleteBigTask,
+    updateTaskStatus,
+    isLoading: bigTasksLoading 
+  } = useBigTasks('current-user', resolvedParams?.id)
   const { smallTasks } = useSmallTasks('current-user', resolvedParams?.id)
 
   // Resolve params promise
@@ -56,6 +72,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [showBigTaskForm, setShowBigTaskForm] = useState(false)
+  const [selectedBigTask, setSelectedBigTask] = useState<BigTask | null>(null)
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
   const project = projects.find(p => p.id === resolvedParams?.id)
 
@@ -156,6 +175,60 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       console.error('Failed to update task dates:', error)
       toast.error('タスクの日付更新に失敗しました')
     }
+  }
+
+  // Handle Big Task operations
+  const handleCreateBigTask = async (data: CreateBigTaskData) => {
+    setIsSubmittingTask(true)
+
+    try {
+      await createBigTask(data)
+      toast.success('タスクが正常に作成されました')
+      setShowBigTaskForm(false)
+      setSelectedBigTask(null)
+    } catch (error) {
+      console.error('Failed to create big task:', error)
+      toast.error('タスクの作成に失敗しました')
+    } finally {
+      setIsSubmittingTask(false)
+    }
+  }
+
+  const handleUpdateBigTaskForm = async (data: UpdateBigTaskData) => {
+    if (!selectedBigTask) return
+
+    setIsSubmittingTask(true)
+
+    try {
+      await updateBigTask({ id: selectedBigTask.id, data })
+      toast.success('タスクが正常に更新されました')
+      setShowBigTaskForm(false)
+      setSelectedBigTask(null)
+    } catch (error) {
+      console.error('Failed to update big task:', error)
+      toast.error('タスクの更新に失敗しました')
+    } finally {
+      setIsSubmittingTask(false)
+    }
+  }
+
+  const handleDeleteBigTask = async (taskId: string) => {
+    if (!confirm('このタスクを削除しますか？関連する小タスクも削除されます。')) {
+      return
+    }
+
+    try {
+      await deleteBigTask(taskId)
+      toast.success('タスクが正常に削除されました')
+    } catch (error) {
+      console.error('Failed to delete big task:', error)
+      toast.error('タスクの削除に失敗しました')
+    }
+  }
+
+  const handleEditBigTask = (task: BigTask) => {
+    setSelectedBigTask(task)
+    setShowBigTaskForm(true)
   }
 
   const getStatusColor = (status: Project['status']) => {
@@ -330,11 +403,12 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 gap-4">
-                <Button asChild className="w-full flex items-center gap-2 h-12">
-                  <Link href={`/projects/${resolvedParams.id}/tasks`}>
-                    <Plus className="h-5 w-5" />
-                    タスクを管理
-                  </Link>
+                <Button 
+                  onClick={() => setShowBigTaskForm(true)}
+                  className="w-full flex items-center gap-2 h-12"
+                >
+                  <Plus className="h-5 w-5" />
+                  新規タスク作成
                 </Button>
                 <Button asChild variant="outline" className="w-full flex items-center gap-2 h-12">
                   <Link href="/schedule">
@@ -349,106 +423,48 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
         {/* Tasks Tab */}
         <TabsContent value="tasks" className="space-y-6">
-          <Card>
+          <Card className="border border-border">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
-                  タスク一覧
+                  タスク管理
                 </CardTitle>
-                <Button asChild size="sm">
-                  <Link href={`/projects/${resolvedParams.id}/tasks`}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    詳細管理
-                  </Link>
-                </Button>
+                <Dialog open={showBigTaskForm} onOpenChange={setShowBigTaskForm}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setSelectedBigTask(null)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      新規タスク作成
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {selectedBigTask ? 'タスクを編集' : '新しいタスクを作成'}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <BigTaskForm
+                      projectId={resolvedParams.id}
+                      task={selectedBigTask || undefined}
+                      onSubmit={selectedBigTask ? handleUpdateBigTaskForm : handleCreateBigTask}
+                      onCancel={() => {
+                        setShowBigTaskForm(false)
+                        setSelectedBigTask(null)
+                      }}
+                      isLoading={isSubmittingTask}
+                    />
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>
-              {stats.bigTasks.total === 0 ? (
-                <div className="text-center py-8">
-                  <CheckCircle2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">まだタスクがありません</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    大タスクを作成してプロジェクトを開始しましょう
-                  </p>
-                  <Button asChild>
-                    <Link href={`/projects/${resolvedParams.id}/tasks`}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      タスクを作成
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <h3 className="font-medium text-blue-900 mb-2">大タスク</h3>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span>完了済み</span>
-                          <span className="font-medium">{stats.bigTasks.completed}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>実行中</span>
-                          <span className="font-medium">{stats.bigTasks.active}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>キャンセル</span>
-                          <span className="font-medium">{stats.bigTasks.cancelled}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 bg-green-50 rounded-lg">
-                      <h3 className="font-medium text-green-900 mb-2">小タスク</h3>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span>完了済み</span>
-                          <span className="font-medium">{stats.smallTasks.completed}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>未完了</span>
-                          <span className="font-medium">{stats.smallTasks.pending}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>総数</span>
-                          <span className="font-medium">{stats.smallTasks.total}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 大タスク一覧表 */}
-                  <div className="mt-6">
-                    <h3 className="font-medium mb-2">大タスク一覧</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border-collapse border border-border">
-                        <thead>
-                          <tr className="bg-muted">
-                            <th className="border border-border px-4 py-2 text-left">カテゴリ</th>
-                            <th className="border border-border px-4 py-2 text-left">タスク名</th>
-                            <th className="border border-border px-4 py-2 text-right">見積時間</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {projectBigTasks.map(task => (
-                            <tr key={task.id} className="hover:bg-muted">
-                              <td className="border border-border px-4 py-2">
-                                {task.category || '-'}
-                              </td>
-                              <td className="border border-border px-4 py-2">{task.name}</td>
-                              <td className="border border-border px-4 py-2 text-right">
-                                {task.estimated_hours}h
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <BigTaskList
+                bigTasks={projectBigTasks}
+                onEdit={handleEditBigTask}
+                onUpdate={updateBigTask}
+                onDelete={handleDeleteBigTask}
+                isLoading={bigTasksLoading}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -469,11 +485,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                 <p className="text-sm text-muted-foreground mb-4">
                   大タスクを作成してガントチャートを表示しましょう
                 </p>
-                <Button asChild>
-                  <Link href={`/projects/${resolvedParams.id}/tasks`}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    タスクを作成
-                  </Link>
+                <Button onClick={() => setShowBigTaskForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  タスクを作成
                 </Button>
               </div>
             ) : (
