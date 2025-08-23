@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Calendar, Clock, AlertTriangle, Plus } from 'lucide-react'
+import { Calendar, Clock, AlertTriangle, Plus, Workflow, CalendarDays } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { useProjectCreationStore } from '@/stores/project-creation-store'
@@ -20,9 +20,16 @@ import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { format, differenceInDays } from 'date-fns'
 import { EditableTaskTable } from '@/components/project/editable-task-table'
+import { RecurringWorkTable } from '@/components/project/recurring-work-table'
 import { GanttChart } from '@/components/project/gantt-chart'
 import { ProjectColorPicker } from '@/components/project/project-color-picker'
 import { cn } from '@/lib/utils'
+import { 
+  calculateRecurringInstances, 
+  generateRecurringBigTaskName,
+  generateRecurringGroupId,
+  formatRecurringDescription 
+} from '@/lib/utils/recurring-work-utils'
 
 // 定数
 const CURRENT_USER_ID = 'current-user'
@@ -79,6 +86,14 @@ export default function ProjectCreatePage() {
     validateForm,
     getValidTasks,
     reset,
+    // FlowWork/RecurringWork
+    flowWorks,
+    recurringWorks,
+    schedulingResult,
+    addRecurringWork,
+    updateRecurringWork,
+    deleteRecurringWork,
+    calculateIntegratedSchedule,
   } = useProjectCreationStore()
 
   // 初期計算
@@ -97,7 +112,15 @@ export default function ProjectCreatePage() {
   // タスク配分の計算
   useEffect(() => {
     calculateTaskAllocation()
+    calculateIntegratedSchedule()
   }, [tasks, weeklyAvailableHours, totalWeeks]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // FlowWork/RecurringWork変更時の再計算
+  useEffect(() => {
+    if (flowWorks.length > 0 || recurringWorks.length > 0) {
+      calculateIntegratedSchedule()
+    }
+  }, [flowWorks, recurringWorks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // クリーンアップ
   useEffect(() => {
@@ -234,6 +257,82 @@ export default function ProjectCreatePage() {
         } catch (otherTaskError) {
           // 「その他」タスク作成失敗はログに記録するが、プロジェクト作成は続行
           console.error('「その他」タスクの作成に失敗しました:', otherTaskError)
+        }
+
+        // 定期作業からBigTaskを作成
+        if (recurringWorks.length > 0) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('=== 定期作業からBigTask作成開始 ===')
+            console.log('定期作業数:', recurringWorks.length)
+          }
+
+          for (const work of recurringWorks) {
+            try {
+              // 定期作業の全発生日を計算
+              const instances = calculateRecurringInstances(
+                work,
+                startDate,
+                endDate,
+                [] // TODO: 祝日や除外日の考慮
+              )
+
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`定期作業「${work.title}」の発生回数:`, instances.length)
+                console.log('パターン:', formatRecurringDescription(work))
+              }
+
+              // グループIDを生成（同じ定期作業から生成されたBigTaskを識別）
+              const recurringGroupId = generateRecurringGroupId(newProject.id, work.id)
+
+              // 各発生日に対してBigTaskを作成
+              for (const instance of instances) {
+                const instanceDate = new Date(instance.date)
+                const bigTaskData = {
+                  project_id: newProject.id,
+                  user_id: CURRENT_USER_ID,
+                  name: generateRecurringBigTaskName(work, instanceDate),
+                  category: '定期作業',
+                  start_date: instance.date,
+                  end_date: instance.date, // 定期作業は同日内で完了
+                  estimated_hours: work.durationMinutes / 60,
+                  status: 'active' as const,
+                  // 定期作業のメタデータを保存
+                  recurring_source: true,
+                  recurring_group_id: recurringGroupId,
+                  recurring_pattern: {
+                    title: work.title,
+                    kind: work.kind,
+                    pattern: work.pattern,
+                    startTime: work.startTime,
+                    durationMinutes: work.durationMinutes
+                  }
+                }
+
+                if (process.env.NODE_ENV === 'development') {
+                  console.log(`定期作業インスタンス作成:`, {
+                    name: bigTaskData.name,
+                    date: bigTaskData.start_date,
+                    hours: bigTaskData.estimated_hours
+                  })
+                }
+
+                const result = await createBigTask(bigTaskData)
+                createdBigTasks.push(result)
+              }
+
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`定期作業「${work.title}」のBigTask作成完了`)
+              }
+            } catch (recurringError) {
+              // 個別の定期作業の作成失敗はログに記録するが、処理は続行
+              console.error(`定期作業「${work.title}」の作成に失敗:`, recurringError)
+            }
+          }
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('=== 定期作業からのBigTask作成完了 ===')
+            console.log('作成された総BigTask数:', createdBigTasks.length)
+          }
         }
       } catch (taskError) {
         // BigTask作成失敗時のロールバック
@@ -499,21 +598,42 @@ export default function ProjectCreatePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
-                タスク一覧
+                タスク設定
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <EditableTaskTable
-                tasks={tasks}
-                totalTaskHours={totalTaskHours}
-                projectCategories={projectCategories}
-                onAddTask={addTask}
-                onUpdateTask={updateTask}
-                onDeleteTask={deleteTask}
-                onReorderTasks={reorderTasks}
-                onAddCategory={addCategory}
-                onUpdateTaskCategory={updateTaskCategory}
-              />
+            <CardContent className="space-y-6">
+              {/* 定期作業セクション */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-medium">定期作業</h3>
+                </div>
+                <RecurringWorkTable
+                  recurringWorks={recurringWorks}
+                  onAddWork={addRecurringWork}
+                  onUpdateWork={updateRecurringWork}
+                  onDeleteWork={deleteRecurringWork}
+                />
+              </div>
+
+              {/* フロー作業セクション */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Workflow className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-medium">フロー作業</h3>
+                </div>
+                <EditableTaskTable
+                  tasks={tasks}
+                  totalTaskHours={totalTaskHours}
+                  projectCategories={projectCategories}
+                  onAddTask={addTask}
+                  onUpdateTask={updateTask}
+                  onDeleteTask={deleteTask}
+                  onReorderTasks={reorderTasks}
+                  onAddCategory={addCategory}
+                  onUpdateTaskCategory={updateTaskCategory}
+                />
+              </div>
 
               {/* タスクバリデーションエラー */}
               {validationErrors.tasks && (
@@ -581,6 +701,8 @@ export default function ProjectCreatePage() {
                   excludeHolidays={excludeHolidays}
                   holidayWorkHours={holidayWorkHours}
                   showCapacityWarnings={true}
+                  schedulingResult={schedulingResult}
+                  showLayers={true}
                 />
               </CardContent>
             </Card>

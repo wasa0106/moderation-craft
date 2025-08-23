@@ -5,7 +5,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { Task, WeeklyAllocation } from '@/stores/project-creation-store'
+import { Task, WeeklyAllocation, SchedulingResult } from '@/stores/project-creation-store'
 import { BigTask } from '@/types'
 import { format, eachDayOfInterval, differenceInDays, getDay, addDays } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -167,6 +167,9 @@ interface GanttChartProps {
   onBigTaskHoursUpdate?: (taskId: string, estimatedHours: number) => void
   onTaskHoursUpdate?: (taskId: string, estimatedHours: number) => void // 旧Task用（任意）
   
+  // FlowWork/RecurringWork統合表示
+  schedulingResult?: SchedulingResult | null
+  showLayers?: boolean
   // 日付更新用のコールバック（時間変更による再配置時）
   onBigTaskDateUpdate?: (taskId: string, startDate: Date, endDate: Date) => void
   
@@ -196,6 +199,8 @@ export function GanttChart({
   onTaskHoursUpdate,
   onBigTaskDateUpdate,
   reflowScope = 'category', // デフォルト: カテゴリ内で連鎖再配置
+  schedulingResult,
+  showLayers = false,
 }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [ganttTasks, setGanttTasks] = useState<GanttTask[]>([])
@@ -1017,6 +1022,63 @@ export function GanttChart({
           </table>
         </div>
       </div>
+
+      {/* FlowWork/RecurringWorkレイヤー表示 */}
+      {showLayers && schedulingResult && (
+        <div className="mt-6 p-4 border rounded-lg">
+          <h3 className="text-sm font-medium mb-3">統合スケジュール</h3>
+          
+          {/* レイヤー説明 */}
+          <div className="flex items-center gap-4 mb-4 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-blue-500 rounded" />
+              <span>フロー作業</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-500 opacity-80 rounded" />
+              <span>固定作業（動かせない）</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-500 opacity-60 border-2 border-dashed border-green-600 rounded" />
+              <span>調整可能作業</span>
+            </div>
+          </div>
+          
+          {/* 統計情報 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="text-xs">
+              <span className="text-muted-foreground">フロー作業:</span>
+              <span className="ml-1 font-medium">{schedulingResult.stats.totalFlowHours.toFixed(1)}h</span>
+            </div>
+            <div className="text-xs">
+              <span className="text-muted-foreground">定期作業:</span>
+              <span className="ml-1 font-medium">{schedulingResult.stats.totalRecurringHours.toFixed(1)}h</span>
+            </div>
+            <div className="text-xs">
+              <span className="text-muted-foreground">利用率:</span>
+              <span className="ml-1 font-medium">{schedulingResult.stats.utilizationRate.toFixed(1)}%</span>
+            </div>
+            <div className="text-xs">
+              <span className="text-muted-foreground">未配置:</span>
+              <span className="ml-1 font-medium text-orange-600">{schedulingResult.unplaced.length}件</span>
+            </div>
+          </div>
+          
+          {/* 未配置作業の警告 */}
+          {schedulingResult.unplaced.length > 0 && (
+            <div className="p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg mb-4">
+              <p className="text-xs font-medium text-orange-800 dark:text-orange-200 mb-1">
+                未配置の調整可能作業
+              </p>
+              <ul className="text-xs text-orange-700 dark:text-orange-300 space-y-0.5">
+                {schedulingResult.unplaced.map((work, index) => (
+                  <li key={index}>• {work.title}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

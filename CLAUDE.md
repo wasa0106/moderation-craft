@@ -1,7 +1,7 @@
 # ModerationCraft Development Guidelines
 
 ## プロジェクト概要
-個人創作者向けセルフケア統合型プロジェクト管理アプリケーション
+セルフケア統合型プロジェクト管理アプリケーション
 
 ## 技術スタック
 - Next.js 15.3.5 (App Router)
@@ -11,6 +11,10 @@
 - IndexedDB (Dexie) + AWS DynamoDB
 - React Query
 - Zustand (状態管理)
+- Vitest (テストフレームワーク)
+- Storybook v9 (UIコンポーネント開発)
+- MSW (Mock Service Worker)
+- DuckDB WASM (ブラウザ内データ分析)
 
 ## コーディング規約
 
@@ -61,10 +65,13 @@
 
 ## 重要なディレクトリ
 - `/src/components/ui/` - shadcn/uiコンポーネント
+- `/src/components/kanban/` - カンバンボード関連コンポーネント
+- `/src/components/task/` - BigTaskおよびSmallTaskコンポーネント
 - `/src/hooks/` - データフェッチ用カスタムフック
 - `/src/lib/db/` - データベース関連
 - `/src/stores/` - Zustand状態管理
 - `/src/app/` - Next.js App Router
+- `/.storybook/` - Storybook設定
 
 ## 開発時の注意点
 1. 新規ページは必ずMainLayoutの子要素として作成
@@ -72,6 +79,22 @@
 3. データ更新時は必ず楽観的更新を実装
 4. テスト作成を忘れずに
 5. コンポーネントは`use client`を適切に使用
+
+## 新規UIコンポーネント
+- **カンバンボード関連**:
+  - `kanban-board` - メインボード
+  - `kanban-card` - タスクカード
+  - `kanban-column` - ステータス列
+  - `kanban-filter-panel` - フィルターパネル
+- **BigTask関連**:
+  - `big-task-form` - BigTask作成/編集フォーム
+  - `big-task-list` - BigTaskリスト表示
+  - `big-task-edit-popover` - クイック編集
+- **その他の新コンポーネント**:
+  - `auto-save-indicator` - 自動保存状態表示
+  - `markdown` - Markdownレンダリング
+  - `section-card` - セクションカード
+  - `project-delete-dialog` - プロジェクト削除確認
 
 ## コード品質チェック
 ### 必須チェック（実装完了時に必ず実行）
@@ -101,14 +124,24 @@
 - `npm run quality:full` - 完全な品質チェック（lint + type-check + test + quality）
 - `npm run lint` - ESLintチェック
 - `npm run type-check` - TypeScript型チェック
-- `npm test` - テスト実行
+- `npm test` - Vitestによるユニットテスト実行
+- `npm run test:coverage` - カバレッジレポート生成
+- `npm run test:watch` - ウォッチモードでテスト
+- `npm run storybook` - Storybook起動（開発用）
+- `npm run build-storybook` - Storybook静的ビルド
 
 ## デバッグとテスト
 - `npm run dev` - 開発サーバー起動
 - `npm run lint` - ESLint実行
 - `npm run type-check` - TypeScript型チェック
+- `npm test` - Vitestテスト実行
+- `npm run storybook` - Storybookコンポーネントカタログ
 - デバッグツール: `/debug`ページで各種機能テスト可能
   - `/debug/pipeline` - データパイプライン管理UI
+  - `/debug/fitbit` - Fitbit連携デバッグ
+  - `/debug/analytics` - 分析機能デバッグ
+  - `/debug-bigtasks` - BigTask機能デバッグ
+  - `/debug-projects` - プロジェクト機能デバッグ
 
 ## 主要機能
 1. **プロジェクト管理**: WBSベースのタスク階層管理
@@ -117,11 +150,39 @@
 4. **レポート**: 進捗と時間分析
 5. **同期機能**: オフライン対応とクラウド同期
 6. **データパイプライン**: DynamoDB → S3自動エクスポート
+7. **BigTask管理**: プロジェクト単位の大タスク管理
+   - 見積もり時間と実績時間の追跡
+   - カテゴリ分類（開発、設計、テスト、その他）
+   - 期間管理（開始日〜終了日）
+8. **カンバンボード** (`/kanban`): ビジュアルタスク管理
+   - ドラッグ&ドロップ対応
+   - ステータス別表示（active, completed, cancelled）
+   - フィルタリング機能
+9. **Fitbit連携** (`/settings/integrations`): 健康データ統合
+   - OAuth認証フロー実装済み
+   - 睡眠・活動量・心拍変動データ取得
+   - デバッグUI（`/debug/fitbit`）
+10. **サイトマップ** (`/sitemap`): 全機能へのナビゲーション
 
 ## Git運用
 - mainブランチ保護
 - 機能開発はfeature/*ブランチ
 - コミットメッセージは日本語可
+
+## 開発環境とテスト設定
+
+### Vitest設定
+- **ユニットテスト**: jsdom環境、threadsプール
+- **カバレッジ闾値**:
+  - lines: 80%
+  - functions: 80%
+  - branches: 75%
+  - statements: 80%
+- **Storybookテスト**: Playwrightによるブラウザテスト
+
+### インストール後処理
+- `postinstall`スクリプト: DuckDB WASMファイルの自動コピー
+- MSWのワーカーファイル配置
 
 ## データパイプラインアーキテクチャ
 

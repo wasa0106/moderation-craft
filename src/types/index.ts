@@ -36,6 +36,55 @@ export interface BigTask extends DatabaseEntity {
   start_date: string // YYYY-MM-DD形式
   end_date: string // YYYY-MM-DD形式
   order?: number // カンバンボードでの表示順
+  work_items?: {
+    flow: FlowWork[]
+    recurring: RecurringWork[]
+  }
+  // 定期作業から生成されたBigTaskのメタデータ
+  recurring_source?: boolean
+  recurring_group_id?: string
+  recurring_pattern?: {
+    title: string
+    kind: 'hard' | 'soft'
+    pattern: {
+      freq: 'DAILY' | 'WEEKLY'
+      byWeekday?: number[]
+    }
+    startTime: string
+    durationMinutes: number
+  }
+}
+
+// FlowWork定義（順繰り作業）
+export interface FlowWork {
+  id: string
+  title: string
+  estimatedMinutes: number
+  notes?: string
+  order: number
+  dependencies?: string[] // 将来の拡張用
+}
+
+// RecurringWork定義（定期作業）
+export interface RecurringWork {
+  id: string
+  title: string
+  kind: 'hard' | 'soft' // hard=固定、soft=調整可能
+  timezone: string // 'Asia/Tokyo'
+  pattern: {
+    freq: 'DAILY' | 'WEEKLY'
+    byWeekday?: number[] // 0=Sun..6=Sat
+  }
+  rrule?: string // 将来の拡張用
+  startTime: string // '09:30'
+  durationMinutes: number
+  startDate?: string
+  endDate?: string | null
+  exclusions?: string[] // 除外日リスト
+  shiftLimits?: {
+    hours: number // ±X時間までシフト可能
+    days: number  // ±Y日までシフト可能
+  }
 }
 
 export interface RecurrencePattern {
