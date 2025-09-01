@@ -11,17 +11,30 @@ ModerationCraftは、創作活動とセルフケアを統合的に管理する�
 ### ✅ 実装済み機能
 
 - **プロジェクト管理**: WBSベースのタスク階層管理
+- **BigTask管理**: プロジェクト単位の大タスク管理
+  - 見積もり時間と実績時間の追跡
+  - カテゴリ分類（開発、設計、テスト、その他）
+  - 期間管理（開始日〜終了日）
+- **カンバンボード** (`/kanban`): ビジュアルタスク管理
+  - ドラッグ&ドロップ対応
+  - ステータス別表示（active, completed, cancelled）
+  - フィルタリング機能
 - **タイマー機能**: ポモドーロテクニック対応の作業タイマー
 - **スケジューリング**: 週次計画とドラッグ&ドロップ対応
 - **レポート**: 進捗と時間分析
+- **Fitbit連携** (`/settings/integrations`): 健康データ統合
+  - OAuth認証フロー実装済み
+  - 睡眠・活動量・心拍変動データ取得
 - **同期機能**: オフライン対応とクラウド同期（IndexedDB + DynamoDB）
-- **データパイプライン**: DynamoDB → S3自動エクスポート
+- **データパイプライン**: DynamoDB → S3自動エクスポート（Phase 1完了）
+- **サイトマップ** (`/sitemap`): 全機能へのナビゲーション
 
 ### 🔄 開発中機能
 
-- **外部データ連携**: Fitbit、天候データの統合
-- **分析基盤**: DuckDB WASMによるブラウザ内分析
+- **外部データ連携**: 天候データの統合（Fitbitは実装済み）
+- **分析基盤**: DuckDB WASMによるブラウザ内分析（基盤構築中）
 - **ML統合**: Hugging Faceによる予測分析
+- **データパイプライン Phase 2-4**: 外部連携、分析基盤、高度な分析
 
 ## 技術スタック
 
@@ -29,6 +42,10 @@ ModerationCraftは、創作活動とセルフケアを統合的に管理する�
 - **UI**: shadcn/ui v4, Tailwind CSS v4
 - **データベース**: IndexedDB (Dexie), AWS DynamoDB
 - **状態管理**: Zustand, React Query
+- **テスト**: Vitest (ユニットテスト), MSW (Mock Service Worker)
+- **UIコンポーネント開発**: Storybook v9
+- **分析**: DuckDB WASM (ブラウザ内データ分析)
+- **ロギング**: vibelogger (構造化ロギング)
 - **クラウド**: AWS (S3, Lambda, EventBridge)
 
 ## セットアップ
@@ -48,6 +65,7 @@ cd moderation-craft
 
 # 依存関係のインストール
 npm install
+# ※ postinstallスクリプトによりDuckDB WASMファイルが自動コピーされます
 
 # 環境変数の設定
 cp .env.example .env.local
@@ -77,8 +95,19 @@ DYNAMODB_TABLE_NAME=moderation-craft-data
 npm run dev
 
 # コード品質チェック
-npm run lint
-npm run type-check
+npm run lint        # ESLintチェック
+npm run type-check  # TypeScript型チェック
+npm run format      # コード整形
+npm run format:check # 整形チェック
+
+# テスト
+npm test            # Vitestユニットテスト実行
+npm run test:coverage # カバレッジレポート生成
+npm run test:watch  # ウォッチモードでテスト
+
+# UIコンポーネント開発
+npm run storybook   # Storybook起動（開発用）
+npm run build-storybook # Storybook静的ビルド
 
 # ビルド
 npm run build
@@ -99,6 +128,10 @@ npm run build
 
 - `/debug` - デバッグメニュー
 - `/debug/pipeline` - データパイプライン管理UI
+- `/debug/fitbit` - Fitbit連携デバッグ
+- `/debug/analytics` - 分析機能デバッグ
+- `/debug-bigtasks` - BigTask機能デバッグ
+- `/debug-projects` - プロジェクト機能デバッグ
 
 ## ドキュメント
 
@@ -114,15 +147,22 @@ moderation-craft/
 ├── src/
 │   ├── app/           # Next.js App Router
 │   ├── components/    # UIコンポーネント
+│   │   ├── ui/      # shadcn/uiコンポーネント
+│   │   ├── kanban/  # カンバンボード関連
+│   │   └── task/    # BigTask/SmallTask関連
 │   ├── lib/           # ユーティリティ
-│   │   ├── db/       # データベース
-│   │   └── aws/      # AWS統合
+│   │   ├── db/       # データベース（IndexedDB/DynamoDB）
+│   │   ├── aws/      # AWS統合
+│   │   └── sync/     # 同期機能
 │   ├── hooks/         # カスタムフック
 │   └── stores/        # Zustand状態管理
 ├── docs/              # ドキュメント
 │   ├── data-pipeline/ # データパイプライン
 │   └── features/      # 機能説明
+├── .storybook/        # Storybook設定
+├── __tests__/         # テストファイル
 └── public/            # 静的ファイル
+    └── mockServiceWorker.js # MSWワーカー
 ```
 
 ## コントリビューション

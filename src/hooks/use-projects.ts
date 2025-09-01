@@ -8,8 +8,7 @@ import { projectRepository } from '@/lib/db/repositories'
 import { useProjectStore } from '@/stores/project-store'
 import { SyncService } from '@/lib/sync/sync-service'
 import { queryKeys, invalidateQueries } from '@/lib/query/query-client'
-import { Project, CreateProjectData, UpdateProjectData } from '@/types'
-import { generateId } from '@/lib/utils'
+import { CreateProjectData, UpdateProjectData } from '@/types'
 import { db } from '@/lib/db/database'
 
 const syncService = SyncService.getInstance()
@@ -161,6 +160,23 @@ export function useProjects(userId: string) {
     },
   })
 
+  // Complete project with all tasks mutation
+  const completeProjectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await projectRepository.completeProjectWithAllTasks(id)
+      return result
+    },
+    onSuccess: ({ project }) => {
+      invalidateQueries.project(project.id)
+      invalidateQueries.projectsByUser(userId)
+      invalidateQueries.bigTasksByProject(project.id)
+    },
+    onError: error => {
+      console.error('Failed to complete project:', error)
+      projectStore.setError(error instanceof Error ? error.message : 'Failed to complete project')
+    },
+  })
+
   // Duplicate project mutation
   const duplicateProjectMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -198,12 +214,14 @@ export function useProjects(userId: string) {
     updateProject: updateProjectMutation.mutateAsync,
     deleteProject: deleteProjectMutation.mutateAsync,
     duplicateProject: duplicateProjectMutation.mutateAsync,
+    completeProject: completeProjectMutation.mutateAsync,
 
     // Mutation states
     isCreating: createProjectMutation.isPending,
     isUpdating: updateProjectMutation.isPending,
     isDeleting: deleteProjectMutation.isPending,
     isDuplicating: duplicateProjectMutation.isPending,
+    isCompleting: completeProjectMutation.isPending,
 
     // Store actions
     setActiveProject: projectStore.setActiveProject,

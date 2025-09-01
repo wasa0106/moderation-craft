@@ -8,10 +8,9 @@ const meta: Meta<typeof BigTaskList> = {
   // デフォルトで全ての必須propsを設定！
   args: {
     bigTasks: [],
-    onEdit: task => console.log('Edit:', task),
     onUpdate: async (params) => {
       console.log('Update:', params)
-      return params.data as any
+      return { ...params.data, id: params.id } as any
     },
     onDelete: taskId => console.log('Delete:', taskId),
     isLoading: false,

@@ -205,6 +205,43 @@ export class BigTaskRepository extends BaseRepository<BigTask> implements IBigTa
       throw new Error(`Failed to get big tasks by date range: ${error}`)
     }
   }
+
+  /**
+   * プロジェクトに関連するすべてのBigTaskを完了にする
+   */
+  async completeAllTasksByProject(projectId: string): Promise<BigTask[]> {
+    try {
+      const tasks = await this.getByProjectId(projectId)
+      const updatedTasks: BigTask[] = []
+      
+      // SyncServiceを動的インポート
+      const { SyncService } = await import('@/lib/sync/sync-service')
+      const syncService = SyncService.getInstance()
+      
+      // トランザクション内で一括更新
+      await db.transaction('rw', this.table, async () => {
+        for (const task of tasks) {
+          // すでに完了済みのタスクはスキップ
+          if (task.status === 'completed') {
+            continue
+          }
+          
+          const updatedTask = await this.update(task.id, { 
+            status: 'completed',
+            actual_hours: task.actual_hours || task.estimated_hours // 実績時間が未設定の場合は見積時間を設定
+          })
+          updatedTasks.push(updatedTask)
+          
+          // 同期キューに追加
+          await syncService.addToSyncQueue('big_task', task.id, 'update', updatedTask)
+        }
+      })
+      
+      return updatedTasks
+    } catch (error) {
+      throw new Error(`Failed to complete all tasks for project: ${error}`)
+    }
+  }
 }
 
 export class SmallTaskRepository extends BaseRepository<SmallTask> implements ISmallTaskRepository {

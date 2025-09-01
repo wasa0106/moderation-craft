@@ -37,6 +37,7 @@ import {
   AlertCircle,
   Settings,
   BarChart3,
+  XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -52,7 +53,7 @@ interface ProjectDetailPageProps {
 
 export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const router = useRouter()
-  const { projects, updateProject, deleteProject } = useProjects('current-user')
+  const { projects, updateProject, deleteProject, completeProject } = useProjects('current-user')
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null)
   const { 
     bigTasks, 
@@ -72,6 +73,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
   const [showBigTaskForm, setShowBigTaskForm] = useState(false)
   const [selectedBigTask, setSelectedBigTask] = useState<BigTask | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
@@ -148,6 +150,53 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
     } catch (error) {
       console.error('Failed to update task status:', error)
       toast.error('タスクステータスの更新に失敗しました')
+    }
+  }
+
+  const handleCompleteProject = async () => {
+    if (!resolvedParams) return
+    
+    // 確認ダイアログを表示
+    if (!confirm(
+      'プロジェクトを完了にしますか？\n\n' +
+      'この操作により、すべての未完了タスクも自動的に完了になります。\n' +
+      'この操作は取り消すことができます。'
+    )) {
+      return
+    }
+
+    setIsCompleting(true)
+
+    try {
+      const result = await completeProject(resolvedParams.id)
+      toast.success(
+        `プロジェクト「${project.name}」を完了しました。\n` +
+        `${result.completedTasks}個のタスクが完了になりました。`
+      )
+    } catch (error) {
+      console.error('Failed to complete project:', error)
+      if (error instanceof Error && error.message.includes('already completed')) {
+        toast.error('プロジェクトはすでに完了しています')
+      } else {
+        toast.error('プロジェクトの完了に失敗しました')
+      }
+    } finally {
+      setIsCompleting(false)
+    }
+  }
+
+  const handleReactivateProject = async () => {
+    if (!resolvedParams) return
+    
+    setIsUpdating(true)
+    try {
+      await updateProject({ id: resolvedParams.id, data: { status: 'active' } })
+      toast.success('プロジェクトを再開しました')
+    } catch (error) {
+      console.error('Failed to reactivate project:', error)
+      toast.error('プロジェクトの再開に失敗しました')
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -313,6 +362,29 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {project.status === 'completed' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReactivateProject}
+                disabled={isUpdating}
+                className="text-orange-600 hover:text-orange-700"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                完了を取り消す
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCompleteProject}
+                disabled={isCompleting}
+                className="text-green-600 hover:text-green-700"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                プロジェクトを完了
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -460,9 +532,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
             <CardContent>
               <BigTaskList
                 bigTasks={projectBigTasks}
-                onEdit={handleEditBigTask}
                 onUpdate={updateBigTask}
                 onDelete={handleDeleteBigTask}
+                onStatusChange={handleBigTaskStatusUpdate}
                 isLoading={bigTasksLoading}
               />
             </CardContent>

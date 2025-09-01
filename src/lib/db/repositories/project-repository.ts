@@ -268,6 +268,70 @@ export class ProjectRepository extends BaseRepository<Project> implements IProje
     }
   }
 
+  /**
+   * プロジェクトとすべての関連BigTaskを完了にする
+   */
+  async completeProjectWithAllTasks(projectId: string): Promise<{
+    project: Project
+    completedTasks: number
+  }> {
+    try {
+      console.log(`Completing project ID: ${projectId} and all related tasks`)
+      
+      // プロジェクトの存在確認
+      const project = await this.getById(projectId)
+      if (!project) {
+        throw new Error('Project not found')
+      }
+      
+      // すでに完了済みの場合はエラー
+      if (project.status === 'completed') {
+        throw new Error('Project is already completed')
+      }
+      
+      console.log(`Found project: ${project.name}`)
+      
+      // BigTaskRepositoryのインスタンスを取得
+      const { bigTaskRepository } = await import('./task-repository')
+      const { SyncService } = await import('@/lib/sync/sync-service')
+      const syncService = SyncService.getInstance()
+      
+      let completedTasksCount = 0
+      
+      // トランザクション内で更新
+      await db.transaction('rw', db.projects, db.big_tasks, async () => {
+        // 1. すべてのBigTaskを完了にする
+        const completedTasks = await bigTaskRepository.completeAllTasksByProject(projectId)
+        completedTasksCount = completedTasks.length
+        console.log(`Completed ${completedTasksCount} big tasks`)
+        
+        // 2. プロジェクト自体を完了にする
+        const updatedProject = await this.update(projectId, {
+          status: 'completed',
+          actual_total_hours: completedTasks.reduce((sum, task) => sum + (task.actual_hours || 0), 0)
+        })
+        
+        // 同期キューに追加
+        await syncService.addToSyncQueue('project', projectId, 'update', updatedProject)
+        console.log('Project marked as completed')
+      })
+      
+      // 更新されたプロジェクトを取得
+      const updatedProject = await this.getById(projectId)
+      if (!updatedProject) {
+        throw new Error('Failed to retrieve updated project')
+      }
+      
+      return {
+        project: updatedProject,
+        completedTasks: completedTasksCount
+      }
+    } catch (error) {
+      console.error('Failed to complete project with all tasks:', error)
+      throw new Error(`Failed to complete project: ${error}`)
+    }
+  }
+
   async deleteWithRelatedData(projectId: string): Promise<void> {
     try {
       console.log(`Starting cascade delete for project ID: ${projectId}`)
