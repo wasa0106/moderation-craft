@@ -21,12 +21,11 @@ export function useProjects(userId: string) {
   const projectsQuery = useQuery({
     queryKey: queryKeys.projectsByUser(userId),
     queryFn: async () => {
-      console.log('useProjects queryFn called with userId:', userId)
-      console.log('Query key:', queryKeys.projectsByUser(userId))
+      // useProjects queryFn called with userId
 
       try {
         const projects = await projectRepository.getByUserId(userId)
-        console.log('Projects fetched from repository:', projects)
+        // Projects fetched from repository
         projectStore.setProjects(projects)
         return projects
       } catch (error) {

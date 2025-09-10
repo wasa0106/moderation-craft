@@ -32,26 +32,19 @@ export interface BigTask extends DatabaseEntity {
   estimated_hours: number
   actual_hours: number
   status: 'active' | 'completed' | 'cancelled'
-  category?: string // 開発、設計、テスト、その他
+  category?: string // 任意のカテゴリ（例: 開発、設計、テスト、その他）
   start_date: string // YYYY-MM-DD形式
   end_date: string // YYYY-MM-DD形式
   order?: number // カンバンボードでの表示順
-  work_items?: {
-    flow: FlowWork[]
-    recurring: RecurringWork[]
-  }
-  // 定期作業から生成されたBigTaskのメタデータ
-  recurring_source?: boolean
-  recurring_group_id?: string
-  recurring_pattern?: {
-    title: string
-    kind: 'hard' | 'soft'
-    pattern: {
-      freq: 'DAILY' | 'WEEKLY'
-      byWeekday?: number[]
-    }
-    startTime: string
-    durationMinutes: number
+  task_type?: 'flow' | 'recurring' // タスクタイプ
+  
+  // 定期タスクフラグ
+  is_recurring?: boolean // デフォルトはfalse（フロータスク）
+  
+  // 定期タスクの場合のみ使用
+  recurrence?: {
+    frequency: 'daily' | 'weekly_1' | 'weekly_2' | 'weekly_3' | 'weekly_4' | 'weekly_5' | 'weekly_6' | 'weekly_7' // 毎日、週1〜週7
+    hours_per_occurrence: number // 1回あたりの時間
   }
 }
 
@@ -136,6 +129,22 @@ export interface WorkSession extends DatabaseEntity {
   mood_notes?: string
   work_notes?: string
   is_synced: boolean
+}
+
+export interface TimeEntry extends DatabaseEntity {
+  user_id: string
+  small_task_id?: string
+  project_id?: string
+  big_task_id?: string
+  
+  date: string // YYYY-MM-DD
+  start_time: string // ISO 8601
+  end_time: string // ISO 8601
+  duration_minutes: number
+  
+  description?: string
+  notes?: string
+  focus_level?: number
 }
 
 export interface MoodEntry extends DatabaseEntity {

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { format, eachDayOfInterval, setHours, setMinutes, parseISO, isWeekend } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Clock, ChevronLeft, ChevronRight, Moon } from 'lucide-react'
+import { Clock, ChevronLeft, ChevronRight, ChevronDown, Moon, Info } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
@@ -451,6 +451,7 @@ export function WeeklyCalendar({
   const [selectedTask, setSelectedTask] = useState<SmallTask | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showWeeklySleepDialog, setShowWeeklySleepDialog] = useState(false)
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => new Set(projects.map(p => p.id)))
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   
   // 未スケジュールタスクをフィルタリング
@@ -591,6 +592,19 @@ export function WeeklyCalendar({
     },
     [projects]
   )
+
+  // Toggle project expansion
+  const toggleProject = useCallback((projectId: string) => {
+    setExpandedProjects(prev => {
+      const next = new Set(prev)
+      if (next.has(projectId)) {
+        next.delete(projectId)
+      } else {
+        next.add(projectId)
+      }
+      return next
+    })
+  }, [])
 
   // Calculate BigTask progress from SmallTasks
   const bigTaskProgress = useMemo(() => {
@@ -1139,27 +1153,40 @@ export function WeeklyCalendar({
                   // プロジェクトごとにグループ化（シンプルなリスト形式）
                   projects.map(project => {
                     const projectBigTasks = bigTasks.filter(
-                      task => task.project_id === project.id && task.category !== 'その他'
+                      task => task.project_id === project.id && 
+                             task.category !== 'その他'
                     )
                     if (projectBigTasks.length === 0) return null
 
                     return (
                       <div key={project.id} className="mb-3">
                         {/* プロジェクトヘッダー（軽量化） */}
-                        <div className="flex items-center gap-2 px-3 py-1 border-b border-border/50">
+                        <div 
+                          className="flex items-center gap-2 px-3 py-1 border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => toggleProject(project.id)}
+                        >
+                          <ChevronDown 
+                            className={cn(
+                              "w-4 h-4 transition-transform duration-200 text-muted-foreground",
+                              !expandedProjects.has(project.id) && "-rotate-90"
+                            )}
+                          />
                           <div
                             className="w-2 h-2 rounded-full"
                             style={project.color ? { backgroundColor: project.color } : {}}
                           />
+                          <span className="text-sm font-semibold text-foreground flex-1">
+                            {project.name}
+                            {project.weekday_hours && project.weekday_hours.length === 7 && (
+                              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                {projectScheduledHours.get(project.id) || 0}h/{project.weekday_hours.reduce((sum, h) => sum + h, 0)}h
+                              </span>
+                            )}
+                          </span>
                           <Popover>
-                            <PopoverTrigger asChild>
-                              <button className="text-sm font-semibold text-foreground hover:underline focus:outline-none focus:underline text-left">
-                                {project.name}
-                                {project.weekday_hours && project.weekday_hours.length === 7 && (
-                                  <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                    {projectScheduledHours.get(project.id) || 0}h/{project.weekday_hours.reduce((sum, h) => sum + h, 0)}h
-                                  </span>
-                                )}
+                            <PopoverTrigger asChild onClick={e => e.stopPropagation()}>
+                              <button className="p-1 hover:bg-muted rounded">
+                                <Info className="w-3 h-3 text-muted-foreground" />
                               </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-80 bg-card border border-border shadow-lg">
@@ -1211,17 +1238,24 @@ export function WeeklyCalendar({
                         </div>
 
                         {/* タスクリスト（シンプル化） */}
-                        <div className="space-y-0.5">
+                        {expandedProjects.has(project.id) && (
+                          <div className="space-y-0.5">
                           {projectBigTasks.map(task => (
                             <div
                               key={task.id}
                               className="pl-9 pr-3 py-1 hover:bg-surface-1 rounded-sm cursor-pointer transition-colors group"
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm text-foreground flex-1 truncate min-w-0">
+                                <span className={cn(
+                                  "text-sm text-foreground flex-1 truncate min-w-0",
+                                  task.status === 'completed' && "line-through opacity-50 text-muted-foreground"
+                                )}>
                                   {task.name}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className={cn(
+                                  "text-xs text-muted-foreground",
+                                  task.status === 'completed' && "opacity-50"
+                                )}>
                                   {(() => {
                                     const completedMinutes = bigTaskProgress.get(task.id) || 0
                                     const completedHours = (completedMinutes / 60).toFixed(1)
@@ -1231,7 +1265,8 @@ export function WeeklyCalendar({
                               </div>
                             </div>
                           ))}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })

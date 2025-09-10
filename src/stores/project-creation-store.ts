@@ -16,6 +16,19 @@ export interface Task {
   order: number
   week_start?: number
   week_end?: number
+  task_type?: 'flow' | 'recurring'
+  recurrence?: {
+    frequency: 'weekly_1' | 'weekly_2' | 'weekly_3' | 'weekly_4' | 'weekly_5' | 'weekly_6' | 'weekly_7'
+    hours_per_occurrence: number
+  }
+}
+
+export interface RecurringTask {
+  id: string
+  name: string
+  frequency: 'weekly_1' | 'weekly_2' | 'weekly_3' | 'weekly_4' | 'weekly_5' | 'weekly_6' | 'weekly_7' // 週1〜週7
+  hours_per_occurrence: number // 1回あたりの時間
+  order: number
 }
 
 export interface DailyAllocation {
@@ -94,6 +107,7 @@ interface ProjectCreationState {
 
   // タスク一覧
   tasks: Task[]
+  recurringTasks: RecurringTask[]  // 定期タスクを別管理
   totalTaskHours: number
   totalAvailableHours: number
 
@@ -110,12 +124,8 @@ interface ProjectCreationState {
   isCalculating: boolean
   validationErrors: Record<string, string>
 
-  // FlowWork/RecurringWork管理
-  flowWorks: FlowWork[]
-  recurringWorks: RecurringWork[]
+  // スケジューリング結果
   schedulingResult: SchedulingResult | null
-  unplacedSoftWorks: RecurringWork[]
-  activeTab: 'flow' | 'recurring'
 }
 
 interface ProjectCreationActions {
@@ -132,12 +142,18 @@ interface ProjectCreationActions {
   setExcludeHolidays: (exclude: boolean) => void
   setHolidayWorkHours: (hours: number) => void
 
-  // タスク一覧
+  // タスク一覧（フロータスク）
+  initializeTasks: () => void
   addTask: () => void
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
   reorderTasks: (startIndex: number, endIndex: number) => void
   updateTaskWeeks: (id: string, weekStart: number, weekEnd: number) => void
+  
+  // 定期タスク管理
+  addRecurringTask: () => void
+  updateRecurringTask: (id: string, updates: Partial<RecurringTask>) => void
+  deleteRecurringTask: (id: string) => void
 
   // カテゴリ管理
   addCategory: (category: string) => void
@@ -160,18 +176,6 @@ interface ProjectCreationActions {
   // リセット
   reset: () => void
 
-  // FlowWork/RecurringWork管理
-  addFlowWork: (work: Omit<FlowWork, 'id'>) => void
-  updateFlowWork: (id: string, updates: Partial<FlowWork>) => void
-  deleteFlowWork: (id: string) => void
-  reorderFlowWorks: (startIndex: number, endIndex: number) => void
-  
-  addRecurringWork: (work: Omit<RecurringWork, 'id'>) => void
-  updateRecurringWork: (id: string, updates: Partial<RecurringWork>) => void
-  deleteRecurringWork: (id: string) => void
-  
-  calculateIntegratedSchedule: () => void
-  setActiveTab: (tab: 'flow' | 'recurring') => void
 }
 
 type ProjectCreationStore = ProjectCreationState & ProjectCreationActions
@@ -216,12 +220,10 @@ const initialState: ProjectCreationState = {
   isCalculating: false,
   validationErrors: {},
 
-  // FlowWork/RecurringWork管理
-  flowWorks: [],
-  recurringWorks: [],
+  // 定期タスク
+  recurringTasks: [],
+  // スケジューリング結果
   schedulingResult: null,
-  unplacedSoftWorks: [],
-  activeTab: 'flow' as const,
 }
 
 export const useProjectCreationStore = create<ProjectCreationStore>()(
@@ -276,6 +278,34 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       },
 
       // タスク一覧
+      initializeTasks: () => {
+        // 初期タスクがない場合のみ、1つずつ作成
+        if (get().tasks.length === 0) {
+          const initialTasks: Task[] = [
+            {
+              id: `recurring-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              category: '',
+              name: '',
+              estimatedHours: 0,
+              order: 0,
+              task_type: 'recurring',
+              recurrence: {
+                frequency: 'weekly_1',
+                hours_per_occurrence: 0
+              }
+            },
+            {
+              id: `flow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              category: '',
+              name: '',
+              estimatedHours: 0,
+              order: 1,
+              task_type: 'flow'
+            }
+          ]
+          set({ tasks: initialTasks })
+        }
+      },
       addTask: () => {
         const newTask: Task = {
           id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -483,8 +513,25 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
             }
           }
 
-          // 総タスク時間を計算
-          const totalTaskHours = validTasks.reduce((sum, task) => sum + task.estimatedHours, 0)
+          // 総タスク時間を計算（定期タスクの場合は週数を考慮）
+          const totalTaskHours = validTasks.reduce((sum, task) => {
+            if (task.task_type === 'recurring' && task.recurrence) {
+              const frequency = task.recurrence.frequency
+              const hoursPerOccurrence = task.recurrence.hours_per_occurrence || 0
+              let occurrencesPerWeek = 0
+              switch (frequency) {
+                case 'weekly_7': occurrencesPerWeek = 7; break
+                case 'weekly_6': occurrencesPerWeek = 6; break
+                case 'weekly_5': occurrencesPerWeek = 5; break
+                case 'weekly_4': occurrencesPerWeek = 4; break
+                case 'weekly_3': occurrencesPerWeek = 3; break
+                case 'weekly_2': occurrencesPerWeek = 2; break
+                case 'weekly_1': occurrencesPerWeek = 1; break
+              }
+              return sum + (occurrencesPerWeek * totalWeeks * hoursPerOccurrence)
+            }
+            return sum + task.estimatedHours
+          }, 0)
           const totalAvailableHours = dailyAllocations.reduce(
             (sum, day) => sum + day.availableHours,
             0
@@ -538,7 +585,18 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
       },
 
       getValidTasks: () => {
-        return get().tasks.filter(task => task.name.trim() && task.estimatedHours > 0)
+        return get().tasks.filter(task => {
+          if (task.name.trim()) {
+            if (task.task_type === 'recurring') {
+              // 定期タスクの場合はrecurrenceが必要
+              return task.recurrence && task.recurrence.hours_per_occurrence > 0
+            } else {
+              // フロータスクの場合はestimatedHoursが必要
+              return task.estimatedHours > 0
+            }
+          }
+          return false
+        })
       },
 
       // カテゴリ選択
@@ -560,124 +618,32 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
         })
       },
 
-      // FlowWork/RecurringWork管理
-      addFlowWork: (work) => {
-        const newWork: FlowWork = {
-          ...work,
-          id: `flow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        }
-        set((state) => ({
-          flowWorks: [...state.flowWorks, newWork],
-        }))
-        get().calculateIntegratedSchedule()
-      },
-
-      updateFlowWork: (id, updates) => {
-        set((state) => ({
-          flowWorks: state.flowWorks.map((work) =>
-            work.id === id ? { ...work, ...updates } : work
-          ),
-        }))
-        get().calculateIntegratedSchedule()
-      },
-
-      deleteFlowWork: (id) => {
-        set((state) => ({
-          flowWorks: state.flowWorks.filter((work) => work.id !== id),
-        }))
-        get().calculateIntegratedSchedule()
-      },
-
-      reorderFlowWorks: (startIndex, endIndex) => {
-        const flowWorks = [...get().flowWorks]
-        const [removed] = flowWorks.splice(startIndex, 1)
-        flowWorks.splice(endIndex, 0, removed)
-        
-        // orderを更新
-        const updatedFlowWorks = flowWorks.map((work, index) => ({
-          ...work,
-          order: index,
-        }))
-        
-        set({ flowWorks: updatedFlowWorks })
-        get().calculateIntegratedSchedule()
-      },
-
-      addRecurringWork: (work) => {
-        const newWork: RecurringWork = {
-          ...work,
+      // 定期タスク管理
+      addRecurringTask: () => {
+        const newTask: RecurringTask = {
           id: `recurring-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          shiftLimits: work.shiftLimits || { hours: 2, days: 1 }, // デフォルト値
+          name: '',
+          frequency: 'weekly_1',
+          hours_per_occurrence: 1,
+          order: get().recurringTasks.length,
         }
         set((state) => ({
-          recurringWorks: [...state.recurringWorks, newWork],
+          recurringTasks: [...state.recurringTasks, newTask],
         }))
-        get().calculateIntegratedSchedule()
       },
 
-      updateRecurringWork: (id, updates) => {
+      updateRecurringTask: (id, updates) => {
         set((state) => ({
-          recurringWorks: state.recurringWorks.map((work) =>
-            work.id === id ? { ...work, ...updates } : work
+          recurringTasks: state.recurringTasks.map((task) =>
+            task.id === id ? { ...task, ...updates } : task
           ),
         }))
-        get().calculateIntegratedSchedule()
       },
 
-      deleteRecurringWork: (id) => {
+      deleteRecurringTask: (id) => {
         set((state) => ({
-          recurringWorks: state.recurringWorks.filter((work) => work.id !== id),
+          recurringTasks: state.recurringTasks.filter((task) => task.id !== id),
         }))
-        get().calculateIntegratedSchedule()
-      },
-
-      calculateIntegratedSchedule: () => {
-        const state = get()
-        const { 
-          flowWorks, 
-          recurringWorks, 
-          startDate, 
-          endDate, 
-          workableWeekdays, 
-          weekdayHours, 
-          excludeHolidays,
-          holidayWorkHours
-        } = state
-        
-        // FlowWorksをTasksから生成（既存タスクとの互換性のため）
-        const convertedFlowWorks = state.tasks
-          .filter(task => task.name.trim() && task.estimatedHours > 0)
-          .map((task, index) => ({
-            id: task.id,
-            title: task.name,
-            estimatedMinutes: task.estimatedHours * 60,
-            notes: task.category,
-            order: index,
-          }))
-        
-        // 統合スケジューリングを実行
-        const scheduler = new IntegratedScheduler(
-          startDate,
-          endDate,
-          workableWeekdays,
-          weekdayHours,
-          excludeHolidays,
-          holidayWorkHours
-        )
-        
-        const result = scheduler.schedule(
-          flowWorks.length > 0 ? flowWorks : convertedFlowWorks,
-          recurringWorks
-        )
-        
-        set({ 
-          schedulingResult: result,
-          unplacedSoftWorks: result.unplaced 
-        })
-      },
-
-      setActiveTab: (tab) => {
-        set({ activeTab: tab })
       },
     }),
     {

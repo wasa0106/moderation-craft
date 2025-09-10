@@ -68,7 +68,7 @@ export function BigTaskForm({
       start_date:
         task?.start_date || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
       end_date: task?.end_date || format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
-      category: task?.category || 'その他',
+      category: task?.category || '',
       estimated_hours: task?.estimated_hours || 8,
       status: task?.status || 'active',
     },
@@ -188,20 +188,13 @@ export function BigTaskForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="category">カテゴリー *</Label>
-              <Select
-                value={form.watch('category')}
-                onValueChange={value => form.setValue('category', value)}
-              >
-                <SelectTrigger className={cn(form.formState.errors.category && 'border-red-500')}>
-                  <SelectValue placeholder="カテゴリーを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="開発">開発</SelectItem>
-                  <SelectItem value="設計">設計</SelectItem>
-                  <SelectItem value="テスト">テスト</SelectItem>
-                  <SelectItem value="その他">その他</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                id="category"
+                type="text"
+                placeholder="例: 開発、設計、テスト、その他"
+                {...form.register('category')}
+                className={cn(form.formState.errors.category && 'border-red-500')}
+              />
               {form.formState.errors.category && (
                 <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
               )}

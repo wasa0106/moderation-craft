@@ -112,11 +112,7 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
     mutationFn: async (data: CreateSmallTaskData) => {
       // 繰り返し設定がある場合
       if (data.recurrence_enabled && data.recurrence_pattern) {
-        console.log('📝 Creating recurring task with pattern:', {
-          name: data.name,
-          recurrence_enabled: data.recurrence_enabled,
-          recurrence_pattern: data.recurrence_pattern,
-        })
+        // 📝 Creating recurring task with pattern
         
         // 親タスクを作成（recurrence_enabledとrecurrence_patternを確実に含める）
         const parentTaskData = {
@@ -132,12 +128,7 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
           parentTask
         )
         
-        console.log('✅ Parent task created:', {
-          id: parentTask.id,
-          name: parentTask.name,
-          recurrence_enabled: parentTask.recurrence_enabled,
-          recurrence_pattern: parentTask.recurrence_pattern,
-        })
+        // ✅ Parent task created
         
         // 繰り返しタスクを生成
         const recurringTasks = data.recurrence_pattern && 
@@ -168,7 +159,7 @@ export function useSmallTasks(userId: string, bigTaskId?: string, date?: string)
           createdTasks.push(createdTask)
         }
         
-        console.log(`✅ Created ${createdTasks.length} child tasks for recurring task`)
+        // ✅ Created child tasks for recurring task
         
         return parentTask // 親タスクを返す
       }

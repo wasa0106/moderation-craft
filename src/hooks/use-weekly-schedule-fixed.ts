@@ -30,7 +30,7 @@ export function calculateWeekNumberFixed(project: Project, targetDate: Date): nu
 
     const weekNumber = weekMap[dateStr]
     if (weekNumber) {
-      console.log(`8月プロジェクト週番号計算: ${dateStr} → 第${weekNumber}週`)
+      // 8月プロジェクト週番号計算: ${dateStr} → 第${weekNumber}週
       return weekNumber
     }
   }

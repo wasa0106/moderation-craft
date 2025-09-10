@@ -78,6 +78,10 @@ export async function POST(request: NextRequest) {
         result = await syncSleepSchedule(syncRequest)
         break
 
+      case 'time_entries':
+        result = await syncEntry(syncRequest, 'time_entries')
+        break
+
       default:
         return NextResponse.json(
           {

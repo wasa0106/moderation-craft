@@ -251,6 +251,10 @@
     background-color: hsl(var(--muted));
   }
   
+  .bg-popover {
+    background-color: hsl(var(--popover));
+  }
+  
   .bg-accent {
     background-color: hsl(var(--accent));
   }
@@ -311,6 +315,10 @@
   
   .text-info-foreground {
     color: hsl(var(--info-foreground));
+  }
+  
+  .text-popover-foreground {
+    color: hsl(var(--popover-foreground));
   }
   
   /* Sidebar background colors */

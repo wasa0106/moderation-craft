@@ -26,9 +26,9 @@ const navMain: NavItem[] = [
     icon: Timer,
   },
   {
-    title: 'プロジェクト',
-    url: '/projects',
-    icon: FolderOpen,
+    title: 'スケジュール',
+    url: '/schedule',
+    icon: Calendar,
   },
   {
     title: 'カンバン',
@@ -36,9 +36,9 @@ const navMain: NavItem[] = [
     icon: Columns3,
   },
   {
-    title: 'スケジュール',
-    url: '/schedule',
-    icon: Calendar,
+    title: 'プロジェクト',
+    url: '/projects',
+    icon: FolderOpen,
   },
   {
     title: 'レポート',

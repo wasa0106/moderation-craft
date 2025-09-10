@@ -252,8 +252,8 @@ export default function TimerPage() {
       {/* Header */}
       <div className="overflow-hidden bg-surface-2 border-t border-border">
         <div className="px-4 md:px-6 py-7">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1 max-w-3xl">
               <TimerTaskDisplay
                 ref={timerTaskDisplayRef}
                 smallTasks={smallTasks}
@@ -277,7 +277,7 @@ export default function TimerPage() {
                 }}
               />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-shrink-0">
               <TimerControls
                 onStartTimer={handleStartTimer}
                 onStopTimer={handleStopTimer}
@@ -356,27 +356,18 @@ export default function TimerPage() {
               <Tabs defaultValue="task-details" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg">
                   <TabsTrigger 
-                    value="project-tasks"
-                    className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground transition-all"
-                  >
-                    プロジェクト進捗
-                  </TabsTrigger>
-                  <TabsTrigger 
                     value="task-details"
                     className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground transition-all"
                   >
                     タスク詳細
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="project-tasks"
+                    className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground transition-all"
+                  >
+                    作業時間集計
+                  </TabsTrigger>
                 </TabsList>
-                
-                <TabsContent value="project-tasks" className="mt-4">
-                  <ProjectProgressCard
-                    dayTasks={dayTasks.filter(task => task.task_type !== 'routine')}
-                    todaySessions={todaySessions}
-                    projects={projects}
-                    selectedDate={selectedDate || new Date()}
-                  />
-                </TabsContent>
                 
                 <TabsContent value="task-details" className="mt-4">
                   <TaskDetailsCard
@@ -390,6 +381,15 @@ export default function TimerPage() {
                       // smallTasksリストも更新が必要な場合のみリロード
                       // ただし、タスク詳細フィールドの更新では不要
                     }}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="project-tasks" className="mt-4">
+                  <ProjectProgressCard
+                    dayTasks={dayTasks.filter(task => task.task_type !== 'routine')}
+                    todaySessions={todaySessions}
+                    projects={projects}
+                    selectedDate={selectedDate || new Date()}
                   />
                 </TabsContent>
               </Tabs>

@@ -35,6 +35,7 @@ export const TimerTaskDisplay = forwardRef<TimerTaskDisplayRef, TimerTaskDisplay
     const [popoverOpen, setPopoverOpen] = useState(false)
     const [inputValue, setInputValue] = useState('')
     const [isInputMode, setIsInputMode] = useState(false)
+    const [isComposing, setIsComposing] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
 
     useImperativeHandle(ref, () => ({
@@ -245,6 +246,10 @@ export const TimerTaskDisplay = forwardRef<TimerTaskDisplayRef, TimerTaskDisplay
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && inputValue.trim()) {
+                // IME変換中またはe.nativeEvent.isComposingがtrueの場合は何もしない
+                if (isComposing || e.nativeEvent.isComposing) {
+                  return // 変換中は何もしない
+                }
                 onUnplannedTaskClick(inputValue)
                 setInputValue('')
                 setIsInputMode(false)
@@ -265,6 +270,8 @@ export const TimerTaskDisplay = forwardRef<TimerTaskDisplayRef, TimerTaskDisplay
                 }
               }
             }}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
             onBlur={() => {
               if (!inputValue.trim()) {
                 setIsInputMode(false)

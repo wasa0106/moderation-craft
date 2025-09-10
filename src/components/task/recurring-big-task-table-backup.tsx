@@ -1,6 +1,6 @@
 /**
- * BigTaskList - Big tasks list component with inline editing
- * Displays list of big tasks in an editable table format with drag & drop
+ * RecurringBigTaskTable - 定期タスク専用のテーブルコンポーネント
+ * 繰り返し実行するタスクの管理に特化
  */
 
 'use client'
@@ -16,31 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Trash2, GripVertical, CheckCircle2, XCircle, RefreshCw, Workflow, Plus } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, RefreshCw, Plus, CalendarDays, GripVertical } from 'lucide-react'
 import { format } from 'date-fns'
-import { ja } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 
-interface BigTaskListProps {
-  bigTasks: BigTask[]
+interface RecurringBigTaskTableProps {
+  tasks: BigTask[]
   projectId: string
+  totalWeeks: number
   onUpdate: (params: { id: string; data: UpdateBigTaskData }) => Promise<BigTask>
   onCreate: (data: CreateBigTaskData) => Promise<void>
   onDelete: (taskId: string) => void
@@ -55,14 +38,16 @@ interface CellPosition {
 
 const COLUMNS = [
   { key: 'drag', label: '', width: '40px' },
-  { key: 'category', label: 'カテゴリ', width: '12%' },
-  { key: 'name', label: 'タスク名', width: '20%' },
-  { key: 'type', label: 'タイプ', width: '8%' },
-  { key: 'estimatedHours', label: '見積時間', width: '10%' },
-  { key: 'status', label: 'ステータス', width: '12%' },
-  { key: 'startDate', label: '開始日', width: '14%' },
-  { key: 'endDate', label: '終了日', width: '14%' },
-  { key: 'actions', label: '', width: '10%' },
+  { key: 'select', label: '', width: '40px' },
+  { key: 'category', label: 'カテゴリ', width: '140px' },
+  { key: 'name', label: 'タスク名', width: 'auto' },
+  { key: 'frequency', label: '頻度', width: '120px' },
+  { key: 'hoursPerOccurrence', label: '時間/回', width: '100px' },
+  { key: 'totalHours', label: '合計時間', width: '100px' },
+  { key: 'status', label: 'ステータス', width: '120px' },
+  { key: 'startDate', label: '開始日', width: '120px' },
+  { key: 'endDate', label: '終了日', width: '120px' },
+  { key: 'actions', label: '', width: '100px' },
 ]
 
 // BufferedInput component
@@ -186,11 +171,14 @@ const BufferedInput = memo(function BufferedInput({
   )
 })
 
-// SortableRow component
-interface SortableRowProps {
+// TaskRow component
+interface TaskRowProps {
   task: BigTask
   rowIndex: number
+  totalWeeks: number
+  selectedRows: Set<string>
   focusedCell: CellPosition | null
+  onToggleRowSelection: (taskId: string) => void
   onUpdateCellValue: (row: number, col: number, value: any) => void
   onDelete: (taskId: string) => void
   onStatusChange?: (taskId: string, status: 'completed' | 'active') => Promise<void>
@@ -200,10 +188,13 @@ interface SortableRowProps {
   getCellKey: (row: number, col: number) => string
 }
 
-const SortableRow = memo(function SortableRow({
+const TaskRow = memo(function TaskRow({
   task,
   rowIndex,
+  totalWeeks,
+  selectedRows,
   focusedCell,
+  onToggleRowSelection,
   onUpdateCellValue,
   onDelete,
   onStatusChange,
@@ -211,30 +202,7 @@ const SortableRow = memo(function SortableRow({
   onFocus,
   cellRefs,
   getCellKey,
-}: SortableRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: task.id,
-  })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  }
-
-  const getStatusLabel = (status: BigTask['status']) => {
-    switch (status) {
-      case 'active':
-        return '実行中'
-      case 'completed':
-        return '完了'
-      case 'cancelled':
-        return 'キャンセル'
-      default:
-        return status
-    }
-  }
-
+}: TaskRowProps) {
   const getStatusColor = (status: BigTask['status']) => {
     switch (status) {
       case 'active':
@@ -248,103 +216,142 @@ const SortableRow = memo(function SortableRow({
     }
   }
 
+  const calculateTotalHours = () => {
+    if (!task.recurrence) return 0
+    const frequency = task.recurrence.frequency
+    const hoursPerOccurrence = task.recurrence.hours_per_occurrence || 0
+    let occurrencesPerWeek = 0
+    
+    switch (frequency) {
+      case 'daily': occurrencesPerWeek = 7; break
+      case 'weekly_1': occurrencesPerWeek = 1; break
+      case 'weekly_2': occurrencesPerWeek = 2; break
+      case 'weekly_3': occurrencesPerWeek = 3; break
+      case 'weekly_4': occurrencesPerWeek = 4; break
+      case 'weekly_5': occurrencesPerWeek = 5; break
+      case 'weekly_6': occurrencesPerWeek = 6; break
+      case 'weekly_7': occurrencesPerWeek = 7; break
+    }
+    
+    return occurrencesPerWeek * totalWeeks * hoursPerOccurrence
+  }
+
+  const getFrequencyLabel = (frequency: string) => {
+    switch (frequency) {
+      case 'daily': return '毎日'
+      case 'weekly_1': return '週1回'
+      case 'weekly_2': return '週2回'
+      case 'weekly_3': return '週3回'
+      case 'weekly_4': return '週4回'
+      case 'weekly_5': return '週5回'
+      case 'weekly_6': return '週6回'
+      case 'weekly_7': return '週7回'
+      default: return frequency
+    }
+  }
+
   return (
-    <tr ref={setNodeRef} style={style} className={isDragging ? 'opacity-50' : ''}>
-      {/* Drag handle */}
-      <td className="text-center" {...attributes} {...listeners}>
-        <span className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground inline-flex">
+    <tr className={`sortable-item ${selectedRows.has(task.id) ? 'bg-muted' : ''}`}>
+      <td className="drag-handle">
+        <span className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground flex items-center justify-center h-8">
           <GripVertical className="h-4 w-4" />
         </span>
       </td>
 
-      {/* Category */}
       <td>
-        <BufferedInput
-          inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 1), el)
-          }}
-          value={task.category || ''}
-          onChange={value => onUpdateCellValue(rowIndex, 1, value)}
-          onKeyDown={e => onKeyDown(e, rowIndex, 1)}
-          onFocus={() => onFocus(rowIndex, 1)}
-          placeholder="カテゴリ"
-          className={cn(
-            'border-none bg-transparent h-8',
-            focusedCell?.row === rowIndex && focusedCell?.col === 1 && 'ring-2 ring-ring'
-          )}
+        <input
+          type="checkbox"
+          checked={selectedRows.has(task.id)}
+          onChange={() => onToggleRowSelection(task.id)}
+          className="rounded"
         />
       </td>
 
-      {/* Name */}
       <td>
         <BufferedInput
           inputRef={el => {
             if (el) cellRefs.current.set(getCellKey(rowIndex, 2), el)
           }}
-          value={task.name}
+          value={task.category || ''}
           onChange={value => onUpdateCellValue(rowIndex, 2, value)}
           onKeyDown={e => onKeyDown(e, rowIndex, 2)}
           onFocus={() => onFocus(rowIndex, 2)}
-          placeholder="タスク名"
-          className={cn(
-            'border-none bg-transparent h-8 font-medium',
-            focusedCell?.row === rowIndex && focusedCell?.col === 2 && 'ring-2 ring-ring'
-          )}
+          placeholder="カテゴリ"
+          className={`border-none bg-transparent cell-input ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 2 ? 'cell-focused' : ''
+          }`}
         />
       </td>
 
-      {/* Type */}
+      <td>
+        <BufferedInput
+          inputRef={el => {
+            if (el) cellRefs.current.set(getCellKey(rowIndex, 3), el)
+          }}
+          value={task.name}
+          onChange={value => onUpdateCellValue(rowIndex, 3, value)}
+          onKeyDown={e => onKeyDown(e, rowIndex, 3)}
+          onFocus={() => onFocus(rowIndex, 3)}
+          placeholder="タスク名"
+          className={`border-none bg-transparent cell-input font-medium ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 3 ? 'cell-focused' : ''
+          }`}
+        />
+      </td>
+
       <td>
         <Select
-          value={task.task_type || 'flow'}
-          onValueChange={value => onUpdateCellValue(rowIndex, 3, value)}
+          value={task.recurrence?.frequency || 'weekly_2'}
+          onValueChange={value => onUpdateCellValue(rowIndex, 4, value)}
         >
           <SelectTrigger className="h-8 border-none bg-transparent">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="flow">
-              <span className="flex items-center gap-1">
-                <Workflow className="h-3 w-3" />
-                フロー
-              </span>
-            </SelectItem>
-            <SelectItem value="recurring">
-              <span className="flex items-center gap-1">
-                <RefreshCw className="h-3 w-3" />
-                定期
-              </span>
-            </SelectItem>
+            <SelectItem value="daily">毎日</SelectItem>
+            <SelectItem value="weekly_1">週1回</SelectItem>
+            <SelectItem value="weekly_2">週2回</SelectItem>
+            <SelectItem value="weekly_3">週3回</SelectItem>
+            <SelectItem value="weekly_4">週4回</SelectItem>
+            <SelectItem value="weekly_5">週5回</SelectItem>
+            <SelectItem value="weekly_6">週6回</SelectItem>
+            <SelectItem value="weekly_7">週7回</SelectItem>
           </SelectContent>
         </Select>
       </td>
 
-      {/* Estimated Hours */}
       <td>
-        <BufferedInput
-          inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 4), el)
-          }}
-          type="number"
-          value={task.estimated_hours || 0}
-          onChange={value => onUpdateCellValue(rowIndex, 4, value)}
-          onKeyDown={e => onKeyDown(e, rowIndex, 4)}
-          onFocus={() => onFocus(rowIndex, 4)}
-          min={0}
-          step={0.5}
-          placeholder="0"
-          className={cn(
-            'border-none bg-transparent h-8 text-right',
-            focusedCell?.row === rowIndex && focusedCell?.col === 4 && 'ring-2 ring-ring'
-          )}
-        />
+        <div className="flex items-center gap-1">
+          <BufferedInput
+            inputRef={el => {
+              if (el) cellRefs.current.set(getCellKey(rowIndex, 5), el)
+            }}
+            type="number"
+            value={task.recurrence?.hours_per_occurrence || 1}
+            onChange={value => onUpdateCellValue(rowIndex, 5, value)}
+            onKeyDown={e => onKeyDown(e, rowIndex, 5)}
+            onFocus={() => onFocus(rowIndex, 5)}
+            min={0}
+            step={0.5}
+            placeholder="1"
+            className={`border-none bg-transparent cell-input text-right ${
+              focusedCell?.row === rowIndex && focusedCell?.col === 5 ? 'cell-focused' : ''
+            }`}
+          />
+          <span className="text-xs text-muted-foreground">h</span>
+        </div>
       </td>
 
-      {/* Status */}
+      <td>
+        <div className="text-right font-medium">
+          {calculateTotalHours().toFixed(1)}h
+        </div>
+      </td>
+
       <td>
         <Select
           value={task.status}
-          onValueChange={value => onUpdateCellValue(rowIndex, 5, value)}
+          onValueChange={value => onUpdateCellValue(rowIndex, 7, value)}
         >
           <SelectTrigger className={cn('h-8 border-none bg-transparent', getStatusColor(task.status))}>
             <SelectValue />
@@ -357,43 +364,38 @@ const SortableRow = memo(function SortableRow({
         </Select>
       </td>
 
-      {/* Start Date */}
       <td>
         <BufferedInput
           inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 6), el)
+            if (el) cellRefs.current.set(getCellKey(rowIndex, 8), el)
           }}
           type="date"
           value={task.start_date || ''}
-          onChange={value => onUpdateCellValue(rowIndex, 6, value)}
-          onKeyDown={e => onKeyDown(e, rowIndex, 6)}
-          onFocus={() => onFocus(rowIndex, 6)}
-          className={cn(
-            'border-none bg-transparent h-8',
-            focusedCell?.row === rowIndex && focusedCell?.col === 6 && 'ring-2 ring-ring'
-          )}
+          onChange={value => onUpdateCellValue(rowIndex, 8, value)}
+          onKeyDown={e => onKeyDown(e, rowIndex, 8)}
+          onFocus={() => onFocus(rowIndex, 8)}
+          className={`border-none bg-transparent cell-input ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 8 ? 'cell-focused' : ''
+          }`}
         />
       </td>
 
-      {/* End Date */}
       <td>
         <BufferedInput
           inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 7), el)
+            if (el) cellRefs.current.set(getCellKey(rowIndex, 9), el)
           }}
           type="date"
           value={task.end_date || ''}
-          onChange={value => onUpdateCellValue(rowIndex, 7, value)}
-          onKeyDown={e => onKeyDown(e, rowIndex, 7)}
-          onFocus={() => onFocus(rowIndex, 7)}
-          className={cn(
-            'border-none bg-transparent h-8',
-            focusedCell?.row === rowIndex && focusedCell?.col === 7 && 'ring-2 ring-ring'
-          )}
+          onChange={value => onUpdateCellValue(rowIndex, 9, value)}
+          onKeyDown={e => onKeyDown(e, rowIndex, 9)}
+          onFocus={() => onFocus(rowIndex, 9)}
+          className={`border-none bg-transparent cell-input ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 9 ? 'cell-focused' : ''
+          }`}
         />
       </td>
 
-      {/* Actions */}
       <td>
         <div className="flex items-center justify-end gap-2">
           {onStatusChange && (
@@ -448,15 +450,38 @@ const NewTaskRow = memo(function NewTaskRow({
   const [newTask, setNewTask] = useState<Partial<BigTask>>({
     category: '',
     name: '',
-    task_type: 'flow',
-    estimated_hours: 8,
+    task_type: 'recurring',
     status: 'active',
     start_date: format(new Date(), 'yyyy-MM-dd'),
     end_date: format(new Date(), 'yyyy-MM-dd'),
+    recurrence: {
+      frequency: 'weekly_2',
+      hours_per_occurrence: 1,
+    },
   })
 
-  const handleUpdateField = (field: keyof BigTask, value: any) => {
-    setNewTask(prev => ({ ...prev, [field]: value }))
+  const handleUpdateField = (field: string, value: any) => {
+    if (field === 'frequency') {
+      setNewTask(prev => ({
+        ...prev,
+        recurrence: {
+          ...prev.recurrence,
+          frequency: value,
+          hours_per_occurrence: prev.recurrence?.hours_per_occurrence || 1,
+        },
+      }))
+    } else if (field === 'hours_per_occurrence') {
+      setNewTask(prev => ({
+        ...prev,
+        recurrence: {
+          ...prev.recurrence,
+          frequency: prev.recurrence?.frequency || 'weekly_2',
+          hours_per_occurrence: value,
+        },
+      }))
+    } else {
+      setNewTask(prev => ({ ...prev, [field]: value }))
+    }
   }
 
   const handleCreateTask = () => {
@@ -466,11 +491,14 @@ const NewTaskRow = memo(function NewTaskRow({
       setNewTask({
         category: '',
         name: '',
-        task_type: 'flow',
-        estimated_hours: 8,
+        task_type: 'recurring',
         status: 'active',
         start_date: format(new Date(), 'yyyy-MM-dd'),
         end_date: format(new Date(), 'yyyy-MM-dd'),
+        recurrence: {
+          frequency: 'weekly_2',
+          hours_per_occurrence: 1,
+        },
       })
     }
   }
@@ -486,96 +514,94 @@ const NewTaskRow = memo(function NewTaskRow({
 
   return (
     <tr className="bg-muted/30">
-      {/* Drag handle placeholder */}
       <td className="text-center">
         <Plus className="h-4 w-4 text-muted-foreground mx-auto" />
       </td>
 
-      {/* Category */}
       <td>
-        <BufferedInput
-          inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 1), el)
-          }}
-          value={newTask.category || ''}
-          onChange={value => handleUpdateField('category', value)}
-          onKeyDown={e => handleKeyDown(e, 1)}
-          onFocus={() => onFocus(rowIndex, 1)}
-          placeholder="カテゴリ"
-          className={cn(
-            'border-none bg-transparent h-8',
-            focusedCell?.row === rowIndex && focusedCell?.col === 1 && 'ring-2 ring-ring'
-          )}
-        />
+        <input type="checkbox" disabled className="rounded opacity-50" />
       </td>
 
-      {/* Name */}
       <td>
         <BufferedInput
           inputRef={el => {
             if (el) cellRefs.current.set(getCellKey(rowIndex, 2), el)
           }}
-          value={newTask.name || ''}
-          onChange={value => handleUpdateField('name', value)}
+          value={newTask.category || ''}
+          onChange={value => handleUpdateField('category', value)}
           onKeyDown={e => handleKeyDown(e, 2)}
           onFocus={() => onFocus(rowIndex, 2)}
-          onBlur={handleCreateTask}
-          placeholder="新しいタスク名を入力"
-          className={cn(
-            'border-none bg-transparent h-8 font-medium',
-            focusedCell?.row === rowIndex && focusedCell?.col === 2 && 'ring-2 ring-ring'
-          )}
+          placeholder="カテゴリ"
+          className={`border-none bg-transparent cell-input ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 2 ? 'cell-focused' : ''
+          }`}
         />
       </td>
 
-      {/* Type */}
+      <td>
+        <BufferedInput
+          inputRef={el => {
+            if (el) cellRefs.current.set(getCellKey(rowIndex, 3), el)
+          }}
+          value={newTask.name || ''}
+          onChange={value => handleUpdateField('name', value)}
+          onKeyDown={e => handleKeyDown(e, 3)}
+          onFocus={() => onFocus(rowIndex, 3)}
+          onBlur={handleCreateTask}
+          placeholder="新しいタスク名を入力"
+          className={`border-none bg-transparent cell-input font-medium ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 3 ? 'cell-focused' : ''
+          }`}
+        />
+      </td>
+
       <td>
         <Select
-          value={newTask.task_type || 'flow'}
-          onValueChange={value => handleUpdateField('task_type', value)}
+          value={newTask.recurrence?.frequency || 'weekly_2'}
+          onValueChange={value => handleUpdateField('frequency', value)}
         >
           <SelectTrigger className="h-8 border-none bg-transparent">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="flow">
-              <span className="flex items-center gap-1">
-                <Workflow className="h-3 w-3" />
-                フロー
-              </span>
-            </SelectItem>
-            <SelectItem value="recurring">
-              <span className="flex items-center gap-1">
-                <RefreshCw className="h-3 w-3" />
-                定期
-              </span>
-            </SelectItem>
+            <SelectItem value="daily">毎日</SelectItem>
+            <SelectItem value="weekly_1">週1回</SelectItem>
+            <SelectItem value="weekly_2">週2回</SelectItem>
+            <SelectItem value="weekly_3">週3回</SelectItem>
+            <SelectItem value="weekly_4">週4回</SelectItem>
+            <SelectItem value="weekly_5">週5回</SelectItem>
+            <SelectItem value="weekly_6">週6回</SelectItem>
+            <SelectItem value="weekly_7">週7回</SelectItem>
           </SelectContent>
         </Select>
       </td>
 
-      {/* Estimated Hours */}
       <td>
-        <BufferedInput
-          inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 4), el)
-          }}
-          type="number"
-          value={newTask.estimated_hours || 8}
-          onChange={value => handleUpdateField('estimated_hours', value)}
-          onKeyDown={e => handleKeyDown(e, 4)}
-          onFocus={() => onFocus(rowIndex, 4)}
-          min={0}
-          step={0.5}
-          placeholder="8"
-          className={cn(
-            'border-none bg-transparent h-8 text-right',
-            focusedCell?.row === rowIndex && focusedCell?.col === 4 && 'ring-2 ring-ring'
-          )}
-        />
+        <div className="flex items-center gap-1">
+          <BufferedInput
+            inputRef={el => {
+              if (el) cellRefs.current.set(getCellKey(rowIndex, 5), el)
+            }}
+            type="number"
+            value={newTask.recurrence?.hours_per_occurrence || 1}
+            onChange={value => handleUpdateField('hours_per_occurrence', value)}
+            onKeyDown={e => handleKeyDown(e, 5)}
+            onFocus={() => onFocus(rowIndex, 5)}
+            min={0}
+            step={0.5}
+            placeholder="1"
+            className={`border-none bg-transparent cell-input text-right ${
+              focusedCell?.row === rowIndex && focusedCell?.col === 5 ? 'cell-focused' : ''
+            }`}
+          />
+          <span className="text-xs text-muted-foreground">h</span>
+        </div>
       </td>
 
-      {/* Status */}
+      <td>
+        <div className="text-right text-muted-foreground">-</div>
+      </td>
+
       <td>
         <Select
           value={newTask.status || 'active'}
@@ -592,43 +618,38 @@ const NewTaskRow = memo(function NewTaskRow({
         </Select>
       </td>
 
-      {/* Start Date */}
       <td>
         <BufferedInput
           inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 6), el)
+            if (el) cellRefs.current.set(getCellKey(rowIndex, 8), el)
           }}
           type="date"
           value={newTask.start_date || ''}
           onChange={value => handleUpdateField('start_date', value)}
-          onKeyDown={e => handleKeyDown(e, 6)}
-          onFocus={() => onFocus(rowIndex, 6)}
-          className={cn(
-            'border-none bg-transparent h-8',
-            focusedCell?.row === rowIndex && focusedCell?.col === 6 && 'ring-2 ring-ring'
-          )}
+          onKeyDown={e => handleKeyDown(e, 8)}
+          onFocus={() => onFocus(rowIndex, 8)}
+          className={`border-none bg-transparent cell-input ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 8 ? 'cell-focused' : ''
+          }`}
         />
       </td>
 
-      {/* End Date */}
       <td>
         <BufferedInput
           inputRef={el => {
-            if (el) cellRefs.current.set(getCellKey(rowIndex, 7), el)
+            if (el) cellRefs.current.set(getCellKey(rowIndex, 9), el)
           }}
           type="date"
           value={newTask.end_date || ''}
           onChange={value => handleUpdateField('end_date', value)}
-          onKeyDown={e => handleKeyDown(e, 7)}
-          onFocus={() => onFocus(rowIndex, 7)}
-          className={cn(
-            'border-none bg-transparent h-8',
-            focusedCell?.row === rowIndex && focusedCell?.col === 7 && 'ring-2 ring-ring'
-          )}
+          onKeyDown={e => handleKeyDown(e, 9)}
+          onFocus={() => onFocus(rowIndex, 9)}
+          className={`border-none bg-transparent cell-input ${
+            focusedCell?.row === rowIndex && focusedCell?.col === 9 ? 'cell-focused' : ''
+          }`}
         />
       </td>
 
-      {/* Actions */}
       <td>
         <div className="flex items-center justify-end">
           <span className="text-xs text-muted-foreground">タスク名を入力してEnter</span>
@@ -638,24 +659,27 @@ const NewTaskRow = memo(function NewTaskRow({
   )
 })
 
-export function BigTaskList({
-  bigTasks,
+export function RecurringBigTaskTable({
+  tasks,
   projectId,
+  totalWeeks,
   onUpdate,
   onCreate,
   onDelete,
   onStatusChange,
   isLoading,
-}: BigTaskListProps) {
+}: RecurringBigTaskTableProps) {
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
   const [sortedTasks, setSortedTasks] = useState<BigTask[]>([])
   
   const tableRef = useRef<HTMLTableElement>(null)
   const cellRefs = useRef<Map<string, HTMLElement>>(new Map())
 
-  // Initialize sorted tasks
+  // Filter and sort tasks
   useEffect(() => {
-    setSortedTasks([...bigTasks].sort((a, b) => {
+    const recurringTasks = tasks.filter(t => t.task_type === 'recurring')
+    setSortedTasks([...recurringTasks].sort((a, b) => {
       if (a.status === 'active' && b.status !== 'active') return -1
       if (a.status !== 'active' && b.status === 'active') return 1
       if (a.status === 'completed' && b.status !== 'completed') return 1
@@ -668,15 +692,7 @@ export function BigTaskList({
       if (!aIsOther && bIsOther) return -1
       return 0
     }))
-  }, [bigTasks])
-
-  // Drag & drop sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
+  }, [tasks])
 
   const getCellKey = (row: number, col: number) => `${row}-${col}`
 
@@ -698,34 +714,21 @@ export function BigTaskList({
     })
   }, [])
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (active.id !== over?.id) {
-      const oldIndex = sortedTasks.findIndex(task => task.id === active.id)
-      const newIndex = sortedTasks.findIndex(task => task.id === over?.id)
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        setSortedTasks(arrayMove(sortedTasks, oldIndex, newIndex))
-      }
-    }
-  }, [sortedTasks])
-
   const handleKeyDown = useCallback((e: React.KeyboardEvent, row: number, col: number) => {
     switch (e.key) {
       case 'Tab':
         e.preventDefault()
         if (e.shiftKey) {
-          if (col > 1) {
+          if (col > 2) {
             focusCell(row, col - 1)
           } else if (row > 0) {
-            focusCell(row - 1, 7)
+            focusCell(row - 1, 9)
           }
         } else {
-          if (col < 7) {
+          if (col < 9) {
             focusCell(row, col + 1)
           } else if (row < sortedTasks.length) {
-            focusCell(row + 1, 1)
+            focusCell(row + 1, 2)
           }
         }
         break
@@ -744,13 +747,25 @@ export function BigTaskList({
         if (row <= sortedTasks.length) focusCell(row + 1, col)
         break
       case 'ArrowLeft':
-        if (col > 1) focusCell(row, col - 1)
+        if (col > 2) focusCell(row, col - 1)
         break
       case 'ArrowRight':
-        if (col < 7) focusCell(row, col + 1)
+        if (col < 9) focusCell(row, col + 1)
         break
     }
   }, [focusCell, sortedTasks.length])
+
+  const toggleRowSelection = useCallback((taskId: string) => {
+    setSelectedRows(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId)
+      } else {
+        newSet.add(taskId)
+      }
+      return newSet
+    })
+  }, [])
 
   const updateCellValue = useCallback((row: number, col: number, value: any) => {
     const task = sortedTasks[row]
@@ -759,57 +774,107 @@ export function BigTaskList({
     const updates: UpdateBigTaskData = {}
 
     switch (col) {
-      case 1: // Category
+      case 2: // Category
         updates.category = value as string
         break
-      case 2: // Name
+      case 3: // Name
         updates.name = value as string
         break
-      case 3: // Type
-        updates.task_type = value as 'flow' | 'recurring'
+      case 4: // Frequency
+        updates.recurrence = {
+          ...task.recurrence,
+          frequency: value,
+          hours_per_occurrence: task.recurrence?.hours_per_occurrence || 1,
+        }
         break
-      case 4: // Estimated Hours
-        updates.estimated_hours = typeof value === 'number' ? value : parseFloat(value) || 0
+      case 5: // Hours per occurrence
+        updates.recurrence = {
+          ...task.recurrence,
+          frequency: task.recurrence?.frequency || 'weekly_2',
+          hours_per_occurrence: typeof value === 'number' ? value : parseFloat(value) || 1,
+        }
+        // Also update estimated_hours based on total
+        const frequency = task.recurrence?.frequency || 'weekly_2'
+        let occurrencesPerWeek = 0
+        switch (frequency) {
+          case 'daily': occurrencesPerWeek = 7; break
+          case 'weekly_1': occurrencesPerWeek = 1; break
+          case 'weekly_2': occurrencesPerWeek = 2; break
+          case 'weekly_3': occurrencesPerWeek = 3; break
+          case 'weekly_4': occurrencesPerWeek = 4; break
+          case 'weekly_5': occurrencesPerWeek = 5; break
+          case 'weekly_6': occurrencesPerWeek = 6; break
+          case 'weekly_7': occurrencesPerWeek = 7; break
+        }
+        updates.estimated_hours = occurrencesPerWeek * totalWeeks * (typeof value === 'number' ? value : parseFloat(value) || 1)
         break
-      case 5: // Status
+      case 7: // Status
         updates.status = value as 'active' | 'completed' | 'cancelled'
         break
-      case 6: // Start Date
+      case 8: // Start Date
         updates.start_date = value as string
         break
-      case 7: // End Date
+      case 9: // End Date
         updates.end_date = value as string
         break
     }
 
     onUpdate({ id: task.id, data: updates })
-  }, [sortedTasks, onUpdate])
+  }, [sortedTasks, onUpdate, totalWeeks])
 
   const handleCreateTask = useCallback((taskData: Partial<BigTask>) => {
+    // Calculate estimated_hours from recurrence
+    let estimatedHours = 0
+    if (taskData.recurrence) {
+      const frequency = taskData.recurrence.frequency || 'weekly_2'
+      const hoursPerOccurrence = taskData.recurrence.hours_per_occurrence || 1
+      let occurrencesPerWeek = 0
+      
+      switch (frequency) {
+        case 'daily': occurrencesPerWeek = 7; break
+        case 'weekly_1': occurrencesPerWeek = 1; break
+        case 'weekly_2': occurrencesPerWeek = 2; break
+        case 'weekly_3': occurrencesPerWeek = 3; break
+        case 'weekly_4': occurrencesPerWeek = 4; break
+        case 'weekly_5': occurrencesPerWeek = 5; break
+        case 'weekly_6': occurrencesPerWeek = 6; break
+        case 'weekly_7': occurrencesPerWeek = 7; break
+      }
+      
+      estimatedHours = occurrencesPerWeek * totalWeeks * hoursPerOccurrence
+    }
+
     const createData: CreateBigTaskData = {
       project_id: projectId,
       user_id: 'current-user',
       name: taskData.name || '',
       category: taskData.category || '',
-      task_type: taskData.task_type || 'flow',
-      estimated_hours: taskData.estimated_hours || 8,
+      task_type: 'recurring',
+      estimated_hours: estimatedHours,
       actual_hours: 0,
       status: taskData.status || 'active',
       start_date: taskData.start_date || format(new Date(), 'yyyy-MM-dd'),
       end_date: taskData.end_date || format(new Date(), 'yyyy-MM-dd'),
+      recurrence: taskData.recurrence,
       version: 1,
     }
     onCreate(createData)
-  }, [projectId, onCreate])
+  }, [projectId, onCreate, totalWeeks])
 
   if (isLoading) {
     return <div className="text-center py-8">読み込み中...</div>
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <table ref={tableRef} className="w-full">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-blue-600" />
+        <h3 className="font-medium">定期タスク</h3>
+        <span className="text-sm text-muted-foreground">（毎日・週数回実行するタスク）</span>
+      </div>
+      
+      <div className="border rounded-lg overflow-hidden">
+        <table ref={tableRef} className="editable-table w-full">
           <thead>
             <tr className="border-b">
               {COLUMNS.map(column => (
@@ -827,31 +892,29 @@ export function BigTaskList({
             {sortedTasks.length === 0 && (
               <tr>
                 <td colSpan={COLUMNS.length} className="text-center py-8 text-muted-foreground">
-                  <p>タスクがありません</p>
+                  <p>定期タスクがありません</p>
                   <p className="text-sm mt-1">下の行に入力して新しいタスクを追加できます</p>
                 </td>
               </tr>
             )}
-            <SortableContext
-              items={sortedTasks.map(task => task.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {sortedTasks.map((task, index) => (
-                <SortableRow
-                  key={task.id}
-                  task={task}
-                  rowIndex={index}
-                  focusedCell={focusedCell}
-                  onUpdateCellValue={updateCellValue}
-                  onDelete={onDelete}
-                  onStatusChange={onStatusChange}
-                  onKeyDown={handleKeyDown}
-                  onFocus={(row, col) => setFocusedCell({ row, col })}
-                  cellRefs={cellRefs}
-                  getCellKey={getCellKey}
-                />
-              ))}
-            </SortableContext>
+            {sortedTasks.map((task, index) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                rowIndex={index}
+                totalWeeks={totalWeeks}
+                selectedRows={selectedRows}
+                focusedCell={focusedCell}
+                onToggleRowSelection={toggleRowSelection}
+                onUpdateCellValue={updateCellValue}
+                onDelete={onDelete}
+                onStatusChange={onStatusChange}
+                onKeyDown={handleKeyDown}
+                onFocus={(row, col) => setFocusedCell({ row, col })}
+                cellRefs={cellRefs}
+                getCellKey={getCellKey}
+              />
+            ))}
             <NewTaskRow
               onCreateTask={handleCreateTask}
               focusedCell={focusedCell}
@@ -863,7 +926,7 @@ export function BigTaskList({
             />
           </tbody>
         </table>
-      </DndContext>
+      </div>
     </div>
   )
 }

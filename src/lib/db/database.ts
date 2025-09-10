@@ -10,6 +10,7 @@ import {
   BigTask,
   SmallTask,
   WorkSession,
+  TimeEntry,
   MoodEntry,
   DopamineEntry,
   DailyCondition,
@@ -26,6 +27,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
   big_tasks!: Table<BigTask>
   small_tasks!: Table<SmallTask>
   work_sessions!: Table<WorkSession>
+  time_entries!: Table<TimeEntry>
   mood_entries!: Table<MoodEntry>
   dopamine_entries!: Table<DopamineEntry>
   daily_conditions!: Table<DailyCondition>
@@ -365,7 +367,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
               .then(() => {
                 // 移行成功後にlocalStorageをクリア
                 localStorage.removeItem('weeklyScheduleMemo')
-                console.log('Successfully migrated schedule memo from localStorage')
+                // Successfully migrated schedule memo from localStorage
               })
               .catch(error => {
                 console.error('Failed to migrate schedule memo:', error)
@@ -469,7 +471,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       .upgrade(tx => {
         // recurrence_patternフィールドは通常のプロパティとして保存される（インデックスなし）
         // 既存のタスクはそのまま維持される
-        console.log('Database upgraded to version 17: Added recurrence_pattern support')
+        // Database upgraded to version 17: Added recurrence_pattern support
       })
 
     // Version 18: Add task detail fields to small_tasks
@@ -496,8 +498,30 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         // タスク詳細フィールドは通常のプロパティとして保存される（インデックスなし）
         // goal, dod, inputs, outputs, process, missing_inputs, non_goals
         // 既存のタスクはそのまま維持され、新しいフィールドはundefinedとなる
-        console.log('Database upgraded to version 18: Added task detail fields (goal, dod, inputs, outputs, process, missing_inputs, non_goals)')
+        // Database upgraded to version 18: Added task detail fields
       })
+
+    // Version 19: Add time_entries table for manual time tracking
+    this.version(19).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline, color',
+      big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
+      small_tasks:
+        'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, task_type, is_reportable, recurrence_enabled, recurrence_parent_id, updated_at, *tags',
+      work_sessions:
+        'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+      time_entries:
+        'id, [user_id+date], user_id, small_task_id, project_id, big_task_id, date, start_time, end_time, duration_minutes, created_at, updated_at',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+      schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
+      sleep_schedules:
+        'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, actual_data_source, created_at, updated_at',
+      sync_queue:
+        'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+    })
 
     this.users.hook('creating', (primKey, obj) => {
       const timestamps = this.createTimestamps()
@@ -765,6 +789,33 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         // リポジトリレベルで処理
       }
     })
+
+    this.time_entries.hook('creating', (primKey, obj) => {
+      const timestamps = this.createTimestamps()
+      obj.created_at = timestamps.created_at
+      obj.updated_at = timestamps.updated_at
+      if (!obj.id) {
+        obj.id = this.generateId()
+      }
+
+      // duration_minutesを計算（既に計算済みでない場合）
+      if (!obj.duration_minutes && obj.start_time && obj.end_time) {
+        const startTime = new Date(obj.start_time)
+        const endTime = new Date(obj.end_time)
+        obj.duration_minutes = Math.round(
+          (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+        )
+      }
+    })
+
+    this.time_entries.hook('updating', modifications => {
+      ;(modifications as any).updated_at = this.getCurrentTimestamp()
+
+      // 時刻が変更された場合は時間を再計算
+      if ('start_time' in modifications || 'end_time' in modifications) {
+        // リポジトリレベルで処理
+      }
+    })
   }
 
   generateId(): string {
@@ -1009,11 +1060,11 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
 
     try {
       await this.delete()
-      console.log('Database deleted successfully')
+      // Database deleted successfully
 
       // 新しいデータベースを作成
       await this.open()
-      console.log('New database created')
+      // New database created
     } catch (error) {
       console.error('Failed to reset database:', error)
       throw error
@@ -1031,7 +1082,7 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
       let backupData = null
       try {
         backupData = await this.exportData()
-        console.log('Backup created successfully')
+        // Backup created successfully
       } catch (backupError) {
         console.warn('Failed to create backup:', backupError)
       }

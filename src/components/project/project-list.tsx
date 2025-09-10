@@ -27,7 +27,8 @@ import {
 } from '@/components/ui/pagination'
 import { ProjectCard } from './project-card'
 import { ProjectDeleteDialog } from './project-delete-dialog'
-import { Search, Plus, Grid, List } from 'lucide-react'
+import { Search, Plus, Grid, List, Filter, SortDesc, Layers } from 'lucide-react'
+import Link from 'next/link'
 import { Project } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -57,7 +58,7 @@ export function ProjectList({
   className,
 }: ProjectListProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('active')
   const [sortField, setSortField] = useState<SortField>('created_at')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -157,109 +158,117 @@ export function ProjectList({
 
   return (
     <div className={cn('space-y-6', className)}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-bold">プロジェクト一覧</h2>
-          <p className="text-muted-foreground">
-            {filteredProjects.length} / {projects.length} プロジェクト
-          </p>
-        </div>
-        {onCreateProject && (
-          <Button onClick={onCreateProject} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            新しいプロジェクト
-          </Button>
-        )}
-      </div>
-
-      {/* Status badges */}
-      <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={statusFilter === 'all' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setStatusFilter('all')}
-        >
-          すべて ({statusCounts.all})
-        </Badge>
-        <Badge
-          variant={statusFilter === 'active' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setStatusFilter('active')}
-        >
-          アクティブ ({statusCounts.active})
-        </Badge>
-        <Badge
-          variant={statusFilter === 'completed' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setStatusFilter('completed')}
-        >
-          完了 ({statusCounts.completed})
-        </Badge>
-      </div>
-
-      {/* Filters and search */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="プロジェクトを検索..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Select
-            value={`${sortField}-${sortDirection}`}
-            onValueChange={value => {
-              const [field, direction] = value.split('-')
-              setSortField(field as SortField)
-              setSortDirection(direction as SortDirection)
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="並び替え" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name-asc">名前 (A-Z)</SelectItem>
-              <SelectItem value="name-desc">名前 (Z-A)</SelectItem>
-              <SelectItem value="created_at-desc">作成日 (新しい順)</SelectItem>
-              <SelectItem value="created_at-asc">作成日 (古い順)</SelectItem>
-              <SelectItem value="deadline-asc">期限 (近い順)</SelectItem>
-              <SelectItem value="deadline-desc">期限 (遠い順)</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex border rounded-lg">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-              className="rounded-r-none"
-            >
-              <Grid className="h-4 w-4" />
+      {/* Unified Toolbar */}
+      <div className="bg-white rounded-xl p-4 border border-border shadow-md">
+        {/* First Row: Search and Actions */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="プロジェクトを検索..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-10 bg-gray-50 border-border hover:bg-gray-100 focus:bg-white transition-colors"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <Button asChild size="default" className="shadow-sm hover:shadow-md transition-all">
+              <Link href="/projects/new">
+                <Plus className="h-5 w-5" />
+                新しいプロジェクト
+              </Link>
             </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="rounded-l-none"
+            
+            <Select
+              value={`${sortField}-${sortDirection}`}
+              onValueChange={value => {
+                const [field, direction] = value.split('-')
+                setSortField(field as SortField)
+                setSortDirection(direction as SortDirection)
+              }}
             >
-              <List className="h-4 w-4" />
-            </Button>
+              <SelectTrigger className="w-[200px] bg-white border-border hover:bg-gray-50">
+                <SortDesc className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="並び替え" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">名前 (A-Z)</SelectItem>
+                <SelectItem value="name-desc">名前 (Z-A)</SelectItem>
+                <SelectItem value="created_at-desc">作成日 (新しい順)</SelectItem>
+                <SelectItem value="created_at-asc">作成日 (古い順)</SelectItem>
+                <SelectItem value="deadline-asc">期限 (近い順)</SelectItem>
+                <SelectItem value="deadline-desc">期限 (遠い順)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="flex bg-white border border-border rounded-lg p-1">
+              <Button
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="rounded-md"
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-md"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Second Row: Status Filter Badges */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>フィルター:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              className="cursor-pointer hover:bg-primary/10 transition-all hover:shadow-sm"
+              onClick={() => setStatusFilter('all')}
+            >
+              <Layers className="h-3 w-3 mr-1" />
+              すべて ({statusCounts.all})
+            </Badge>
+            <Badge
+              variant={statusFilter === 'active' ? 'default' : 'outline'}
+              className="cursor-pointer hover:bg-primary/10 transition-all hover:shadow-sm"
+              onClick={() => setStatusFilter('active')}
+            >
+              アクティブ ({statusCounts.active})
+            </Badge>
+            <Badge
+              variant={statusFilter === 'completed' ? 'default' : 'outline'}
+              className="cursor-pointer hover:bg-primary/10 transition-all hover:shadow-sm"
+              onClick={() => setStatusFilter('completed')}
+            >
+              完了 ({statusCounts.completed})
+            </Badge>
           </div>
         </div>
       </div>
 
       {/* Projects grid/list */}
       {filteredProjects.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="bg-muted/20 rounded-full p-4 mb-4">
+            <Layers className="h-12 w-12 text-muted-foreground/50" />
+          </div>
+          <h3 className="text-lg font-medium text-foreground mb-2">
+            {projects.length === 0 ? 'プロジェクトがありません' : '該当するプロジェクトがありません'}
+          </h3>
+          <p className="text-muted-foreground text-center max-w-sm">
             {projects.length === 0
-              ? 'プロジェクトがありません。新しいプロジェクトを作成してください。'
-              : '検索条件に一致するプロジェクトが見つかりません。'}
+              ? '新しいプロジェクトを作成して、目標達成への第一歩を踏み出しましょう。'
+              : '検索条件を変更してください。'}
           </p>
         </div>
       ) : (

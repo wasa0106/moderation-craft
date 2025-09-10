@@ -234,11 +234,11 @@ export async function syncWorkSession(request: SyncRequest): Promise<SyncResult>
  */
 export async function syncEntry(
   request: SyncRequest,
-  entryType: 'mood_entry' | 'dopamine_entry'
+  entryType: 'mood_entry' | 'dopamine_entry' | 'time_entries'
 ): Promise<SyncResult> {
   const entry = request.payload
-  const prefix = entryType === 'mood_entry' ? 'MOOD' : 'DOPAMINE'
-  const gsiPrefix = entryType === 'mood_entry' ? 'MOOD' : 'DOPAMINE'
+  const prefix = entryType === 'mood_entry' ? 'MOOD' : entryType === 'dopamine_entry' ? 'DOPAMINE' : 'TIME_ENTRY'
+  const gsiPrefix = entryType === 'mood_entry' ? 'MOOD' : entryType === 'dopamine_entry' ? 'DOPAMINE' : 'TIME_ENTRY'
 
   switch (request.operation) {
     case 'CREATE':
@@ -248,7 +248,7 @@ export async function syncEntry(
         SK: `${prefix}#${entry.id}`,
 
         user_time_pk: `${gsiPrefix}#${entry.user_id}`,
-        user_time_sk: `DATE#${entry.timestamp}`,
+        user_time_sk: entryType === 'time_entries' ? `DATE#${entry.date}` : `DATE#${entry.timestamp}`,
 
         entity_type: entryType,
         created_at: entry.created_at || new Date().toISOString(),

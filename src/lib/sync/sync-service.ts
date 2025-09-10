@@ -18,6 +18,7 @@ import {
   scheduleMemoRepository,
   sleepScheduleRepository,
 } from '@/lib/db/repositories'
+import { timeEntryRepository } from '@/lib/db/repositories/time-entry-repository'
 import { SyncQueueItem, DatabaseEntity } from '@/types'
 import { syncLogger } from '@/lib/utils/logger'
 
@@ -381,6 +382,9 @@ export class SyncService {
         case 'sleep_schedule':
           entityData = await sleepScheduleRepository.getById(item.entity_id)
           break
+        case 'time_entries':
+          entityData = await timeEntryRepository.getById(item.entity_id)
+          break
       }
 
       if (!entityData) {
@@ -463,6 +467,9 @@ export class SyncService {
             break
           case 'sleep_schedule':
             entityData = await sleepScheduleRepository.getById(item.entity_id)
+            break
+          case 'time_entries':
+            entityData = await timeEntryRepository.getById(item.entity_id)
             break
         }
 
@@ -596,6 +603,13 @@ export class SyncService {
           entityExists = !!(await scheduleMemoRepository.getById(entityId))
           if (entityExists) {
             syncLogger.debug(`ScheduleMemo ${entityId} synced successfully`)
+          }
+          break
+        case 'time_entries':
+          // TimeEntriesにもis_syncedフィールドがないため、存在確認のみ
+          entityExists = !!(await timeEntryRepository.getById(entityId))
+          if (entityExists) {
+            syncLogger.debug(`TimeEntry ${entityId} synced successfully`)
           }
           break
         default:

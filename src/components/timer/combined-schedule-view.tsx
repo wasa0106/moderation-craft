@@ -3,21 +3,25 @@
  */
 
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
-import { SmallTask, Project, WorkSession } from '@/types'
+import { SmallTask, Project, WorkSession, TimeEntry } from '@/types'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Moon, Sparkles, Brain } from 'lucide-react'
+import { Moon, Sparkles, Brain, Edit2, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { secondsToMinutes } from '@/lib/utils/time-utils'
-import { TaskCard } from '@/components/timer/task-card'
 import { WorkSessionEditDialog } from '@/components/timer/work-session-edit-dialog'
 import { RecordDetailDialog } from '@/components/timer/record-detail-dialog'
+import { TimeEntryCreateDialog } from '@/components/timer/time-entry-create-dialog'
 import { workSessionRepository, dopamineEntryRepository, moodEntryRepository } from '@/lib/db/repositories'
+import { timeEntryRepository } from '@/lib/db/repositories/time-entry-repository'
 import { SyncService } from '@/lib/sync/sync-service'
 import { useToast } from '@/hooks/use-toast'
 import { useSleepSchedule, generateSleepBlocks } from '@/hooks/use-sleep-schedule'
 import { subDays, addDays } from 'date-fns'
 import { DopamineEntry, MoodEntry } from '@/types'
+import { useTimeEntries, useCreateTimeEntry } from '@/hooks/use-time-entries'
+import { Button } from '@/components/ui/button'
+import { Clock } from 'lucide-react'
 
 interface CombinedScheduleViewProps {
   tasks: SmallTask[]
@@ -56,6 +60,23 @@ export function CombinedScheduleView({
   const syncService = SyncService.getInstance()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollPositionKey = `schedule-scroll-${format(date, 'yyyy-MM-dd')}`
+  
+  // TimeEntry作成用フック
+  const { mutate: createTimeEntry } = useCreateTimeEntry(userId)
+  
+  // クリック&ドラッグ選択の状態管理
+  const [selection, setSelection] = useState<{
+    isSelecting: boolean
+    startHour: number
+    startMinute: number
+    endHour: number
+    endMinute: number
+  } | null>(null)
+  const [showTaskDialog, setShowTaskDialog] = useState(false)
+  const [selectedTimeRange, setSelectedTimeRange] = useState<{
+    startTime: Date
+    endTime: Date
+  } | null>(null)
 
   // 現在時刻を状態として管理
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
@@ -69,6 +90,9 @@ export function CombinedScheduleView({
     }
   }, [currentTime])
   const isToday = currentTime ? date.toDateString() === currentTime.toDateString() : false
+
+  // Get TimeEntries for the date
+  const { data: timeEntries = [], refetch } = useTimeEntries(userId, date)
 
   // Get sleep schedule for the date, previous day, and next day
   const { data: sleepSchedule } = useSleepSchedule(userId, date)
@@ -120,23 +144,20 @@ export function CombinedScheduleView({
     return `hsl(${hue}, 18%, 82%)`
   }
 
-  // タスクの高さを計算（15分スロット単位）
+  // タスクの高さを計算（分単位）
   const getItemHeight = (minutes: number): number => {
-    const slots = Math.ceil(minutes / 15) // 15分単位に切り上げ
-    // 30分以下のタスクは最小2スロット（30px）を確保
-    const minSlots = minutes <= 30 ? 2 : 1
-    const baseHeight = Math.max(slots * 15, minSlots * 15)
-    // スロット間に余白を作るため、2px減らす
+    // 最小高さは20pxを確保
+    const baseHeight = Math.max(minutes, 20)
+    // 余白を作るため、2px減らす
     return baseHeight - 2
   }
 
-  // タスクの開始位置を計算（15分スロット単位）
+  // タスクの開始位置を計算（分単位）
   const getItemTop = (time: string): number => {
     const startTime = parseISO(time)
     const hour = startTime.getHours()
     const minute = startTime.getMinutes()
-    const slot = Math.floor(minute / 15) // 15分スロット（0-3）
-    return hour * 60 + slot * 15 // 1時間 = 60px (4スロット × 15px)
+    return hour * 60 + minute // 1時間 = 60px, 1分 = 1px
   }
 
   // セッションに紐づくタスクとプロジェクト情報を取得
@@ -289,6 +310,104 @@ export function CombinedScheduleView({
     }
   }
 
+
+  // マウスイベントハンドラー（クリック&ドラッグ用）
+  const handleMouseDown = useCallback((hour: number, minute: number) => {
+    console.log('Mouse down at:', hour, ':', minute) // 動作確認用
+    setSelection({
+      isSelecting: true,
+      startHour: hour,
+      startMinute: minute,
+      endHour: hour,
+      endMinute: minute,
+    })
+  }, [])
+
+  const handleMouseMove = useCallback((hour: number, minute: number) => {
+    if (selection?.isSelecting) {
+      console.log('Mouse move at:', hour, ':', minute) // 動作確認用
+      setSelection(prev => ({
+        ...prev!,
+        endHour: hour,
+        endMinute: minute,
+      }))
+    }
+  }, [selection?.isSelecting])
+
+  const handleMouseUp = useCallback(() => {
+    console.log('Mouse up, selection:', selection) // 動作確認用
+    if (selection?.isSelecting) {
+      console.log('Creating time range from selection') // 動作確認用
+      // 選択範囲から開始・終了時刻を計算
+      const startHour = Math.min(selection.startHour, selection.endHour)
+      const startMinute = selection.startHour < selection.endHour ? selection.startMinute : 
+                           selection.startHour > selection.endHour ? selection.endMinute :
+                           Math.min(selection.startMinute, selection.endMinute)
+      
+      const endHour = Math.max(selection.startHour, selection.endHour)
+      const endMinute = selection.startHour < selection.endHour ? selection.endMinute :
+                         selection.startHour > selection.endHour ? selection.startMinute :
+                         Math.max(selection.startMinute, selection.endMinute)
+      
+      const startTime = new Date(date)
+      startTime.setHours(startHour, startMinute, 0, 0)
+      
+      const endTime = new Date(date)
+      endTime.setHours(endHour, endMinute, 0, 0)
+      
+      // 最小15分の選択を保証
+      if (endTime.getTime() - startTime.getTime() < 15 * 60 * 1000) {
+        endTime.setTime(startTime.getTime() + 15 * 60 * 1000)
+      }
+      
+      console.log('Setting time range:', { startTime, endTime }) // 動作確認用
+      setSelectedTimeRange({ startTime, endTime })
+      setShowTaskDialog(true)
+      setSelection(null)
+      console.log('Dialog should open now') // 動作確認用
+    }
+  }, [selection, date])
+
+  // TimeEntry作成処理
+  const handleCreateTimeEntry = useCallback((taskId: string) => {
+    if (!selectedTimeRange) return
+
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+
+    console.log('Creating TimeEntry for task:', task.name) // デバッグログ
+
+    createTimeEntry({
+      user_id: userId,
+      small_task_id: taskId,
+      project_id: task.project_id,
+      date: format(date, 'yyyy-MM-dd'),
+      start_time: selectedTimeRange.startTime.toISOString(),
+      end_time: selectedTimeRange.endTime.toISOString(),
+      duration_minutes: Math.round(
+        (selectedTimeRange.endTime.getTime() - selectedTimeRange.startTime.getTime()) / (1000 * 60)
+      ),
+      description: task.name,
+    }, {
+      onSuccess: () => {
+        console.log('TimeEntry created successfully, refetching data...') // デバッグログ
+        // 明示的にrefetchを実行
+        refetch()
+      },
+      onError: (error) => {
+        console.error('Failed to create TimeEntry:', error) // エラーログ
+      }
+    })
+
+    toast({
+      title: '実績を記録しました',
+      description: `${task.name} (${format(selectedTimeRange.startTime, 'HH:mm')} - ${format(selectedTimeRange.endTime, 'HH:mm')})`,
+    })
+
+    setShowTaskDialog(false)
+    setSelectedTimeRange(null)
+  }, [selectedTimeRange, tasks, createTimeEntry, userId, date, toast, refetch])
+
   // スクロール位置の保存
   const saveScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -313,8 +432,9 @@ export function CombinedScheduleView({
     }
   }, [date, isToday, currentHour, scrollPositionKey])
 
-  return (
-    <div className="relative h-full overflow-x-hidden">
+  // 編集モード時のコンテンツをDndContextでラップ
+  const scheduleContent = (
+    <>
       {/* ヘッダー */}
       <div className="sticky top-0 z-20 bg-background border-b">
         <div className="grid grid-cols-[48px_1fr_1px_1fr_1px_32px] h-10">
@@ -405,13 +525,11 @@ export function CombinedScheduleView({
               const dateStr = format(date, 'yyyy-MM-dd')
               if (block.date !== dateStr) return null
 
-              const startSlot = Math.floor(block.startMinute / 15)
-              const top = block.startHour * 60 + startSlot * 15
+              const top = block.startHour * 60 + block.startMinute
               const totalEndMinutes = block.endHour * 60 + block.endMinute
               const totalStartMinutes = block.startHour * 60 + block.startMinute
               const durationMinutes = totalEndMinutes - totalStartMinutes
-              const durationSlots = Math.ceil(durationMinutes / 15)
-              const height = durationSlots * 15
+              const height = durationMinutes
 
               return (
                 <div
@@ -420,7 +538,7 @@ export function CombinedScheduleView({
                   style={{
                     top: `${top}px`,
                     height: `${height}px`,
-                    zIndex: 20,
+                    zIndex: 18,  // クリックスロット(25)より低くする
                     borderLeftColor: 'hsl(137, 8%, 15%)',
                   }}
                 >
@@ -450,7 +568,7 @@ export function CombinedScheduleView({
             {isToday && (
               <div
                 className="absolute w-full h-0.5 bg-red-500 z-50"
-                style={{ top: `${currentHour * 60 + Math.floor(currentMinute / 15) * 15}px` }}
+                style={{ top: `${currentHour * 60 + currentMinute}px` }}
               >
                 <div className="absolute -left-2 -top-1 w-2 h-2 bg-red-500 rounded-full" />
               </div>
@@ -478,34 +596,58 @@ export function CombinedScheduleView({
                   : undefined
               const taskSessions = sessions.filter(s => s.small_task_id === task.id)
 
+              // タスクを表示
               return (
-                <TaskCard
+                <div
                   key={task.id}
-                  task={task}
-                  project={project}
-                  sessions={taskSessions}
-                  isActive={isActive}
-                  onClick={() => onTaskClick?.(task)}
-                  onStartTask={() => onTaskClick?.(task)}
-                  onStatusChange={onTaskStatusChange}
-                  showButtons={true}
-                  compact={task.estimated_minutes <= 45}
+                  className={cn(
+                    'absolute left-0.5 right-4 rounded-sm transition-all cursor-pointer box-border',
+                    'hover:shadow-sm hover:bg-surface-2',
+                    'border-0 border-l-4 overflow-hidden p-1.5',
+                    'text-foreground',
+                    isActive && 'ring-2 ring-primary ring-offset-1'
+                  )}
                   style={{
-                    position: 'absolute',
                     top: `${getItemTop(task.scheduled_start!)}px`,
                     height: `${getItemHeight(task.estimated_minutes)}px`,
-                    left: 2,
-                    right: 16,
-                    zIndex: isActive ? 20 : 20,
+                    zIndex: isActive ? 19 : 18,  // クリックスロット(25)より低くする
+                    ...(project?.color
+                      ? {
+                          backgroundColor: adjustHSLForBackground(project.color),
+                          borderLeftColor: project.color,
+                        }
+                      : {
+                          backgroundColor: 'hsl(137, 2%, 96%)',
+                          borderLeftColor: 'hsl(137, 8%, 15%)',
+                        }),
                   }}
-                />
+                  onClick={() => onTaskClick?.(task)}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <h4 className="text-sm font-medium truncate">{task.name}</h4>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>{task.estimated_minutes}分</span>
+                      {project && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{project.name}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )
             })}
           </div>
           {/* 中央の区切り線 */}
           <div className="bg-border relative" />
           {/* 実績エリア */}
-          <div className="relative bg-primary/5">
+          <div 
+            className="relative bg-primary/5"
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
             {/* 時間ごとの境界線 */}
             {Array.from({ length: 24 }, (_, hour) => (
               <div
@@ -515,17 +657,61 @@ export function CombinedScheduleView({
               />
             ))}
 
+            {/* クリック可能な時間スロット */}
+            {Array.from({ length: 24 * 4 }, (_, index) => {
+              const hour = Math.floor(index / 4)
+              const minute = (index % 4) * 15
+              
+              return (
+                <div
+                  key={`slot-${hour}-${minute}`}
+                  className="absolute left-0 right-0 h-[15px] cursor-crosshair hover:bg-primary/10"
+                  style={{ 
+                    top: `${hour * 60 + minute}px`,
+                    zIndex: 25  // WorkSession(20)やTimeEntry(20)より高くする
+                  }}
+                  onMouseDown={() => handleMouseDown(hour, minute)}
+                  onMouseEnter={() => handleMouseMove(hour, minute)}
+                />
+              )
+            })}
+
+            {/* 選択範囲の視覚的フィードバック */}
+            {selection && (
+              <div
+                className="absolute left-0 right-0 bg-primary/30 border-2 border-primary pointer-events-none"
+                style={{
+                  top: `${Math.min(selection.startHour * 60 + selection.startMinute, selection.endHour * 60 + selection.endMinute)}px`,
+                  height: `${Math.abs((selection.endHour * 60 + selection.endMinute) - (selection.startHour * 60 + selection.startMinute))}px`,
+                  zIndex: 20,
+                }}
+              >
+                <div className="absolute top-0 left-2 text-xs font-medium text-primary">
+                  {format(new Date(date).setHours(
+                    Math.min(selection.startHour, selection.endHour),
+                    selection.startHour < selection.endHour ? selection.startMinute : selection.endMinute
+                  ), 'HH:mm')}
+                </div>
+                <div className="absolute bottom-0 left-2 text-xs font-medium text-primary">
+                  {format(new Date(date).setHours(
+                    Math.max(selection.startHour, selection.endHour),
+                    selection.startHour < selection.endHour ? selection.endMinute : selection.startMinute
+                  ), 'HH:mm')}
+                </div>
+              </div>
+            )}
+
             {/* 現在時刻ライン（実績側） */}
             {isToday && (
               <div
                 className="absolute w-full h-0.5 bg-red-500 z-50"
-                style={{ top: `${currentHour * 60 + Math.floor(currentMinute / 15) * 15}px` }}
+                style={{ top: `${currentHour * 60 + currentMinute}px` }}
               >
                 <div className="absolute -right-2 -top-1 w-2 h-2 bg-red-500 rounded-full" />
               </div>
             )}
 
-            {/* セッション */}
+            {/* セッション（WorkSessionとTimeEntryの統合表示） */}
             {sessions.map((session) => {
               const taskInfo = getTaskAndProject(session)
               const isActive = !session.end_time
@@ -592,7 +778,7 @@ export function CombinedScheduleView({
                   style={{
                     top: `${getItemTop(session.start_time)}px`,
                     height: `${getItemHeight(displayDuration)}px`,
-                    zIndex: isActive ? 20 : 20,
+                    zIndex: isActive ? 19 : 18,  // クリックスロット(25)より低くする
                     ...(taskInfo?.project?.color
                       ? {
                           backgroundColor: adjustHSLForBackground(taskInfo.project.color),
@@ -605,7 +791,7 @@ export function CombinedScheduleView({
                           }
                         : {}),
                   }}
-                  onClick={() => handleSessionClick(session)}
+                  onDoubleClick={() => handleSessionClick(session)}  // ダブルクリックで編集
                 >
                   {taskInfo ? (
                     shouldShowTimeOnSecondLine ? (
@@ -715,6 +901,129 @@ export function CombinedScheduleView({
                 </div>
               )
             })}
+
+            {/* TimeEntry（手動入力の実績） */}
+            {timeEntries.map((entry) => {
+              const task = tasks.find(t => t.id === entry.small_task_id)
+              const project = entry.project_id 
+                ? projects.find(p => p.id === entry.project_id)
+                : task?.project_id 
+                  ? projects.find(p => p.id === task.project_id)
+                  : undefined
+              
+              const duration = entry.duration_minutes
+              const displayDuration = Math.max(duration, 10)
+
+              // 動的なスタイルを計算（WorkSessionと同じロジック）
+              const getDynamicStyles = () => {
+                if (displayDuration <= 15) {
+                  return {
+                    padding: 'p-0.5',
+                    titleSize: 'text-[10px]',
+                    timeSize: 'text-[9px]',
+                  }
+                } else if (displayDuration <= 30) {
+                  return {
+                    padding: 'p-0.5',
+                    titleSize: 'text-xs',
+                    timeSize: 'text-[10px]',
+                  }
+                } else if (displayDuration <= 60) {
+                  return {
+                    padding: 'p-1',
+                    titleSize: 'text-xs',
+                    timeSize: 'text-[11px]',
+                  }
+                } else {
+                  return {
+                    padding: 'p-1.5',
+                    titleSize: 'text-sm',
+                    timeSize: 'text-xs',
+                  }
+                }
+              }
+
+              const styles = getDynamicStyles()
+              const isVeryShort = displayDuration <= 15
+              const shouldShowTimeOnSecondLine = displayDuration > 45 && !isVeryShort
+
+              return (
+                <div
+                  key={`timeentry-${entry.id}`}
+                  className={cn(
+                    'absolute left-0.5 right-4 rounded-sm transition-all cursor-pointer box-border',
+                    'hover:shadow-sm hover:bg-surface-2',
+                    'border-0 border-l-4 overflow-hidden',
+                    styles.padding,
+                    'text-foreground',
+                    !task && !entry.description && 'border-l-border bg-muted/50'
+                  )}
+                  style={{
+                    top: `${getItemTop(entry.start_time)}px`,
+                    height: `${getItemHeight(displayDuration)}px`,
+                    zIndex: 18,  // クリックスロット(25)より低くする
+                    ...(project?.color
+                      ? {
+                          backgroundColor: adjustHSLForBackground(project.color),
+                          borderLeftColor: project.color,
+                        }
+                      : task || entry.description
+                        ? {
+                            backgroundColor: 'hsl(137, 2%, 96%)',
+                            borderLeftColor: 'hsl(137, 8%, 15%)',
+                          }
+                        : {}),
+                  }}
+                  onDoubleClick={() => {  // ダブルクリックで編集
+                    // TimeEntry編集ダイアログを開く（今後実装）
+                  }}
+                >
+                  {shouldShowTimeOnSecondLine ? (
+                    // 2行表示パターン
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="flex-1 min-w-0">
+                          <h4 className={cn('font-medium truncate', styles.titleSize)}>
+                            {task?.name || entry.description || 'タスクなし'}
+                          </h4>
+                        </div>
+                        {entry.focus_level && duration >= 15 && (
+                          <div className="bg-background/20 rounded px-0.5">
+                            <span className={cn('font-bold text-[10px]')}>{entry.focus_level}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className={cn('opacity-80', styles.timeSize)}>
+                        {duration}分 ({format(parseISO(entry.start_time), 'HH:mm', { locale: ja })} - {format(parseISO(entry.end_time), 'HH:mm', { locale: ja })})
+                      </div>
+                    </div>
+                  ) : (
+                    // 1行表示パターン
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <h4 className={cn('font-medium truncate', styles.titleSize)}>
+                          {task?.name || entry.description || 'タスクなし'}
+                        </h4>
+                        <span className={cn('opacity-80 whitespace-nowrap', styles.timeSize)}>
+                          {isVeryShort ? (
+                            `${duration}分`
+                          ) : (
+                            <>
+                              {duration}分 ({format(parseISO(entry.start_time), 'HH:mm', { locale: ja })} - {format(parseISO(entry.end_time), 'HH:mm', { locale: ja })})
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      {entry.focus_level && duration >= 15 && (
+                        <div className="bg-background/20 rounded px-0.5">
+                          <span className={cn('font-bold text-[10px]')}>{entry.focus_level}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
           {/* 中央の区切り線（実績と記録の間） */}
           <div className="bg-border relative" />
@@ -733,7 +1042,7 @@ export function CombinedScheduleView({
             {isToday && (
               <div
                 className="absolute w-full h-0.5 bg-red-500 z-50"
-                style={{ top: `${currentHour * 60 + Math.floor(currentMinute / 15) * 15}px` }}
+                style={{ top: `${currentHour * 60 + currentMinute}px` }}
               />
             )}
 
@@ -827,6 +1136,23 @@ export function CombinedScheduleView({
         onUpdate={handleRecordUpdate}
         onDelete={handleRecordDelete}
       />
+
+      {/* タスク選択ダイアログ */}
+      <TimeEntryCreateDialog
+        open={showTaskDialog}
+        onOpenChange={setShowTaskDialog}
+        startTime={selectedTimeRange?.startTime || null}
+        endTime={selectedTimeRange?.endTime || null}
+        tasks={tasks}
+        projects={projects}
+        onCreateEntry={handleCreateTimeEntry}
+      />
+    </>
+  )
+
+  return (
+    <div className="relative h-full overflow-x-hidden">
+      {scheduleContent}
     </div>
   )
 }

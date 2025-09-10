@@ -995,8 +995,10 @@ export function GanttChart({
                               <div
                                 className={cn(
                                   'absolute inset-y-1',
-                                  // タスク合計時間が超過している場合、プロジェクト終了日後は警告色
-                                  totalTaskHours > totalAvailableHours && isAfterProjectEnd
+                                  // タスクタイプによって表示を変える
+                                  task.task_type === 'recurring' 
+                                    ? 'bg-amber-500 opacity-50 border-2 border-dashed border-amber-600' // 定期タスクは点線表示
+                                    : totalTaskHours > totalAvailableHours && isAfterProjectEnd
                                     ? 'bg-red-500'
                                     : taskStatuses.get(task.id) === 'completed'
                                     ? 'bg-gray-400' // 完了タスクはグレー

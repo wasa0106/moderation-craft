@@ -53,7 +53,7 @@ export class DuckDBClient {
           SET s3_access_key_id='${accessKeyId}';
           SET s3_secret_access_key='${secretAccessKey}';
         `);
-        console.log('S3 configuration applied');
+        // S3 configuration applied
       } else {
         console.warn('AWS credentials not found - S3 access disabled');
       }
@@ -70,7 +70,7 @@ export class DuckDBClient {
     try {
       // Parquet拡張（基本的に組み込み済み）
       await this.conn.query(`LOAD parquet;`);
-      console.log('Parquet extension loaded');
+      // Parquet extension loaded
     } catch (e) {
       console.warn('Parquet extension load failed (may be built-in):', e);
     }
@@ -80,7 +80,7 @@ export class DuckDBClient {
       // WASM環境では利用できない場合がある
       await this.conn.query(`INSTALL httpfs;`);
       await this.conn.query(`LOAD httpfs;`);
-      console.log('HTTPFS extension loaded - S3 access enabled');
+      // HTTPFS extension loaded - S3 access enabled
     } catch (e) {
       console.warn('HTTPFS extension not available - S3 access disabled:', e);
       // S3アクセスは利用できないが、ローカルクエリは実行可能

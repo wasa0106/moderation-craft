@@ -129,7 +129,10 @@ export function TaskCreateDialog({
 
     // 独自に取得したBigTasksを優先し、なければpropsのbigTasksを使用
     const tasksToUse = allProjectBigTasks.length > 0 ? allProjectBigTasks : bigTasks
-    return tasksToUse.filter(task => task.project_id === selectedProjectId)
+    return tasksToUse.filter(task => 
+      task.project_id === selectedProjectId && 
+      task.status !== 'completed'
+    )
   }, [selectedProjectId, allProjectBigTasks, bigTasks])
 
   // 時間を時:分形式に変換
@@ -205,9 +208,14 @@ export function TaskCreateDialog({
     const [endHour, endMinute] = endTimeInput.split(':').map(Number)
 
     const startTotalMinutes = startHour * 60 + startMinute
-    const endTotalMinutes = endHour * 60 + endMinute
+    let endTotalMinutes = endHour * 60 + endMinute
 
-    return Math.max(0, endTotalMinutes - startTotalMinutes)
+    // 終了時間が開始時間より小さい場合は翌日として扱う
+    if (endTotalMinutes <= startTotalMinutes) {
+      endTotalMinutes += 24 * 60 // 1440分（24時間）を追加
+    }
+
+    return endTotalMinutes - startTotalMinutes
   }
 
   const estimatedMinutes = calculateMinutes()
@@ -278,6 +286,11 @@ export function TaskCreateDialog({
           
           const scheduledEnd = new Date(existingTask.scheduled_end || existingTask.scheduled_start)
           scheduledEnd.setHours(endHour, endMinute, 0, 0)
+
+          // 終了時間が開始時間以前の場合、翌日として扱う
+          if (scheduledEnd <= scheduledStart) {
+            scheduledEnd.setDate(scheduledEnd.getDate() + 1)
+          }
           
           updateData.scheduled_start = scheduledStart.toISOString()
           updateData.scheduled_end = scheduledEnd.toISOString()
@@ -327,6 +340,11 @@ export function TaskCreateDialog({
 
         const scheduledEnd = new Date(endTime)
         scheduledEnd.setHours(endHour, endMinute, 0, 0)
+
+        // 終了時間が開始時間以前の場合、翌日として扱う
+        if (scheduledEnd <= scheduledStart) {
+          scheduledEnd.setDate(scheduledEnd.getDate() + 1)
+        }
 
         // 繰り返しパターンを作成
         let recurrencePattern: RecurrencePattern | undefined

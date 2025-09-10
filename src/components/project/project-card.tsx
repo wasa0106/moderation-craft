@@ -90,23 +90,47 @@ export function ProjectCard({
       <ContextMenuTrigger asChild>
         <Card
           className={cn(
-            'hover:shadow-sm transition-shadow duration-200',
-            isOverdue() && 'border-destructive/50',
-            isDeadlineClose && 'border-warning/50',
+            'group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-200',
+            isOverdue() && 'border-destructive',
+            isDeadlineClose && 'border-warning',
+            project.status === 'completed' && 'opacity-80 bg-gray-50',
             className
           )}
+          style={{
+            '--project-color': project.color || 'hsl(var(--primary))'
+          } as React.CSSProperties}
         >
+          {/* Project Color Bar at Top */}
+          {project.color && (
+            <div 
+              className="absolute top-0 left-0 w-full h-1 transition-all duration-300 group-hover:h-1.5"
+              style={{ backgroundColor: project.color }}
+            />
+          )}
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="text-lg font-semibold line-clamp-1">{project.name}</CardTitle>
-                <Badge className={cn('mt-2', getStatusColor(project.status))}>
+                <Badge 
+                  className="mt-2"
+                  style={{
+                    backgroundColor: project.status === 'active' && project.color 
+                      ? `${project.color}20` // 20% opacity
+                      : undefined,
+                    borderColor: project.status === 'active' && project.color 
+                      ? project.color 
+                      : undefined,
+                    color: project.status === 'active' && project.color 
+                      ? project.color 
+                      : undefined
+                  }}
+                >
                   {getStatusLabel(project.status)}
                 </Badge>
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -150,7 +174,7 @@ export function ProjectCard({
             {/* Goal */}
             <div className="flex items-start gap-2">
               <Target className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-muted-foreground line-clamp-2">{project.goal}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2 group-hover:text-foreground/70 transition-colors">{project.goal}</p>
             </div>
 
             {/* Deadline */}
@@ -184,7 +208,13 @@ export function ProjectCard({
                 <span className="text-muted-foreground">進捗</span>
                 <span className="text-muted-foreground">0%</span>
               </div>
-              <Progress value={0} className="h-2" />
+              <Progress 
+                value={0} 
+                className="h-2"
+                style={{
+                  '--progress-color': project.color || 'hsl(var(--primary))'
+                } as React.CSSProperties}
+              />
             </div>
 
             {/* Created date */}
@@ -195,7 +225,28 @@ export function ProjectCard({
 
             {/* Quick action button */}
             {onViewTasks && (
-              <Button onClick={() => onViewTasks(project)} className="w-full" size="sm">
+              <Button 
+                onClick={() => onViewTasks(project)} 
+                className="w-full bg-white transition-all hover:shadow-md" 
+                size="sm"
+                variant="outline"
+                style={{
+                  borderColor: project.color || 'rgb(229, 231, 235)',
+                  color: project.color || undefined,
+                } as React.CSSProperties}
+                onMouseEnter={(e) => {
+                  if (project.color) {
+                    e.currentTarget.style.backgroundColor = project.color;
+                    e.currentTarget.style.color = 'white';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (project.color) {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.color = project.color;
+                  }
+                }}
+              >
                 <Play className="h-4 w-4 mr-2" />
                 詳細を見る
               </Button>
