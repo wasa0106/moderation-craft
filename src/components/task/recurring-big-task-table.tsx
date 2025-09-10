@@ -432,8 +432,8 @@ const NewTaskRow = memo(function NewTaskRow({
     start_date: format(new Date(), 'yyyy-MM-dd'),
     end_date: format(new Date(), 'yyyy-MM-dd'),
     recurrence: {
-      frequency: '',
-      hours_per_occurrence: '',
+      frequency: 'daily' as const,
+      hours_per_occurrence: 1,
     },
   })
 
@@ -452,7 +452,7 @@ const NewTaskRow = memo(function NewTaskRow({
         ...prev,
         recurrence: {
           ...prev.recurrence,
-          frequency: prev.recurrence?.frequency || '',
+          frequency: prev.recurrence?.frequency || 'daily' as const,
           hours_per_occurrence: value,
         },
       }))
@@ -473,8 +473,8 @@ const NewTaskRow = memo(function NewTaskRow({
         start_date: format(new Date(), 'yyyy-MM-dd'),
         end_date: format(new Date(), 'yyyy-MM-dd'),
         recurrence: {
-          frequency: '',
-          hours_per_occurrence: '',
+          frequency: 'daily' as const,
+          hours_per_occurrence: 1,
         },
       })
     }
