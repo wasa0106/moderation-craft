@@ -365,7 +365,7 @@ const NewTaskRow = memo(function NewTaskRow({
   const [newTask, setNewTask] = useState<Partial<BigTask>>({
     name: '',
     category: '',
-    estimated_hours: '',
+    estimated_hours: 0,
     status: 'active',
     task_type: 'flow',
   })
@@ -381,7 +381,7 @@ const NewTaskRow = memo(function NewTaskRow({
       setNewTask({
         name: '',
         category: '',
-        estimated_hours: '',
+        estimated_hours: 0,
         status: 'active',
         task_type: 'flow',
       })
