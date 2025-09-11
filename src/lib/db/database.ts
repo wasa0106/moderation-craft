@@ -523,6 +523,28 @@ export class ModerationCraftDatabase extends Dexie implements DatabaseOperations
         'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
     })
 
+    // Version 20: Ensure sync_queue table exists (fix for missing object store error)
+    this.version(20).stores({
+      users: 'id, email, created_at, updated_at',
+      projects: 'id, user_id, status, updated_at, deadline, color',
+      big_tasks: 'id, project_id, user_id, category, start_date, status, updated_at',
+      small_tasks:
+        'id, big_task_id, user_id, project_id, scheduled_start, scheduled_end, status, is_emergency, task_type, is_reportable, recurrence_enabled, recurrence_parent_id, updated_at, *tags',
+      work_sessions:
+        'id, small_task_id, user_id, start_time, end_time, is_synced, created_at, duration_seconds',
+      time_entries:
+        'id, [user_id+date], user_id, small_task_id, project_id, big_task_id, date, start_time, end_time, duration_minutes, created_at, updated_at',
+      mood_entries: 'id, user_id, timestamp, mood_level, created_at',
+      dopamine_entries: 'id, user_id, timestamp, event_description, created_at',
+      daily_conditions: 'id, date, user_id, fitbit_sync_date, created_at',
+      category_colors: 'id, user_id, category_name, color_code, created_at, updated_at',
+      schedule_memos: 'id, [user_id+week_start_date], created_at, updated_at',
+      sleep_schedules:
+        'id, [user_id+date_of_sleep], scheduled_start_time, scheduled_end_time, actual_data_source, created_at, updated_at',
+      sync_queue:
+        'id, user_id, operation_id, operation_type, entity_type, entity_id, status, timestamp, retry_count, created_at, updated_at',
+    })
+
     this.users.hook('creating', (primKey, obj) => {
       const timestamps = this.createTimestamps()
       obj.created_at = timestamps.created_at

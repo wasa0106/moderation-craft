@@ -11,7 +11,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select'
-import { ChevronDown, ChevronRight, Trash2, CheckCircle2, Circle, GripVertical, Pencil, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, Trash2, CheckCircle2, Circle, GripVertical, Pencil, Zap, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
@@ -167,6 +167,7 @@ const SortableRow = memo(function SortableRow({
   getCellKey,
 }: SortableRowProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const rowRef = useRef<HTMLTableRowElement>(null)
   const {
     attributes,
     listeners,
@@ -204,9 +205,31 @@ const SortableRow = memo(function SortableRow({
     }
   }, [task.category, rowIndex, focusedCell])
 
+  // クリックアウトで編集モードを終了
+  useEffect(() => {
+    if (!isEditing) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      // 行の外側をクリックした場合
+      if (rowRef.current && !rowRef.current.contains(event.target as Node)) {
+        setIsEditing(false)
+      }
+    }
+
+    // クリックイベントリスナーを追加
+    document.addEventListener('mousedown', handleClickOutside)
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isEditing])
+
   return (
     <tr
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node)
+        rowRef.current = node
+      }}
       style={style}
       className={cn(
         'sortable-item',
@@ -375,8 +398,15 @@ const NewTaskRow = memo(function NewTaskRow({
   }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, col: number) => {
-    if (e.key === 'Enter' && !e.shiftKey && newTask.name?.trim()) {
-      e.preventDefault()
+    if (e.key === 'Enter') {
+      e.preventDefault()  // Enterキーを無効化
+    } else {
+      onKeyDown(e, rowIndex, col)
+    }
+  }, [onKeyDown, rowIndex])
+
+  const handleCreateTask = useCallback(() => {
+    if (newTask.name?.trim()) {
       onCreateTask(newTask)
       setNewTask({
         name: '',
@@ -392,10 +422,8 @@ const NewTaskRow = memo(function NewTaskRow({
           nameInput.focus()
         }
       }, 100)
-    } else {
-      onKeyDown(e, rowIndex, col)
     }
-  }, [newTask, onCreateTask, onKeyDown, rowIndex, cellRefs, getCellKey])
+  }, [newTask, onCreateTask, rowIndex, cellRefs, getCellKey])
 
   const categoryClasses = useMemo(() => {
     const isOther = !newTask.category || newTask.category === 'その他'
@@ -475,7 +503,18 @@ const NewTaskRow = memo(function NewTaskRow({
       </td>
 
       <td>
-        <div className="text-right text-muted-foreground">-</div>
+        <div className="flex items-center justify-end">
+          <Button
+            size="sm"
+            variant="default"
+            onClick={handleCreateTask}
+            disabled={!newTask.name?.trim()}
+            className="h-7"
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            登録
+          </Button>
+        </div>
       </td>
     </tr>
   )
@@ -587,29 +626,30 @@ export function FlowBigTaskTable({
           }, 0)
         }
         break
-      case 'ArrowLeft':
-        e.preventDefault()
-        if (col > 1) {
-          setFocusedCell({ row, col: col - 1 })
-          setTimeout(() => {
-            const cell = cellRefs.current.get(getCellKey(row, col - 1))
-            if (cell && cell instanceof HTMLElement) {
-              cell.focus()
-            }
-          }, 0)
-        }
-        break
-      case 'ArrowRight':
       case 'Tab':
         e.preventDefault()
-        if (col < maxCol) {
-          setFocusedCell({ row, col: col + 1 })
-          setTimeout(() => {
-            const cell = cellRefs.current.get(getCellKey(row, col + 1))
-            if (cell && cell instanceof HTMLElement) {
-              cell.focus()
-            }
-          }, 0)
+        if (e.shiftKey) {
+          // Shift+Tab: 左のセルへ移動
+          if (col > 1) {
+            setFocusedCell({ row, col: col - 1 })
+            setTimeout(() => {
+              const cell = cellRefs.current.get(getCellKey(row, col - 1))
+              if (cell && cell instanceof HTMLElement) {
+                cell.focus()
+              }
+            }, 0)
+          }
+        } else {
+          // Tab: 右のセルへ移動
+          if (col < maxCol) {
+            setFocusedCell({ row, col: col + 1 })
+            setTimeout(() => {
+              const cell = cellRefs.current.get(getCellKey(row, col + 1))
+              if (cell && cell instanceof HTMLElement) {
+                cell.focus()
+              }
+            }, 0)
+          }
         }
         break
     }
