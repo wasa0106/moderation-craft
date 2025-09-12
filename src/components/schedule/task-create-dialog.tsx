@@ -146,7 +146,12 @@ export function TaskCreateDialog({
     if (editMode && existingTask) {
       // 編集モード：既存タスクからデータを読み込む
       setTaskName(existingTask.name)
-      setTaskType(existingTask.task_type || 'project')
+      setTaskType(
+        existingTask.task_type === 'project' || 
+        existingTask.task_type === 'routine' 
+          ? existingTask.task_type 
+          : 'project'
+      )
       setSelectedProjectId(existingTask.project_id || '')
       setSelectedBigTaskId(existingTask.big_task_id || '')
       

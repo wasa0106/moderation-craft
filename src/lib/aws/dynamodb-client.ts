@@ -23,9 +23,19 @@ if (isLocal) {
   }
 } else if (isServer) {
   // サーバーサイドでのみ認証情報を設定
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
+  
+  if (!accessKeyId || !secretAccessKey) {
+    console.error('Missing AWS credentials:', {
+      AWS_ACCESS_KEY_ID: accessKeyId ? 'Set' : 'Missing',
+      AWS_SECRET_ACCESS_KEY: secretAccessKey ? 'Set' : 'Missing',
+    })
+  }
+  
   clientConfig.credentials = {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: accessKeyId || '',
+    secretAccessKey: secretAccessKey || '',
   }
 }
 

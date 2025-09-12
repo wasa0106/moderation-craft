@@ -1003,6 +1003,7 @@ export function CombinedScheduleView({
                       created_at: entry.created_at,
                       updated_at: entry.updated_at,
                       completed_task_ids: null,
+                      is_synced: false,
                     } as WorkSession)
                   }}
                 >

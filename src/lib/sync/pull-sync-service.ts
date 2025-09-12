@@ -58,9 +58,10 @@ export class PullSyncService {
         syncLogger.error('プル同期APIエラー:', {
           status: response.status,
           statusText: response.statusText,
-          errorText: errorText.substring(0, 200), // 最初の200文字のみ
+          errorText: errorText.substring(0, 500), // エラー詳細を500文字まで表示
+          url: '/api/sync/pull',
         })
-        throw new Error(`プル同期APIエラー: ${response.status} ${response.statusText}`)
+        throw new Error(`プル同期APIエラー: ${response.status} ${response.statusText} - ${errorText.substring(0, 200)}`)
       }
 
       const result = await response.json()
@@ -100,7 +101,12 @@ export class PullSyncService {
         })
         syncStore.addSyncError('ネットワークエラー: 同期サーバーに接続できません')
       } else {
-        syncLogger.error('プル同期エラー:', error)
+        // エラーオブジェクトの詳細を正しくログに記録
+        syncLogger.error('プル同期エラー:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          error: String(error),
+        })
         syncStore.addSyncError(error instanceof Error ? error.message : 'プル同期エラー')
       }
     } finally {
