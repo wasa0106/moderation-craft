@@ -72,6 +72,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
+  // Get project first before using it in state initializers
+  const project = projects.find(p => p.id === resolvedParams?.id)
+  
   // 作業時間設定のstate
   const [workableWeekdays, setWorkableWeekdays] = useState<boolean[]>(
     project?.workable_weekdays || [true, true, true, true, true, false, false]
@@ -86,8 +89,6 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
     project?.holiday_work_hours || 0
   )
   const [isSavingWorkSchedule, setIsSavingWorkSchedule] = useState(false)
-
-  const project = projects.find(p => p.id === resolvedParams?.id)
   
   // プロジェクトが変更されたら作業時間設定を更新
   useEffect(() => {
@@ -697,11 +698,14 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                   onClick={async () => {
                     setIsSavingWorkSchedule(true)
                     try {
-                      await updateProject(project.id, {
-                        workable_weekdays: workableWeekdays,
-                        weekday_hours: weekdayHours,
-                        exclude_holidays: excludeHolidays,
-                        holiday_work_hours: holidayWorkHours,
+                      await updateProject({ 
+                        id: project.id, 
+                        data: {
+                          workable_weekdays: workableWeekdays,
+                          weekday_hours: weekdayHours,
+                          exclude_holidays: excludeHolidays,
+                          holiday_work_hours: holidayWorkHours,
+                        }
                       })
                       toast.success('作業時間設定を保存しました')
                     } catch (error) {
