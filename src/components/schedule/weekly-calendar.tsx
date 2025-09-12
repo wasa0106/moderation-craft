@@ -106,8 +106,8 @@ function DraggableTask({
       {...listeners}
       {...attributes}
       className={cn(
-        'p-2 rounded-lg cursor-move transition-all hover:scale-105 hover:shadow-sm',
-        'text-xs shadow-sm border',
+        'p-2 rounded-lg cursor-move transition-all hover:scale-105',
+        'text-xs border',
         project?.color ? 'text-primary-foreground border-border' : color,
         isDragging && 'opacity-50'
       )}
@@ -303,7 +303,7 @@ function DraggableScheduledTask({
       {...(isResizing || isOverResizeHandle ? {} : listeners)}
       {...(isResizing || isOverResizeHandle ? {} : attributes)}
       className={cn(
-        'absolute left-0 right-0 mx-1 rounded text-xs shadow-sm z-[20] group',
+        'absolute left-0 right-0 mx-1 rounded text-xs z-[20] group',
         'border hover:opacity-80 transition-opacity overflow-hidden',
         slots <= 2 ? 'p-0.5' : 'p-1',
         blockProject?.color
@@ -625,9 +625,9 @@ export function WeeklyCalendar({
   const weeklyScheduledMinutes = useMemo(() => {
     const scheduledMap = new Map<string, number>()
     
-    // smallTasksから各BigTaskのスケジュール済み時間を集計
+    // smallTasksから各BigTaskのスケジュール済み時間を集計（実績専用タスクは除外）
     smallTasks.forEach(task => {
-      if (task.big_task_id && task.scheduled_start && task.scheduled_end) {
+      if (task.task_type !== 'actual' && task.big_task_id && task.scheduled_start && task.scheduled_end) {
         const current = scheduledMap.get(task.big_task_id) || 0
         scheduledMap.set(task.big_task_id, current + task.estimated_minutes)
       }
@@ -1313,22 +1313,7 @@ export function WeeklyCalendar({
         </div>
       </div>
 
-      {/* Drag Overlay */}
-      <DragOverlay>
-        {activeId && activeTask && (
-          <div className="opacity-90">
-            <DraggableTask
-              task={activeTask}
-              color={getProjectColor(activeTask.project_id || '')}
-              project={
-                activeTask.task_type !== 'routine'
-                  ? projects.find(p => p.id === activeTask.project_id)
-                  : undefined
-              }
-            />
-          </div>
-        )}
-      </DragOverlay>
+      {/* Drag Overlay - Removed to eliminate shadow during drag */}
 
       {/* Task Create Dialog */}
       <TaskCreateDialog

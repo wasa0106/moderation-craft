@@ -102,7 +102,7 @@ export interface SmallTask extends DatabaseEntity {
   is_emergency?: boolean
   project_id?: string
   actual_minutes?: number
-  task_type?: 'project' | 'routine'
+  task_type?: 'project' | 'routine' | 'actual'
   is_reportable?: boolean
   recurrence_enabled?: boolean
   recurrence_pattern?: RecurrencePattern

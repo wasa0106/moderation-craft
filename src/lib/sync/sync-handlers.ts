@@ -28,6 +28,8 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
   const project = request.payload
   console.log('syncProject呼び出し:', request.operation, project.id)
   console.log('DynamoDBテーブル名:', TABLE_NAME)
+  console.log('プロジェクトステータス:', project.status)
+  console.log('プロジェクトupdated_at:', project.updated_at)
 
   switch (request.operation) {
     case 'CREATE':
@@ -45,7 +47,7 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
         // GSI用のキー（管理用）
         entity_type: 'project',
         created_at: project.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(), // 更新時は常に現在時刻
+        updated_at: project.updated_at || new Date().toISOString(), // ローカルのupdated_atを優先、なければ現在時刻
 
         ...project,
       }
@@ -54,6 +56,8 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
         TableName: TABLE_NAME,
         PK: item.PK,
         SK: item.SK,
+        status: item.status,
+        updated_at: item.updated_at,
       })
 
       await dynamoDb.send(
@@ -63,11 +67,15 @@ export async function syncProject(request: SyncRequest): Promise<SyncResult> {
         })
       )
 
-      console.log('DynamoDB PutCommand成功')
+      console.log('DynamoDB PutCommand成功:', {
+        id: project.id,
+        status: item.status,
+        updated_at: item.updated_at,
+      })
 
       return {
         success: true,
-        message: `Projectを${request.operation === 'CREATE' ? '作成' : '更新'}しました`,
+        message: `Projectを${request.operation === 'CREATE' ? '作成' : '更新'}しました (status: ${item.status})`,
         syncedItem: item,
         syncedEntityId: project.id,
         syncedEntityType: 'project',

@@ -6,7 +6,7 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Clock, Search } from 'lucide-react'
+import { Clock, Search, Plus } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,19 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { SmallTask, Project } from '@/types'
+import { SmallTask, Project, BigTask } from '@/types'
 import { cn } from '@/lib/utils'
+import { useCreateSmallTask } from '@/hooks/use-small-tasks'
+import { useBigTasks } from '@/hooks/use-big-tasks'
+import { useCreateTimeEntry } from '@/hooks/use-time-entries'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface TimeEntryCreateDialogProps {
   open: boolean
@@ -42,6 +53,17 @@ export function TimeEntryCreateDialog({
 }: TimeEntryCreateDialogProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [isCreatingNewTask, setIsCreatingNewTask] = useState(false)
+  const [newTaskName, setNewTaskName] = useState('')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const [selectedBigTaskId, setSelectedBigTaskId] = useState<string>('')
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number>(30)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Hooks for creating new task
+  const { createSmallTask } = useCreateSmallTask('current-user')
+  const { bigTasks } = useBigTasks('current-user')
+  const { mutate: createTimeEntry } = useCreateTimeEntry('current-user')
 
   // タスクのフィルタリングとグループ化
   const groupedTasks = useMemo(() => {
@@ -81,14 +103,69 @@ export function TimeEntryCreateDialog({
     ? Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))
     : 0
 
-  const handleSubmit = () => {
-    if (selectedTaskId) {
+  const handleSubmit = async () => {
+    if (isCreatingNewTask && newTaskName && selectedProjectId && selectedBigTaskId) {
+      setIsSubmitting(true)
+      try {
+        // Create new SmallTask (actual type - for tracking only)
+        const newTask = await createSmallTask({
+          user_id: 'current-user',
+          project_id: selectedProjectId,
+          big_task_id: selectedBigTaskId,
+          name: newTaskName,
+          estimated_minutes: estimatedMinutes,
+          status: 'pending',
+          task_type: 'actual', // 実績専用タスク
+          scheduled_start: null,  // 予定には表示しない
+          scheduled_end: null,    // 予定には表示しない
+        })
+        
+        // Create TimeEntry for the new task
+        if (startTime && endTime) {
+          createTimeEntry({
+            small_task_id: newTask.id,
+            project_id: selectedProjectId,
+            big_task_id: selectedBigTaskId,
+            date: format(startTime, 'yyyy-MM-dd'),
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            duration_minutes: duration,
+            description: newTaskName,
+          }, {
+            onSuccess: () => {
+              console.log('TimeEntry created successfully for new task')
+              // Reset form and close dialog
+              setNewTaskName('')
+              setSelectedProjectId('')
+              setSelectedBigTaskId('')
+              setEstimatedMinutes(30)
+              setIsCreatingNewTask(false)
+              setSearchQuery('')
+              onOpenChange(false)
+            },
+            onError: (error) => {
+              console.error('Failed to create TimeEntry:', error)
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Failed to create new task:', error)
+      } finally {
+        setIsSubmitting(false)
+      }
+    } else if (selectedTaskId) {
       onCreateEntry(selectedTaskId)
       setSelectedTaskId(null)
       setSearchQuery('')
       onOpenChange(false)
     }
   }
+  
+  // Filter BigTasks by selected project
+  const projectBigTasks = useMemo(() => {
+    if (!selectedProjectId) return []
+    return bigTasks.filter(bt => bt.project_id === selectedProjectId)
+  }, [bigTasks, selectedProjectId])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,19 +184,98 @@ export function TimeEntryCreateDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* 検索フィールド */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="タスクを検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          {/* 新規タスク作成ボタン */}
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            onClick={() => setIsCreatingNewTask(!isCreatingNewTask)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            新規タスクを作成
+          </Button>
+          
+          {/* 新規タスク作成フォーム */}
+          {isCreatingNewTask && (
+            <div className="space-y-3 p-3 border rounded-lg bg-surface-1">
+              <div className="space-y-2">
+                <Label>プロジェクト *</Label>
+                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="プロジェクトを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: project.color || '#666' }}
+                          />
+                          {project.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>BigTask *</Label>
+                <Select 
+                  value={selectedBigTaskId} 
+                  onValueChange={setSelectedBigTaskId}
+                  disabled={!selectedProjectId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="BigTaskを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projectBigTasks.map(bigTask => (
+                      <SelectItem key={bigTask.id} value={bigTask.id}>
+                        {bigTask.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>タスク名 *</Label>
+                <Input
+                  placeholder="タスク名を入力"
+                  value={newTaskName}
+                  onChange={(e) => setNewTaskName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>見積時間（分）</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={estimatedMinutes}
+                  onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
+                />
+              </div>
+            </div>
+          )}
+          
+          {/* 既存タスクの検索・選択 */}
+          {!isCreatingNewTask && (
+            <>
+              {/* 検索フィールド */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="タスクを検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
 
-          {/* タスクリスト */}
-          <ScrollArea className="h-[300px] border rounded-lg">
+              {/* タスクリスト */}
+              <ScrollArea className="h-[250px] border rounded-lg">
             <div className="p-2">
               {Array.from(groupedTasks.entries()).map(([groupId, groupTasks]) => {
                 const project = groupId === 'routine' 
@@ -173,10 +329,12 @@ export function TimeEntryCreateDialog({
                 </div>
               )}
             </div>
-          </ScrollArea>
+              </ScrollArea>
+            </>
+          )}
 
           {/* 選択中のタスク表示 */}
-          {selectedTask && (
+          {selectedTask && !isCreatingNewTask && (
             <div className="p-3 bg-surface-1 rounded-lg border">
               <div className="flex items-center gap-2">
                 {selectedProject && (
@@ -200,8 +358,15 @@ export function TimeEntryCreateDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} disabled={!selectedTaskId}>
-            記録する
+          <Button 
+            onClick={handleSubmit} 
+            disabled={
+              isSubmitting ||
+              (!selectedTaskId && !isCreatingNewTask) ||
+              (isCreatingNewTask && (!newTaskName || !selectedProjectId || !selectedBigTaskId))
+            }
+          >
+            {isSubmitting ? '作成中...' : isCreatingNewTask ? 'タスクを作成して記録' : '記録する'}
           </Button>
         </DialogFooter>
       </DialogContent>

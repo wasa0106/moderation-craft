@@ -575,9 +575,22 @@ export const useProjectCreationStore = create<ProjectCreationStore>()(
           errors.endDate = '期限は開始日より後の日付を選択してください'
         }
 
-        const validTasks = tasks.filter(task => task.name.trim() && task.estimatedHours > 0)
-        if (validTasks.length === 0) {
-          errors.tasks = '最低1つの有効なタスクを入力してください'
+        // フロータスクと定期タスクを分けてチェック
+        const validFlowTasks = tasks.filter(task => 
+          task.task_type !== 'recurring' && 
+          task.name.trim() && 
+          task.estimatedHours > 0
+        )
+        const validRecurringTasks = tasks.filter(task => 
+          task.task_type === 'recurring' && 
+          task.name.trim() && 
+          task.recurrence && 
+          task.recurrence.hours_per_occurrence > 0
+        )
+        
+        // どちらか一方でもあればOK
+        if (validFlowTasks.length === 0 && validRecurringTasks.length === 0) {
+          errors.tasks = 'フロータスクまたは定期タスクを最低1つ入力してください'
         }
 
         set({ validationErrors: errors })

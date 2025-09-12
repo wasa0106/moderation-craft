@@ -20,6 +20,7 @@ import { useSleepSchedule, generateSleepBlocks } from '@/hooks/use-sleep-schedul
 import { subDays, addDays } from 'date-fns'
 import { DopamineEntry, MoodEntry } from '@/types'
 import { useTimeEntries, useCreateTimeEntry } from '@/hooks/use-time-entries'
+import { useSmallTasks } from '@/hooks/use-small-tasks'
 import { Button } from '@/components/ui/button'
 import { Clock } from 'lucide-react'
 
@@ -93,6 +94,19 @@ export function CombinedScheduleView({
 
   // Get TimeEntries for the date
   const { data: timeEntries = [], refetch } = useTimeEntries(userId, date)
+  
+  // Get actual-type tasks (for time entry display)
+  const { smallTasks: allSmallTasks } = useSmallTasks(userId)
+  const actualTasks = useMemo(() => 
+    allSmallTasks.filter(t => t.task_type === 'actual'),
+    [allSmallTasks]
+  )
+  
+  // Combine tasks from props with actual-type tasks
+  const allTasks = useMemo(() => 
+    [...tasks, ...actualTasks],
+    [tasks, actualTasks]
+  )
 
   // Get sleep schedule for the date, previous day, and next day
   const { data: sleepSchedule } = useSleepSchedule(userId, date)
@@ -372,7 +386,7 @@ export function CombinedScheduleView({
   const handleCreateTimeEntry = useCallback((taskId: string) => {
     if (!selectedTimeRange) return
 
-    const task = tasks.find(t => t.id === taskId)
+    const task = allTasks.find(t => t.id === taskId)
     if (!task) return
 
     console.log('Creating TimeEntry for task:', task.name) // デバッグログ
@@ -406,7 +420,7 @@ export function CombinedScheduleView({
 
     setShowTaskDialog(false)
     setSelectedTimeRange(null)
-  }, [selectedTimeRange, tasks, createTimeEntry, userId, date, toast, refetch])
+  }, [selectedTimeRange, allTasks, createTimeEntry, userId, date, toast, refetch])
 
   // スクロール位置の保存
   const saveScrollPosition = useCallback(() => {
@@ -904,7 +918,7 @@ export function CombinedScheduleView({
 
             {/* TimeEntry（手動入力の実績） */}
             {timeEntries.map((entry) => {
-              const task = tasks.find(t => t.id === entry.small_task_id)
+              const task = allTasks.find(t => t.id === entry.small_task_id)
               const project = entry.project_id 
                 ? projects.find(p => p.id === entry.project_id)
                 : task?.project_id 
