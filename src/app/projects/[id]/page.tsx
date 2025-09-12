@@ -15,6 +15,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useProjects } from '@/hooks/use-projects'
 import { useBigTasks } from '@/hooks/use-big-tasks'
 import { useSmallTasks } from '@/hooks/use-small-tasks'
@@ -30,6 +33,7 @@ import {
   Settings,
   BarChart3,
   XCircle,
+  Clock,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -67,8 +71,33 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const [isCompleting, setIsCompleting] = useState(false)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  
+  // 作業時間設定のstate
+  const [workableWeekdays, setWorkableWeekdays] = useState<boolean[]>(
+    project?.workable_weekdays || [true, true, true, true, true, false, false]
+  )
+  const [weekdayHours, setWeekdayHours] = useState<number[]>(
+    project?.weekday_hours || [8, 8, 8, 8, 8, 0, 0]
+  )
+  const [excludeHolidays, setExcludeHolidays] = useState<boolean>(
+    project?.exclude_holidays ?? true
+  )
+  const [holidayWorkHours, setHolidayWorkHours] = useState<number>(
+    project?.holiday_work_hours || 0
+  )
+  const [isSavingWorkSchedule, setIsSavingWorkSchedule] = useState(false)
 
   const project = projects.find(p => p.id === resolvedParams?.id)
+  
+  // プロジェクトが変更されたら作業時間設定を更新
+  useEffect(() => {
+    if (project) {
+      setWorkableWeekdays(project.workable_weekdays || [true, true, true, true, true, false, false])
+      setWeekdayHours(project.weekday_hours || [8, 8, 8, 8, 8, 0, 0])
+      setExcludeHolidays(project.exclude_holidays ?? true)
+      setHolidayWorkHours(project.holiday_work_hours || 0)
+    }
+  }, [project])
 
   if (!resolvedParams) {
     return (
@@ -371,8 +400,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
       {/* Main Content */}
       <Tabs defaultValue="tasks" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tasks">タスク管理</TabsTrigger>
+          <TabsTrigger value="work-schedule">作業時間設定</TabsTrigger>
           <TabsTrigger value="settings">設定</TabsTrigger>
         </TabsList>
 
@@ -562,6 +592,130 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                   reflowScope="category"
                 />
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Work Schedule Tab */}
+        <TabsContent value="work-schedule" className="space-y-6">
+          <Card className="border border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                投下可能時間の計算
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <Label>各曜日の作業時間</Label>
+                <div className="space-y-2">
+                  {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
+                    <div key={day} className="flex items-center gap-3">
+                      <Checkbox
+                        id={`weekday-${index}`}
+                        checked={workableWeekdays[index]}
+                        onCheckedChange={checked => {
+                          const newWeekdays = [...workableWeekdays]
+                          newWeekdays[index] = checked as boolean
+                          setWorkableWeekdays(newWeekdays)
+                        }}
+                        className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                      />
+                      <Label
+                        htmlFor={`weekday-${index}`}
+                        className="text-sm font-normal cursor-pointer w-8"
+                      >
+                        {day}
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="24"
+                        step="0.5"
+                        value={weekdayHours[index] === 0 ? '' : weekdayHours[index]}
+                        onChange={e => {
+                          const newHours = [...weekdayHours]
+                          newHours[index] = parseFloat(e.target.value) || 0
+                          setWeekdayHours(newHours)
+                        }}
+                        disabled={!workableWeekdays[index]}
+                        className="w-20"
+                      />
+                      <span className="text-sm text-muted-foreground">時間/日</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="excludeHolidays"
+                    checked={excludeHolidays}
+                    onCheckedChange={checked => setExcludeHolidays(checked as boolean)}
+                    className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                  />
+                  <Label
+                    htmlFor="excludeHolidays"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    祝日を作業不可日とする
+                  </Label>
+                </div>
+                {!excludeHolidays && (
+                  <div className="ml-6 space-y-2">
+                    <Label className="text-sm">祝日の作業時間（時間/日）</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="24"
+                      step="0.5"
+                      value={holidayWorkHours === 0 ? '' : holidayWorkHours}
+                      onChange={e => setHolidayWorkHours(parseFloat(e.target.value) || 0)}
+                      className="w-32"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-accent/10 rounded-lg border border-accent/20">
+                <p className="text-sm font-medium text-accent-foreground">
+                  週間作業可能時間: {weekdayHours.reduce((sum, hours, index) => 
+                    workableWeekdays[index] ? sum + hours : sum, 0
+                  )}時間
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {['月', '火', '水', '木', '金', '土', '日']
+                    .map((day, i) => workableWeekdays[i] && weekdayHours[i] > 0 ? `${day}: ${weekdayHours[i]}h` : null)
+                    .filter(Boolean)
+                    .join(' + ')}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  onClick={async () => {
+                    setIsSavingWorkSchedule(true)
+                    try {
+                      await updateProject(project.id, {
+                        workable_weekdays: workableWeekdays,
+                        weekday_hours: weekdayHours,
+                        exclude_holidays: excludeHolidays,
+                        holiday_work_hours: holidayWorkHours,
+                      })
+                      toast.success('作業時間設定を保存しました')
+                    } catch (error) {
+                      console.error('Failed to save work schedule:', error)
+                      toast.error('作業時間設定の保存に失敗しました')
+                    } finally {
+                      setIsSavingWorkSchedule(false)
+                    }
+                  }}
+                  disabled={isSavingWorkSchedule}
+                >
+                  {isSavingWorkSchedule ? '保存中...' : '設定を保存'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

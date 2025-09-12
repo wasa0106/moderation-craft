@@ -8,14 +8,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
 import { SmallTask } from '@/types'
 import { useDebounce } from '@/hooks/use-debounce'
 import { smallTaskRepository } from '@/lib/db/repositories'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { Markdown } from '@/components/ui/markdown'
-import { Eye, Edit } from 'lucide-react'
 
 interface TaskDetailsFormProps {
   task: SmallTask | null
@@ -35,15 +32,7 @@ export function TaskDetailsForm({ task, onUpdate, className }: TaskDetailsFormPr
   })
 
   const [isSaving, setIsSaving] = useState(false)
-  const [previewMode, setPreviewMode] = useState<Record<string, boolean>>({
-    goal: false,
-    dod: false,
-    inputs: false,
-    outputs: false,
-    process: false,
-    missing_inputs: false,
-    non_goals: false,
-  })
+  const [focusedField, setFocusedField] = useState<string | null>(null)
 
   // タスクが切り替わったら、フォームデータを更新
   // 前のタスクIDを追跡して、タスクが切り替わった時のみ更新
@@ -125,12 +114,6 @@ export function TaskDetailsForm({ task, onUpdate, className }: TaskDetailsFormPr
     }))
   }, [])
 
-  const togglePreview = useCallback((field: keyof typeof formData) => {
-    setPreviewMode(prev => ({
-      ...prev,
-      [field]: !prev[field],
-    }))
-  }, [])
 
   if (!task) {
     return (
@@ -149,255 +132,122 @@ export function TaskDetailsForm({ task, onUpdate, className }: TaskDetailsFormPr
       <CardContent className="py-4 space-y-4">
         <div className="space-y-3">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="goal" className="text-sm font-medium">
-                Goal - このタスクで実現したいこと
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => togglePreview('goal')}
-                className="h-7 px-2"
-              >
-                {previewMode.goal ? (
-                  <><Edit className="h-3 w-3 mr-1" />編集</>
-                ) : (
-                  <><Eye className="h-3 w-3 mr-1" />プレビュー</>
-                )}
-              </Button>
-            </div>
-            {previewMode.goal ? (
-              <div className="min-h-[60px] p-3 rounded-md border border-border bg-muted/30">
-                {formData.goal ? (
-                  <Markdown content={formData.goal} />
-                ) : (
-                  <span className="text-muted-foreground text-sm">内容がありません</span>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="goal"
-                value={formData.goal}
-                onChange={e => handleInputChange('goal', e.target.value)}
-                className="min-h-[60px] resize-none"
-              />
-            )}
+            <Label htmlFor="goal" className="text-sm font-medium">
+              Goal - このタスクで実現したいこと
+            </Label>
+            <Textarea
+              id="goal"
+              value={formData.goal}
+              onChange={e => handleInputChange('goal', e.target.value)}
+              onFocus={() => setFocusedField('goal')}
+              onBlur={() => setFocusedField(null)}
+              className={cn(
+                "resize-none transition-all duration-200",
+                focusedField === 'goal' ? "min-h-[120px]" : "min-h-[60px]"
+              )}
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="dod" className="text-sm font-medium">
-                DoD - 完了条件（QCD基準を含めて具体的に）
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => togglePreview('dod')}
-                className="h-7 px-2"
-              >
-                {previewMode.dod ? (
-                  <><Edit className="h-3 w-3 mr-1" />編集</>
-                ) : (
-                  <><Eye className="h-3 w-3 mr-1" />プレビュー</>
-                )}
-              </Button>
-            </div>
-            {previewMode.dod ? (
-              <div className="min-h-[60px] p-3 rounded-md border border-border bg-muted/30">
-                {formData.dod ? (
-                  <Markdown content={formData.dod} />
-                ) : (
-                  <span className="text-muted-foreground text-sm">内容がありません</span>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="dod"
-                value={formData.dod}
-                onChange={e => handleInputChange('dod', e.target.value)}
-                className="min-h-[60px] resize-none"
-              />
-            )}
+            <Label htmlFor="dod" className="text-sm font-medium">
+              DoD - 完了条件（QCD基準を含めて具体的に）
+            </Label>
+            <Textarea
+              id="dod"
+              value={formData.dod}
+              onChange={e => handleInputChange('dod', e.target.value)}
+              onFocus={() => setFocusedField('dod')}
+              onBlur={() => setFocusedField(null)}
+              className={cn(
+                "resize-none transition-all duration-200",
+                focusedField === 'dod' ? "min-h-[120px]" : "min-h-[60px]"
+              )}
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="inputs" className="text-sm font-medium">
-                Inputs - 手元にある材料、情報
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => togglePreview('inputs')}
-                className="h-7 px-2"
-              >
-                {previewMode.inputs ? (
-                  <><Edit className="h-3 w-3 mr-1" />編集</>
-                ) : (
-                  <><Eye className="h-3 w-3 mr-1" />プレビュー</>
-                )}
-              </Button>
-            </div>
-            {previewMode.inputs ? (
-              <div className="min-h-[60px] p-3 rounded-md border border-border bg-muted/30">
-                {formData.inputs ? (
-                  <Markdown content={formData.inputs} />
-                ) : (
-                  <span className="text-muted-foreground text-sm">内容がありません</span>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="inputs"
-                value={formData.inputs}
-                onChange={e => handleInputChange('inputs', e.target.value)}
-                className="min-h-[60px] resize-none"
-              />
-            )}
+            <Label htmlFor="inputs" className="text-sm font-medium">
+              Inputs - 手元にある材料、情報
+            </Label>
+            <Textarea
+              id="inputs"
+              value={formData.inputs}
+              onChange={e => handleInputChange('inputs', e.target.value)}
+              onFocus={() => setFocusedField('inputs')}
+              onBlur={() => setFocusedField(null)}
+              className={cn(
+                "resize-none transition-all duration-200",
+                focusedField === 'inputs' ? "min-h-[120px]" : "min-h-[60px]"
+              )}
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="outputs" className="text-sm font-medium">
-                Outputs - 成果物
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => togglePreview('outputs')}
-                className="h-7 px-2"
-              >
-                {previewMode.outputs ? (
-                  <><Edit className="h-3 w-3 mr-1" />編集</>
-                ) : (
-                  <><Eye className="h-3 w-3 mr-1" />プレビュー</>
-                )}
-              </Button>
-            </div>
-            {previewMode.outputs ? (
-              <div className="min-h-[60px] p-3 rounded-md border border-border bg-muted/30">
-                {formData.outputs ? (
-                  <Markdown content={formData.outputs} />
-                ) : (
-                  <span className="text-muted-foreground text-sm">内容がありません</span>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="outputs"
-                value={formData.outputs}
-                onChange={e => handleInputChange('outputs', e.target.value)}
-                className="min-h-[60px] resize-none"
-              />
-            )}
+            <Label htmlFor="outputs" className="text-sm font-medium">
+              Outputs - 成果物
+            </Label>
+            <Textarea
+              id="outputs"
+              value={formData.outputs}
+              onChange={e => handleInputChange('outputs', e.target.value)}
+              onFocus={() => setFocusedField('outputs')}
+              onBlur={() => setFocusedField(null)}
+              className={cn(
+                "resize-none transition-all duration-200",
+                focusedField === 'outputs' ? "min-h-[120px]" : "min-h-[60px]"
+              )}
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="process" className="text-sm font-medium">
-                Process - 作業手順
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => togglePreview('process')}
-                className="h-7 px-2"
-              >
-                {previewMode.process ? (
-                  <><Edit className="h-3 w-3 mr-1" />編集</>
-                ) : (
-                  <><Eye className="h-3 w-3 mr-1" />プレビュー</>
-                )}
-              </Button>
-            </div>
-            {previewMode.process ? (
-              <div className="min-h-[150px] p-3 rounded-md border border-border bg-muted/30">
-                {formData.process ? (
-                  <Markdown content={formData.process} />
-                ) : (
-                  <span className="text-muted-foreground text-sm">内容がありません</span>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="process"
-                value={formData.process}
-                onChange={e => handleInputChange('process', e.target.value)}
-                className="min-h-[150px] resize-none font-mono text-sm"
-              />
-            )}
+            <Label htmlFor="process" className="text-sm font-medium">
+              Process - 作業手順
+            </Label>
+            <Textarea
+              id="process"
+              value={formData.process}
+              onChange={e => handleInputChange('process', e.target.value)}
+              onFocus={() => setFocusedField('process')}
+              onBlur={() => setFocusedField(null)}
+              className={cn(
+                "resize-none font-mono text-sm transition-all duration-200",
+                focusedField === 'process' ? "min-h-[250px]" : "min-h-[150px]"
+              )}
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="missing_inputs" className="text-sm font-medium">
-                Missing Inputs - 不足している情報
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => togglePreview('missing_inputs')}
-                className="h-7 px-2"
-              >
-                {previewMode.missing_inputs ? (
-                  <><Edit className="h-3 w-3 mr-1" />編集</>
-                ) : (
-                  <><Eye className="h-3 w-3 mr-1" />プレビュー</>
-                )}
-              </Button>
-            </div>
-            {previewMode.missing_inputs ? (
-              <div className="min-h-[60px] p-3 rounded-md border border-border bg-muted/30">
-                {formData.missing_inputs ? (
-                  <Markdown content={formData.missing_inputs} />
-                ) : (
-                  <span className="text-muted-foreground text-sm">内容がありません</span>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="missing_inputs"
-                value={formData.missing_inputs}
-                onChange={e => handleInputChange('missing_inputs', e.target.value)}
-                className="min-h-[60px] resize-none"
-              />
-            )}
+            <Label htmlFor="missing_inputs" className="text-sm font-medium">
+              Missing Inputs - 不足している情報
+            </Label>
+            <Textarea
+              id="missing_inputs"
+              value={formData.missing_inputs}
+              onChange={e => handleInputChange('missing_inputs', e.target.value)}
+              onFocus={() => setFocusedField('missing_inputs')}
+              onBlur={() => setFocusedField(null)}
+              className={cn(
+                "resize-none transition-all duration-200",
+                focusedField === 'missing_inputs' ? "min-h-[120px]" : "min-h-[60px]"
+              )}
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="non_goals" className="text-sm font-medium">
-                Non Goals - 今回はやらないこと
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => togglePreview('non_goals')}
-                className="h-7 px-2"
-              >
-                {previewMode.non_goals ? (
-                  <><Edit className="h-3 w-3 mr-1" />編集</>
-                ) : (
-                  <><Eye className="h-3 w-3 mr-1" />プレビュー</>
-                )}
-              </Button>
-            </div>
-            {previewMode.non_goals ? (
-              <div className="min-h-[60px] p-3 rounded-md border border-border bg-muted/30">
-                {formData.non_goals ? (
-                  <Markdown content={formData.non_goals} />
-                ) : (
-                  <span className="text-muted-foreground text-sm">内容がありません</span>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="non_goals"
-                value={formData.non_goals}
-                onChange={e => handleInputChange('non_goals', e.target.value)}
-                className="min-h-[60px] resize-none"
-              />
-            )}
+            <Label htmlFor="non_goals" className="text-sm font-medium">
+              Non Goals - 今回はやらないこと
+            </Label>
+            <Textarea
+              id="non_goals"
+              value={formData.non_goals}
+              onChange={e => handleInputChange('non_goals', e.target.value)}
+              onFocus={() => setFocusedField('non_goals')}
+              onBlur={() => setFocusedField(null)}
+              className={cn(
+                "resize-none transition-all duration-200",
+                focusedField === 'non_goals' ? "min-h-[120px]" : "min-h-[60px]"
+              )}
+            />
           </div>
         </div>
 

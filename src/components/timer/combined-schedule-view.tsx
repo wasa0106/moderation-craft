@@ -778,7 +778,7 @@ export function CombinedScheduleView({
                   style={{
                     top: `${getItemTop(session.start_time)}px`,
                     height: `${getItemHeight(displayDuration)}px`,
-                    zIndex: isActive ? 19 : 18,  // クリックスロット(25)より低くする
+                    zIndex: isActive ? 31 : 30,  // クリックスロット(25)より高くする
                     ...(taskInfo?.project?.color
                       ? {
                           backgroundColor: adjustHSLForBackground(taskInfo.project.color),
@@ -791,7 +791,7 @@ export function CombinedScheduleView({
                           }
                         : {}),
                   }}
-                  onDoubleClick={() => handleSessionClick(session)}  // ダブルクリックで編集
+                  onClick={() => handleSessionClick(session)}  // クリックで編集
                 >
                   {taskInfo ? (
                     shouldShowTimeOnSecondLine ? (
@@ -961,7 +961,7 @@ export function CombinedScheduleView({
                   style={{
                     top: `${getItemTop(entry.start_time)}px`,
                     height: `${getItemHeight(displayDuration)}px`,
-                    zIndex: 18,  // クリックスロット(25)より低くする
+                    zIndex: 30,  // クリックスロット(25)より高くする
                     ...(project?.color
                       ? {
                           backgroundColor: adjustHSLForBackground(project.color),
@@ -974,8 +974,22 @@ export function CombinedScheduleView({
                           }
                         : {}),
                   }}
-                  onDoubleClick={() => {  // ダブルクリックで編集
-                    // TimeEntry編集ダイアログを開く（今後実装）
+                  onClick={() => {  // クリックで編集
+                    handleSessionClick({
+                      id: entry.id,
+                      user_id: entry.user_id,
+                      small_task_id: entry.small_task_id || null,
+                      project_id: entry.project_id || null,
+                      start_time: entry.start_time,
+                      end_time: entry.end_time,
+                      duration_seconds: entry.duration_minutes * 60,
+                      focus_level: entry.focus_level || null,
+                      mood_notes: entry.description || null,
+                      work_notes: entry.notes || null,
+                      created_at: entry.created_at,
+                      updated_at: entry.updated_at,
+                      completed_task_ids: null,
+                    } as WorkSession)
                   }}
                 >
                   {shouldShowTimeOnSecondLine ? (
