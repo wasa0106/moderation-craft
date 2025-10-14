@@ -10,10 +10,51 @@ echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
 echo_error() { echo -e "${RED}❌ $1${NC}"; }
 echo_info() { echo -e "${YELLOW}📋 $1${NC}"; }
 
+# .env.localファイルの読み込み
+ENV_FILE="../.env.local"
+if [ -f "$ENV_FILE" ]; then
+    echo_info ".env.localから環境変数を読み込み中..."
+    # コメント行と空行を除外して環境変数を読み込む
+    set -a
+    source <(grep -v '^#' "$ENV_FILE" | grep -v '^$')
+    set +a
+    echo_success "環境変数を読み込みました"
+else
+    echo_error ".env.localファイルが見つかりません: $ENV_FILE"
+    echo_info "プロジェクトルートに.env.localファイルを作成してください"
+    exit 1
+fi
+
+# 必須環境変数の検証
+echo_info "必須環境変数を検証中..."
+MISSING_VARS=()
+
+if [ -z "$FITBIT_CLIENT_ID" ]; then
+    MISSING_VARS+=("FITBIT_CLIENT_ID")
+fi
+
+if [ -z "$FITBIT_CLIENT_SECRET" ]; then
+    MISSING_VARS+=("FITBIT_CLIENT_SECRET")
+fi
+
+if [ -z "$S3_BUCKET_NAME" ]; then
+    MISSING_VARS+=("S3_BUCKET_NAME")
+fi
+
+if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+    echo_error "以下の環境変数が.env.localに設定されていません:"
+    for var in "${MISSING_VARS[@]}"; do
+        echo "  - $var"
+    done
+    exit 1
+fi
+
+echo_success "環境変数の検証完了"
+
 # 設定
 FUNCTION_NAME="moderation-craft-fitbit-daily-export"
 ROLE_NAME="fitbit-lambda-role"
-REGION="ap-northeast-1"
+REGION="${AWS_REGION:-ap-northeast-1}"
 ACCOUNT_ID="800860245583"
 
 echo "============================================"
@@ -114,9 +155,9 @@ if [ $? -ne 0 ]; then
         --memory-size 256 \
         --region $REGION \
         --environment Variables="{
-            FITBIT_CLIENT_ID=23QQC2,
-            FITBIT_CLIENT_SECRET=2d5a030ee0a6d4e5e4f6288c0342490f,
-            S3_BUCKET=moderation-craft-data-800860245583,
+            FITBIT_CLIENT_ID=${FITBIT_CLIENT_ID},
+            FITBIT_CLIENT_SECRET=${FITBIT_CLIENT_SECRET},
+            S3_BUCKET=${S3_BUCKET_NAME},
             DYNAMODB_TABLE=fitbit_tokens,
             FITBIT_USER_ID=BGPGCR
         }"
@@ -140,9 +181,9 @@ else
     aws lambda update-function-configuration \
         --function-name $FUNCTION_NAME \
         --environment Variables="{
-            FITBIT_CLIENT_ID=23QQC2,
-            FITBIT_CLIENT_SECRET=2d5a030ee0a6d4e5e4f6288c0342490f,
-            S3_BUCKET=moderation-craft-data-800860245583,
+            FITBIT_CLIENT_ID=${FITBIT_CLIENT_ID},
+            FITBIT_CLIENT_SECRET=${FITBIT_CLIENT_SECRET},
+            S3_BUCKET=${S3_BUCKET_NAME},
             DYNAMODB_TABLE=fitbit_tokens,
             FITBIT_USER_ID=BGPGCR
         }" \

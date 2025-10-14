@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: mart_productivity_daily
+    description: "日次生産性と健康の統合マート"
+    columns:
+      - name: id
+        description: "一意識別子"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: date
+        description: "日付"
+        tests:
+          - not_null
+      - name: wellness_productivity_index
+        description: "ウェルネス×生産性の複合指標（0-100）"
+        tests:
+          - not_null
+      - name: performance_category
+        description: "パフォーマンスカテゴリ"
+        tests:
+          - accepted_values:
+              values: ['optimal', 'balanced', 'overworked', 'underutilized', 'needs_attention']
+      - name: data_completeness
+        description: "データ完全性"
+        tests:
+          - accepted_values:
+              values: ['complete', 'partial', 'incomplete']
+
+  - name: mart_wellness_correlation
+    description: "健康と生産性の相関分析マート"
+    columns:
+      - name: id
+        description: "一意識別子"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: date
+        description: "日付"
+        tests:
+          - not_null
+      - name: correlation_pattern
+        description: "相関パターン"
+        tests:
+          - accepted_values:
+              values: ['both_improving', 'both_declining', 'sleep_up_productivity_down', 'sleep_down_productivity_up', 'stable']
+      - name: sleep_impact_on_productivity
+        description: "睡眠の生産性への影響"
+        tests:
+          - accepted_values:
+              values: ['positive_impact', 'negative_impact', 'no_impact', 'mixed_impact']
+      - name: weekly_performance
+        description: "週間パフォーマンス"
+        tests:
+          - accepted_values:
+              values: ['excellent_week', 'good_week', 'challenging_week']
+      - name: significant_change
+        description: "大きな変化があったか"
+      - name: needs_intervention
+        description: "介入が必要か"

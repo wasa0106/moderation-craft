@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: int_daily_health_summary
+    description: "日次健康データの統合サマリー"
+    columns:
+      - name: id
+        description: "ユーザーと日付の組み合わせによる一意識別子"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: date
+        description: "日付"
+        tests:
+          - not_null
+      - name: sleep_score
+        description: "睡眠スコア（0-100）"
+        tests:
+          - not_null
+      - name: activity_score
+        description: "活動スコア（0-100）"
+        tests:
+          - not_null
+      - name: overall_health_score
+        description: "総合健康スコア（0-100）"
+        tests:
+          - not_null
+      - name: has_complete_data
+        description: "睡眠と活動の両データが揃っているか"
+
+  - name: int_productivity_metrics
+    description: "日次生産性メトリクス"
+    columns:
+      - name: id
+        description: "ユーザーと日付の組み合わせによる一意識別子"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: date
+        description: "日付"
+        tests:
+          - not_null
+      - name: total_sessions
+        description: "総セッション数"
+        tests:
+          - not_null
+      - name: total_work_hours
+        description: "総作業時間（時間）"
+      - name: pomodoro_compliance_rate
+        description: "ポモドーロ準拠率（%）"
+      - name: overall_productivity_score
+        description: "総合生産性スコア（0-100）"
+        tests:
+          - not_null
+      - name: data_quality
+        description: "データ品質（high/medium/low）"
+        tests:
+          - accepted_values:
+              values: ['high', 'medium', 'low']

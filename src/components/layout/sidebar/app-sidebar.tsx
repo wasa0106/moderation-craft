@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Timer, FolderOpen, Calendar, FileText, Home, Columns3 } from 'lucide-react'
+import { Timer, FolderOpen, Calendar, FileText, Home } from 'lucide-react'
 import type { NavItem, User } from './types'
 
 import { NavMain } from '@/components/layout/sidebar/nav-main'
@@ -29,11 +29,6 @@ const navMain: NavItem[] = [
     title: 'スケジュール',
     url: '/schedule',
     icon: Calendar,
-  },
-  {
-    title: 'カンバン',
-    url: '/kanban',
-    icon: Columns3,
   },
   {
     title: 'プロジェクト',

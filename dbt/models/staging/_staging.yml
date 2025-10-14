@@ -1,0 +1,124 @@
+version: 2
+
+models:
+  - name: stg_fitbit_sleep_json
+    description: "Fitbit睡眠データのステージング層"
+    columns:
+      - name: id
+        description: "ユーザーと日付の組み合わせによる一意識別子"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: sleep_date
+        description: "睡眠日"
+        tests:
+          - not_null
+      - name: duration_ms
+        description: "Fitbitが計測した総睡眠時間（ミリ秒）"
+      - name: sleep_efficiency
+        description: "睡眠効率（%）"
+      - name: minutes_asleep
+        description: "実睡眠時間（分）"
+      - name: minutes_awake
+        description: "覚醒時間（分）"
+      - name: time_in_bed
+        description: "ベッドにいた時間（分）"
+      - name: deep_sleep_minutes
+        description: "深い睡眠の時間（分）"
+      - name: light_sleep_minutes
+        description: "浅い睡眠の時間（分）"
+      - name: rem_sleep_minutes
+        description: "REM睡眠の時間（分）"
+      - name: wake_minutes
+        description: "覚醒時間（分）"
+      - name: sleep_start_time
+        description: "就寝時刻"
+      - name: sleep_end_time
+        description: "起床時刻"
+      - name: is_main_sleep
+        description: "メインの睡眠セッションかどうか"
+      - name: fetched_at
+        description: "データ取得時刻"
+      - name: source_date
+        description: "S3メタデータ上の日付"
+      - name: extracted_at
+        description: "ETL抽出タイムスタンプ"
+      - name: processed_at
+        description: "ステージング処理時刻（JST）"
+
+  - name: stg_fitbit_activity_json
+    description: "Fitbit活動データのステージング層"
+    columns:
+      - name: id
+        description: "ユーザーと日付の組み合わせによる一意識別子"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: activity_date
+        description: "活動日"
+        tests:
+          - not_null
+      - name: steps
+        description: "歩数"
+      - name: distance_km
+        description: "移動距離（km）"
+      - name: calories_burned
+        description: "消費カロリー"
+      - name: calories_bmr
+        description: "基礎代謝によるカロリー"
+      - name: activity_calories
+        description: "活動によるカロリー"
+      - name: floors_climbed
+        description: "上った階数"
+      - name: elevation_meters
+        description: "獲得標高（m）"
+      - name: sedentary_minutes
+        description: "座位時間（分）"
+      - name: lightly_active_minutes
+        description: "低強度活動時間（分）"
+      - name: fairly_active_minutes
+        description: "中強度活動時間（分）"
+      - name: very_active_minutes
+        description: "高強度活動時間（分）"
+      - name: fetched_at
+        description: "データ取得時刻"
+      - name: source_date
+        description: "S3メタデータ上の日付"
+      - name: extracted_at
+        description: "ETL抽出タイムスタンプ"
+      - name: processed_at
+        description: "ステージング処理時刻（JST）"
+
+  - name: stg_work_sessions
+    description: "作業セッションデータのステージング層"
+    columns:
+      - name: session_id
+        description: "セッションID"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: session_date
+        description: "セッション日"
+        tests:
+          - not_null
+      - name: duration_minutes
+        description: "セッション時間（分）"
+        tests:
+          - not_null
+      - name: time_slot
+        description: "時間帯カテゴリ"
+        tests:
+          - accepted_values:
+              values: ['early_morning', 'morning', 'late_morning', 'afternoon', 'late_afternoon', 'evening', 'night']

@@ -1,0 +1,8 @@
+dbt-adapters==1.16.7
+dbt-common==1.32.0
+dbt-core==1.10.13
+dbt-duckdb==1.9.6
+dbt-extractor==0.6.0
+dbt-protos==1.0.375
+dbt-semantic-interfaces==0.9.0
+duckdb==1.4.0

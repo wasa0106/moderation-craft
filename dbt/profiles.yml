@@ -1,0 +1,66 @@
+moderation_craft:
+  outputs:
+    dev:
+      type: duckdb
+      path: './moderation_craft_dev.duckdb'  # 相対パス（dbtプロジェクトルートから）
+      threads: 4
+      schema: main  # 開発環境のデフォルトスキーマ
+      extensions:
+        - httpfs
+        - parquet
+      settings:
+        # 拡張機能の自動管理
+        autoinstall_known_extensions: true
+        autoload_known_extensions: true
+
+        # S3設定（開発環境用）
+        s3_region: 'ap-northeast-1'
+
+        # AWS認証情報（環境変数から取得）
+        # 注意: dbt debug実行時に認証情報が表示されるため、
+        # 本番環境や共有環境ではIAMロールの使用を推奨
+        s3_access_key_id: "{{ env_var('AWS_ACCESS_KEY_ID') }}"
+        s3_secret_access_key: "{{ env_var('AWS_SECRET_ACCESS_KEY') }}"
+        # s3_session_token: "{{ env_var('AWS_SESSION_TOKEN', '') }}"  # 一時認証トークン（必要時）
+
+        # パフォーマンス設定
+        memory_limit: '2GB'
+        # temp_directoryはDuckDBが自動作成（存在しない場合）
+        temp_directory: '/tmp/duckdb'
+
+    prod:
+      type: duckdb
+      path: 's3://moderation-craft-data-800860245583/duckdb/prod.duckdb'
+      threads: 4
+      schema: main  # 本番環境のデフォルトスキーマ
+      extensions:
+        - httpfs
+        - parquet
+      settings:
+        # 拡張機能の自動管理
+        autoinstall_known_extensions: true
+        autoload_known_extensions: true
+
+        # S3設定（本番環境用）
+        s3_region: 'ap-northeast-1'
+
+        # AWS認証設定（以下の優先順位で選択）:
+        #
+        # 1. IAMロール（推奨: EC2/ECS/Lambda等で自動認証）
+        #    → 設定不要、自動的にインスタンスロールを使用
+        #
+        # 2. 環境変数による認証（CI/CDパイプライン等）
+        #    → 以下のコメントを解除して使用:
+        # s3_access_key_id: "{{ env_var('AWS_ACCESS_KEY_ID') }}"
+        # s3_secret_access_key: "{{ env_var('AWS_SECRET_ACCESS_KEY') }}"
+        # s3_session_token: "{{ env_var('AWS_SESSION_TOKEN', '') }}"  # 一時認証トークン
+        #
+        # 3. AWS CLIプロファイル（ローカル開発時）
+        #    → ~/.aws/credentials のプロファイルを自動使用
+
+        # パフォーマンス設定（本番環境向け最適化）
+        memory_limit: '4GB'  # 大規模データセット対応
+        # temp_directoryはDuckDBが自動作成（存在しない場合）
+        temp_directory: '/tmp/duckdb'
+
+  target: dev
