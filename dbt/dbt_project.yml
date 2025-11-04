@@ -36,12 +36,23 @@ models:
       +materialized: view
       +schema: staging
     intermediate:
-      +materialized: table
+      +materialized: incremental
       +schema: intermediate
     marts:
       +materialized: table
       +schema: gold
-      +tags: ['daily_refresh']
+      dim:
+        +materialized: table
+        +schema: dimensions
+        +tags: ['dimension']
+      fct:
+        +materialized: incremental
+        +schema: facts
+        +tags: ['fact']
+      bi:
+        +materialized: table
+        +schema: gold
+        +tags: ['daily_refresh', 'bi']
 
 vars:
   start_date: '2024-01-01'

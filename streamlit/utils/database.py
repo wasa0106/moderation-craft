@@ -15,15 +15,15 @@ def get_connection():
     if duckdb_path.exists():
         try:
             conn = duckdb.connect(str(duckdb_path), read_only=True)
-            print(f"✅ DuckDB接続成功: {duckdb_path}")
+            print(f"[OK] DuckDB接続成功: {duckdb_path}")
             return conn
         except Exception as e:
-            print(f"❌ DuckDB接続エラー: {e}")
+            print(f"[ERROR] DuckDB接続エラー: {e}")
             # エラーの場合はメモリDBにフォールバック
-            print("⚠️ メモリDBにフォールバック")
+            print("[WARNING] メモリDBにフォールバック")
             return duckdb.connect(":memory:")
     else:
-        print(f"❌ DuckDBファイルが見つかりません: {duckdb_path}")
+        print(f"[ERROR] DuckDBファイルが見つかりません: {duckdb_path}")
         # ファイルが存在しない場合はメモリDBを使用
         return duckdb.connect(":memory:")
 

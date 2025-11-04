@@ -39,7 +39,16 @@ streamlit run app.py
 - 最適値分析
 - 改善提案
 
-### 4. データ探索ページ
+### 4. 睡眠と作業時間の分析ページ（NEW!）
+- 前日の睡眠時間 vs 当日の作業時間の相関分析
+- 統計的有意性検定（回帰分析、R²、p値）
+- トレンド分析（7日移動平均）
+- 曜日別・睡眠カテゴリ別の作業時間比較
+- 最適な睡眠時間の特定
+- 睡眠不足の影響分析
+- 改善アクション提案
+
+### 5. データ探索ページ
 - SQLエディタ
 - テーブル探索
 - スキーマ情報表示
@@ -49,18 +58,19 @@ streamlit run app.py
 
 ```
 analytics/
-├── app.py                  # メインダッシュボード
-├── pages/                  # マルチページアプリ
+├── app.py                           # メインダッシュボード
+├── pages/                           # マルチページアプリ
 │   ├── 1_📊_Productivity.py
 │   ├── 2_💤_Health.py
-│   └── 3_🔍_Explorer.py
-├── utils/                  # ユーティリティ
-│   ├── database.py        # DB接続
-│   └── mock_data.py       # モックデータ生成
+│   ├── 3_🔍_Explorer.py
+│   └── 4_😴_Sleep_Work_Analysis.py  # 睡眠と作業時間の相関分析
+├── utils/                           # ユーティリティ
+│   ├── database.py                 # DB接続
+│   └── mock_data.py                # モックデータ生成
 ├── .streamlit/
-│   └── config.toml        # UI設定
-├── requirements.txt       # 依存パッケージ
-└── run.sh                # 起動スクリプト
+│   └── config.toml                 # UI設定
+├── requirements.txt                # 依存パッケージ
+└── run.sh                          # 起動スクリプト
 ```
 
 ## 🔧 設定

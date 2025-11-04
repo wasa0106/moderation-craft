@@ -1,0 +1,385 @@
+================================================================================
+STREAMLIT APP - CODEBASE STRUCTURE & dbt ALIGNMENT ISSUES
+================================================================================
+
+ANALYSIS DATE: 2025-11-02
+SCOPE: Complete Streamlit app review for alignment with new dbt dimensional models
+
+================================================================================
+DIRECTORY STRUCTURE
+================================================================================
+
+/Users/junya/Dev/moderation-craft/streamlit/
+├── app.py                              (Main dashboard - dbt models viewer)
+├── requirements.txt                    (Python dependencies)
+├── run.sh                              (Startup script)
+├── README.md                           (Streamlit documentation)
+├── utils/
+│   ├── database.py                     (Database connection - NEEDS UPDATES)
+│   └── mock_data.py                    (Mock data generator - INCOMPLETE)
+├── pages/
+│   ├── 1_📊_Productivity.py           (Productivity analysis - OK)
+│   ├── 2_💤_Health.py                 (Health correlation - NEEDS UPDATES)
+│   └── 3_🔍_Explorer.py               (Data explorer - NEEDS UPDATES)
+└── docs/
+    └── (documentation)
+
+================================================================================
+FILE ANALYSIS SUMMARY
+================================================================================
+
+1. app.py (Main Dashboard)
+   Location: /Users/junya/Dev/moderation-craft/streamlit/app.py
+   Size: 291 lines
+   Status: ✅ COMPATIBLE - No changes needed
+   
+   Queries Used:
+   - Line 113-120: Schema information (generic information_schema query)
+   - Line 159: SELECT * FROM {table_name} LIMIT 100
+   - Line 169: SELECT COUNT(*) as total FROM {table_name}
+   
+   Why No Changes Needed: All queries are generic SELECT * or COUNT(*) queries
+   that work with any table structure. No hardcoded column names.
+
+================================================================================
+
+2. utils/database.py (Database Utilities)
+   Location: /Users/junya/Dev/moderation-craft/streamlit/utils/database.py
+   Size: 52 lines
+   Status: ⚠️ INCOMPLETE - Missing 2 critical functions
+   
+   Current Functions:
+   - get_connection()          ✅ Works correctly
+   - run_query()               ✅ Works correctly
+   - get_available_tables()    ✅ Works correctly
+   
+   MISSING FUNCTIONS (referenced but not defined):
+   - get_table_schema()        ❌ Referenced at pages/3_🔍_Explorer.py:12
+   - setup_mock_database()     ❌ Referenced at:
+                                  pages/1_📊_Productivity.py:90
+                                  pages/2_💤_Health.py:81
+                                  pages/3_🔍_Explorer.py:38
+   
+   Impact: 
+   - Explorer page will crash when loading schema tab
+   - Fallback mock data generation won't work when database is unavailable
+
+================================================================================
+
+3. pages/1_📊_Productivity.py (Productivity Analysis Page)
+   Location: /Users/junya/Dev/moderation-craft/streamlit/pages/1_📊_Productivity.py
+   Size: 341 lines
+   Status: ✅ COMPATIBLE - No SQL changes needed
+   
+   Main Query (Lines 72-85):
+   ├─ Table: main_gold.mart_productivity_daily
+   ├─ Columns Used:
+   │  ├─ date                  ✅ EXISTS (same name)
+   │  ├─ productivity_score    ✅ EXISTS (same name)
+   │  ├─ work_hours           ✅ EXISTS (same name)
+   │  ├─ work_sessions        ✅ EXISTS (renamed from: total_sessions)
+   │  ├─ pomodoro_rate        ✅ EXISTS (same name)
+   │  └─ mood_level           ✅ EXISTS (same name)
+   └─ Result: All columns compatible ✅
+   
+   Hard-coded Mock Data (Lines 197-198):
+   - time_slots, time_productivity, time_sessions - Not from dbt, safe
+   
+   Recommendation:
+   - NO CHANGES REQUIRED
+   - Query will work as-is with new mart_productivity_daily model
+
+================================================================================
+
+4. pages/2_💤_Health.py (Health Correlation Analysis)
+   Location: /Users/junya/Dev/moderation-craft/streamlit/pages/2_💤_Health.py
+   Size: 371 lines
+   Status: ⚠️ NEEDS UPDATES - Critical column mismatches
+   
+   ISSUE #1: Query uses columns that no longer exist
+   ─────────────────────────────────────────────────
+   Location: Lines 60-76
+   Table: main_gold.mart_wellness_correlation
+   
+   Columns Requested:
+   - date                      ✅ EXISTS
+   - productivity_score        ✅ EXISTS
+   - health_score             ✅ EXISTS
+   - sleep_score              ✅ EXISTS
+   - sleep_hours              ❌ MISSING (moved to mart_productivity_daily)
+   - work_hours               ❌ MISSING (moved to mart_productivity_daily)
+   - mood_level               ✅ EXISTS
+   - steps                    ❌ MISSING (moved to mart_productivity_daily)
+   - correlation_pattern      ✅ EXISTS
+   - sleep_7d_avg             ✅ EXISTS
+   - productivity_7d_avg      ✅ EXISTS
+   
+   IMPACT: Query will fail with "column not found" error
+   
+   SOLUTION: Use JOIN with mart_productivity_daily
+   ─────────
+   FROM main_gold.mart_wellness_correlation wc
+   LEFT JOIN main_gold.mart_productivity_daily mp
+       ON wc.date = mp.date AND wc.user_id = mp.user_id
+   
+   
+   ISSUE #2: Analysis logic references missing columns
+   ──────────────────────────────────────────────────
+   Location: Lines 345-370 (Recommendations section)
+   
+   Code attempts to access:
+   - df['sleep_score']        ✅ EXISTS in wellness_correlation
+   - df['health_score']       ✅ EXISTS in wellness_correlation
+   - df['mood_level']         ✅ EXISTS in wellness_correlation
+   - df['correlation_pattern'] ✅ EXISTS in wellness_correlation
+   
+   BUT if any code references sleep_hours, work_hours, or steps:
+   - Will fail because these columns won't be in df unless JOIN is fixed
+   
+   SOLUTION: After fixing query JOIN, column access will work via aliased table
+
+================================================================================
+
+5. pages/3_🔍_Explorer.py (Data Explorer / SQL Editor)
+   Location: /Users/junya/Dev/moderation-craft/streamlit/pages/3_🔍_Explorer.py
+   Size: 335 lines
+   Status: 🟡 PARTIALLY BROKEN - Import error + one query to verify
+   
+   ISSUE #1: Import error on line 12
+   ────────────────────────────────
+   Line 12: from utils.database import get_connection, run_query, get_available_tables, get_table_schema
+   
+   Problem: get_table_schema is not defined in database.py
+   Impact: File will fail to load, entire page unavailable
+   Solution: Implement get_table_schema() in database.py (HIGH PRIORITY #1)
+   
+   
+   ISSUE #2: Sample Queries (Lines 49-87)
+   ───────────────────────────────────────
+   
+   Sample Query #1 (Daily Aggregation):
+   ├─ Table: mart_productivity_daily
+   ├─ Columns: date, productivity_score, health_score
+   └─ Status: ✅ All columns exist, no changes needed
+   
+   Sample Query #2 (Correlation Analysis):
+   ├─ Table: mart_productivity_daily
+   ├─ Columns: sleep_score, productivity_score, health_score, work_hours
+   └─ Status: ✅ All columns exist, no changes needed
+   
+   Sample Query #3 (Weekly Performance):
+   ├─ Table: mart_productivity_daily
+   ├─ Columns: date, productivity_score
+   └─ Status: ✅ All columns exist, no changes needed
+   
+   Sample Query #4 (Top 10 Productive Days) - VERIFY NEEDED
+   ├─ Line 76-86
+   ├─ Columns Used:
+   │  ├─ date                  ✅ EXISTS
+   │  ├─ productivity_score    ✅ EXISTS
+   │  ├─ health_score         ✅ EXISTS
+   │  ├─ work_hours           ✅ EXISTS
+   │  └─ sleep_hours          ❓ VERIFY NAME
+   │
+   └─ Action: Check if column is named "sleep_hours" or "total_sleep_hours"
+                Run: SELECT * FROM main_gold.mart_productivity_daily LIMIT 1;
+   
+   
+   ISSUE #3: Table exploration (Lines 198-255)
+   ────────────────────────────────────────────
+   Line 268: schema_df = get_table_schema(schema_table)
+   - Depends on get_table_schema() being defined
+   - Will fail until ISSUE #1 is resolved
+
+================================================================================
+
+6. utils/mock_data.py (Mock Data Generator)
+   Location: /Users/junya/Dev/moderation-craft/streamlit/utils/mock_data.py
+   Size: 332 lines
+   Status: 🔵 LOW PRIORITY - Function incomplete but not critical
+   
+   Current Status:
+   - generate_mock_data() function:  ✅ COMPLETE (lines 10-332)
+   - setup_mock_database() function: ❌ MISSING (referenced but not defined)
+   
+   Generated Models (7 total):
+   1. stg_fitbit_sleep_json       ✅ Mock data generator creates this
+   2. stg_fitbit_activity_json    ✅ Mock data generator creates this
+   3. stg_work_sessions           ✅ Mock data generator creates this
+   4. int_daily_health_summary    ✅ Mock data generator creates this
+   5. int_productivity_metrics    ✅ Mock data generator creates this
+   6. mart_productivity_daily     ✅ Mock data generator creates this
+   7. mart_wellness_correlation  ✅ Mock data generator creates this
+   
+   Missing: The setup_mock_database() function that actually loads this data
+   
+   Impact: Low - only affects development when real database is unavailable
+
+================================================================================
+COLUMN NAME CHANGES REFERENCE
+================================================================================
+
+COLUMN RENAME IN mart_productivity_daily:
+- Old Name: total_sessions
+- New Name: work_sessions
+- Impact: pages/1_📊_Productivity.py already uses "work_sessions" ✅
+
+COLUMN RENAME IN mart_productivity_daily:
+- Old Name: avg_mood
+- New Name: mood_level
+- Impact: All pages already use "mood_level" ✅
+
+COLUMN RENAME IN mart_productivity_daily:
+- Old Name: avg_dopamine
+- New Name: dopamine_level
+- Impact: pages/2_💤_Health.py already uses "dopamine_level" ✅
+
+COLUMNS MOVED FROM mart_wellness_correlation TO mart_productivity_daily:
+- sleep_hours         (was in wellness_correlation, now in productivity_daily)
+- work_hours         (was in wellness_correlation, now in productivity_daily)
+- steps              (was in wellness_correlation, now in productivity_daily)
+- Impact: pages/2_💤_Health.py queries need JOIN ⚠️
+
+NEW COLUMNS IN mart_productivity_daily:
+- wellness_productivity_index  (new calculated metric)
+- performance_category         (new categorical field)
+- data_completeness           (new quality flag)
+- Impact: No impact on existing queries (optional columns)
+
+NEW DIMENSION TABLES (not used by Streamlit yet):
+- dim_date (date attributes, surrogates keys)
+- dim_time (time attributes, surrogate keys)
+- dim_user (SCD Type 2 dimension)
+- fact_work_sessions (session-level fact table)
+- Note: These could enable future detailed analysis
+
+================================================================================
+BREAKING CHANGES MATRIX
+================================================================================
+
+File                           | High | Med | Low | Details
+─────────────────────────────────────────────────────────────────────────────
+database.py                    |  2   |  -  |  -  | Missing functions
+pages/1_📊_Productivity.py    |  -   |  -  |  -  | No changes needed
+pages/2_💤_Health.py          |  2   |  -  |  -  | Query + logic updates
+pages/3_🔍_Explorer.py        |  -   |  2  |  -  | Import + verify query
+utils/mock_data.py             |  -   |  -  |  1  | Complete function
+app.py                         |  -   |  -  |  -  | No changes needed
+─────────────────────────────────────────────────────────────────────────────
+
+Total Issues:        4 HIGH + 2 MED + 1 LOW
+Critical Blockers:   2 (missing functions prevent page load)
+SQL Breakage:        1 (query will fail with column not found)
+Verification Needed: 1 (column name check)
+
+================================================================================
+IMPLEMENTATION PRIORITY
+================================================================================
+
+PHASE 1 (CRITICAL - Must do first)
+──────────────────────────────────
+1. Add get_table_schema() to database.py
+   - Fixes: pages/3_🔍_Explorer.py import error
+   - Effort: ~15 lines of code
+   - Impact: Unblocks Explorer page
+
+2. Add setup_mock_database() to database.py
+   - Fixes: All pages' fallback mock data
+   - Effort: ~20 lines of code
+   - Impact: Enables development without real database
+
+PHASE 2 (HIGH - SQL breaking changes)
+──────────────────────────────────
+3. Update query in pages/2_💤_Health.py (lines 60-76)
+   - Adds: LEFT JOIN with mart_productivity_daily
+   - Effort: ~10 lines of SQL
+   - Impact: Fixes "column not found" error
+
+4. Update analysis logic in pages/2_💤_Health.py (lines 345-370)
+   - Changes: Reference columns via correct table alias
+   - Effort: ~5 lines code review
+   - Impact: Recommendations work correctly
+
+PHASE 3 (VERIFICATION - Confirm compatibility)
+───────────────────────────────────────────────
+5. Verify sleep_hours column name in mart_productivity_daily
+   - Check: Does it exist and what's the name?
+   - Effort: Run 1 SELECT query
+   - Impact: Confirms sample query #4 works
+
+PHASE 4 (POLISH - Nice to have)
+────────────────────────────────
+6. Complete setup_mock_database() body
+   - Current: generate_mock_data() creates DataFrames
+   - Needed: Load them into DuckDB database
+   - Effort: ~15 lines of code
+   - Impact: Better development experience
+
+================================================================================
+SQL QUERY CHANGES REQUIRED
+================================================================================
+
+FILE: pages/2_💤_Health.py
+LOCATION: Lines 60-76 (inside load_correlation_data function)
+
+CURRENT QUERY (BROKEN):
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ SELECT                                                                      │
+│     date,                                                                   │
+│     productivity_score,                                                     │
+│     health_score,                                                           │
+│     sleep_score,                                                            │
+│     sleep_hours,              ← MISSING in wellness_correlation            │
+│     work_hours,               ← MISSING in wellness_correlation            │
+│     mood_level,                                                             │
+│     steps,                    ← MISSING in wellness_correlation            │
+│     correlation_pattern,                                                   │
+│     sleep_7d_avg,                                                           │
+│     productivity_7d_avg                                                     │
+│ FROM main_gold.mart_wellness_correlation                                   │
+│ WHERE date >= CURRENT_DATE - INTERVAL '{days} days'                        │
+│ ORDER BY date DESC                                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+FIXED QUERY:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ SELECT                                                                      │
+│     wc.date,                                                                │
+│     wc.productivity_score,                                                  │
+│     wc.health_score,                                                        │
+│     wc.sleep_score,                                                         │
+│     mp.total_sleep_hours AS sleep_hours,    ← JOIN from productivity       │
+│     mp.work_hours,                          ← JOIN from productivity       │
+│     wc.mood_level,                                                          │
+│     mp.steps,                               ← JOIN from productivity       │
+│     wc.correlation_pattern,                                                │
+│     wc.sleep_7d_avg,                                                        │
+│     wc.productivity_7d_avg                                                  │
+│ FROM main_gold.mart_wellness_correlation wc                               │
+│ LEFT JOIN main_gold.mart_productivity_daily mp                            │
+│     ON wc.date = mp.date AND wc.user_id = mp.user_id                     │
+│ WHERE wc.date >= CURRENT_DATE - INTERVAL '{days} days'                    │
+│ ORDER BY wc.date DESC                                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+COLUMN NOTES:
+- total_sleep_hours: Name to confirm - might be "sleep_hours" instead
+- All other columns verified to exist in their respective tables
+
+================================================================================
+DOCUMENT REFERENCES
+================================================================================
+
+Full Analysis:
+- /Users/junya/Dev/moderation-craft/STREAMLIT_DBT_ALIGNMENT_ANALYSIS.md
+  └─ Detailed section-by-section analysis of all changes
+
+Implementation Guide:
+- /Users/junya/Dev/moderation-craft/STREAMLIT_UPDATE_CHECKLIST.md
+  └─ Step-by-step instructions for implementing all fixes
+
+This Summary:
+- /Users/junya/Dev/moderation-craft/STREAMLIT_FILES_SUMMARY.txt
+  └─ Quick reference with file locations and line numbers
+
+================================================================================

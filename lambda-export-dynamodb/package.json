@@ -1,0 +1,16 @@
+{
+  "name": "lambda-export-dynamodb",
+  "version": "1.0.0",
+  "description": "Export DynamoDB data to S3 with incremental support",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "build": "zip -r function.zip index.mjs package.json",
+    "deploy": "npm run build && aws lambda update-function-code --function-name moderation-craft-export-dynamodb --zip-file fileb://function.zip"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.478.0",
+    "@aws-sdk/client-s3": "^3.478.0",
+    "@aws-sdk/lib-dynamodb": "^3.478.0"
+  }
+}

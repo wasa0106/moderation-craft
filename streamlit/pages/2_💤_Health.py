@@ -21,12 +21,12 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("💤 健康相関分析")
+st.title("健康相関分析")
 st.markdown("睡眠・健康と生産性の相関を分析")
 
 # サイドバー設定
 with st.sidebar:
-    st.header("💤 分析設定")
+    st.header("分析設定")
     
     # 分析期間
     analysis_period = st.slider(
@@ -96,7 +96,7 @@ df = load_correlation_data(analysis_period)
 
 if not df.empty:
     # 相関係数計算
-    st.markdown("### 📊 相関係数マトリックス")
+    st.markdown("### 相関係数マトリックス")
     
     # 相関マトリックス用のカラム選択
     correlation_cols = ['productivity_score'] + correlation_targets
@@ -152,7 +152,7 @@ if not df.empty:
             )
     
     # 散布図マトリックス
-    st.markdown("### 🔍 相関散布図")
+    st.markdown("### 相関散布図")
     
     tabs = st.tabs([t.replace('_', ' ').title() for t in correlation_targets])
     
@@ -183,7 +183,7 @@ if not df.empty:
             
             with col2:
                 # 統計情報
-                st.markdown("#### 📈 統計情報")
+                st.markdown("#### 統計情報")
                 
                 # 相関係数と有意性検定
                 if target in df.columns:
@@ -212,7 +212,7 @@ if not df.empty:
                         st.metric("R²スコア", f"{model.score(X, y):.3f}")
     
     # 時系列相関分析
-    st.markdown("### 📈 時系列相関トレンド")
+    st.markdown("### 時系列相関トレンド")
     
     # 移動相関の計算
     df['sleep_prod_corr'] = df['sleep_score'].rolling(window=ma_window).corr(df['productivity_score'])
@@ -254,7 +254,7 @@ if not df.empty:
     st.plotly_chart(fig_time_corr, use_container_width=True)
     
     # パターン分析
-    st.markdown("### 🎯 相関パターン分析")
+    st.markdown("### 相関パターン分析")
     
     if 'correlation_pattern' in df.columns:
         pattern_counts = df['correlation_pattern'].value_counts()
@@ -301,7 +301,7 @@ if not df.empty:
             st.plotly_chart(fig_pattern_prod, use_container_width=True)
     
     # 最適値分析
-    st.markdown("### 🎯 最適値分析")
+    st.markdown("### 最適値分析")
     
     # 睡眠時間の最適値
     if 'sleep_hours' in df.columns:
@@ -336,7 +336,7 @@ else:
     st.error("データの読み込みに失敗しました。")
 
 # レコメンデーション
-st.markdown("### 💡 改善提案")
+st.markdown("### 改善提案")
 
 if not df.empty:
     recommendations = []

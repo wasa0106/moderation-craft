@@ -21,12 +21,12 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 生産性分析")
+st.title("生産性分析")
 st.markdown("作業パターンと生産性の詳細分析")
 
 # サイドバー設定
 with st.sidebar:
-    st.header("📊 分析設定")
+    st.header("分析設定")
     
     # 期間選択
     period = st.selectbox(
@@ -99,7 +99,7 @@ df = load_productivity_data(days_range, period)
 
 if not df.empty:
     # サマリー統計
-    st.markdown("### 📈 サマリー統計")
+    st.markdown("### サマリー統計")
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -136,7 +136,7 @@ if not df.empty:
         )
     
     # メイングラフ
-    st.markdown("### 📊 生産性トレンド")
+    st.markdown("### 生産性トレンド")
     
     # 複数メトリクスのグラフ
     fig = make_subplots(
@@ -191,7 +191,7 @@ if not df.empty:
     st.plotly_chart(fig, use_container_width=True)
     
     # 時間帯分析
-    st.markdown("### ⏰ 時間帯別分析")
+    st.markdown("### 時間帯別分析")
     
     # 時間帯別の模擬データ（実際のデータがない場合）
     time_slots = ['早朝', '午前', '午後', '夕方', '夜']
@@ -243,7 +243,7 @@ if not df.empty:
         st.plotly_chart(fig_sessions, use_container_width=True)
     
     # ポモドーロ分析
-    st.markdown("### 🍅 ポモドーロテクニック分析")
+    st.markdown("### ポモドーロテクニック分析")
     
     col1, col2 = st.columns(2)
     
@@ -305,7 +305,7 @@ else:
     st.error("データの読み込みに失敗しました。")
 
 # インサイト生成
-st.markdown("### 💡 インサイト")
+st.markdown("### インサイト")
 
 if not df.empty:
     insights = []

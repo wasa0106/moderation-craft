@@ -1,6 +1,200 @@
 version: 2
 
 models:
+  # Dimension models (ディメンションテーブル)
+  - name: dim_project
+    description: "プロジェクトディメンション - SCD Type 1（最新値のみ）"
+    columns:
+      - name: project_key
+        description: "プロジェクトサロゲートキー（MD5ハッシュ）"
+        tests:
+          - unique
+          - not_null
+      - name: project_id
+        description: "プロジェクトID（ビジネスキー）"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+      - name: project_name
+        description: "プロジェクト名"
+        tests:
+          - not_null
+      - name: description
+        description: "プロジェクト説明"
+      - name: color
+        description: "プロジェクトカラー（HSL形式）"
+      - name: status
+        description: "プロジェクトステータス"
+        tests:
+          - accepted_values:
+              values: ['active', 'completed', 'cancelled']
+      - name: deadline
+        description: "プロジェクト期限"
+      - name: estimated_total_hours
+        description: "見積合計時間（時間）"
+
+  - name: dim_big_task
+    description: "BigTaskディメンション - SCD Type 1（最新値のみ）"
+    columns:
+      - name: big_task_key
+        description: "BigTaskサロゲートキー（MD5ハッシュ）"
+        tests:
+          - unique
+          - not_null
+      - name: big_task_id
+        description: "BigTaskID（ビジネスキー）"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+      - name: project_id
+        description: "プロジェクトID（ビジネスキー）"
+      - name: project_key
+        description: "プロジェクトキー（FK to dim_project）"
+      - name: big_task_name
+        description: "BigTask名"
+        tests:
+          - not_null
+      - name: category
+        description: "BigTaskカテゴリ"
+        tests:
+          - accepted_values:
+              values: ['開発', '設計', 'テスト', '対策', '運動', '案件', 'その他']
+      - name: status
+        description: "BigTaskステータス"
+        tests:
+          - accepted_values:
+              values: ['active', 'completed', 'cancelled']
+      - name: task_type
+        description: "タスクタイプ"
+        tests:
+          - accepted_values:
+              values: ['flow', 'routine']
+      - name: estimated_hours
+        description: "見積時間（時間）"
+      - name: actual_hours
+        description: "実績時間（時間）"
+      - name: start_date
+        description: "開始日"
+      - name: end_date
+        description: "終了日"
+
+  - name: dim_health_category
+    description: "健康カテゴリJunk Dimension - 睡眠・活動カテゴリの組み合わせ"
+    columns:
+      - name: health_category_key
+        description: "健康カテゴリサロゲートキー（MD5ハッシュ）"
+        tests:
+          - unique
+          - not_null
+      - name: sleep_duration_category
+        description: "睡眠時間カテゴリ"
+        tests:
+          - accepted_values:
+              values: ['5<', '5-6', '6-7', '7-8', '8-9', '9+', 'unknown']
+      - name: activity_level
+        description: "活動レベル（歩数ベース）"
+        tests:
+          - accepted_values:
+              values: ['3000<', '3000-5000', '5001-8000', '8001-10000', '10001+', 'unknown']
+      - name: primary_activity_type
+        description: "主要活動タイプ"
+        tests:
+          - accepted_values:
+              values: ['high_intensity', 'moderate_intensity', 'light_activity', 'sedentary', 'mixed']
+      - name: wellness_status
+        description: "ウェルネス総合ステータス"
+        tests:
+          - accepted_values:
+              values: ['optimal', 'balanced', 'needs_attention']
+      - name: is_good_sleep
+        description: "良質な睡眠フラグ（7時間以上）"
+      - name: is_active_day
+        description: "活発な日フラグ（8000歩以上）"
+      - name: is_healthy_day
+        description: "健康な日フラグ（良質な睡眠 AND 活発）"
+
+  # Fact models (トランザクション粒度のファクトテーブル)
+  - name: fact_small_tasks
+    description: "SmallTaskファクトテーブル - タスク計画情報（1タスク=1レコード）"
+    columns:
+      - name: task_id
+        description: "タスクID（主キー）"
+        tests:
+          - unique
+          - not_null
+      - name: scheduled_date_key
+        description: "予定日付キー"
+      - name: scheduled_time_key
+        description: "予定時刻キー"
+      - name: user_id
+        description: "ユーザーID（ビジネスキー）"
+        tests:
+          - not_null
+      - name: project_id
+        description: "プロジェクトID"
+      - name: big_task_id
+        description: "大タスクID"
+      - name: task_name
+        description: "タスク名"
+        tests:
+          - not_null
+      - name: status
+        description: "タスクステータス"
+        tests:
+          - accepted_values:
+              values: ['pending', 'in_progress', 'completed', 'cancelled']
+      - name: task_type
+        description: "タスクタイプ"
+        tests:
+          - accepted_values:
+              values: ['project', 'routine', 'flow']
+      - name: estimated_minutes
+        description: "見積もり時間（分）"
+      - name: is_completed
+        description: "完了フラグ"
+      - name: is_cancelled
+        description: "キャンセルフラグ"
+
+  # Aggregation models (BI層の中間集計)
+  - name: agg_productivity_daily
+    description: "日次生産性メトリクス（fact_work_sessionsから集計）"
+    columns:
+      - name: id
+        description: "ユーザーと日付の組み合わせによる一意識別子"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: date
+        description: "日付"
+        tests:
+          - not_null
+      - name: total_sessions
+        description: "総セッション数"
+        tests:
+          - not_null
+      - name: total_work_hours
+        description: "総作業時間（時間）"
+      - name: pomodoro_compliance_rate
+        description: "ポモドーロ準拠率（%）"
+      - name: overall_productivity_score
+        description: "総合生産性スコア（0-100）"
+        tests:
+          - not_null
+      - name: data_quality
+        description: "データ品質（high/medium/low）"
+        tests:
+          - accepted_values:
+              values: ['high', 'medium', 'low']
+
+  # BI models (ダッシュボード向け幅広テーブル)
   - name: mart_productivity_daily
     description: "日次生産性と健康の統合マート"
     columns:
@@ -67,3 +261,214 @@ models:
         description: "大きな変化があったか"
       - name: needs_intervention
         description: "介入が必要か"
+  # タスク分析BI Marts（予定vs実績分析）
+  - name: mart_task_performance
+    description: "タスクパフォーマンス分析 - 予定vs実績比較・見積もり精度評価"
+    columns:
+      - name: task_id
+        description: "タスクID（主キー）"
+        tests:
+          - unique
+          - not_null
+      - name: task_name
+        description: "タスク名"
+      - name: task_type
+        description: "タスクタイプ"
+      - name: estimated_minutes
+        description: "見積もり時間（分）"
+      - name: actual_total_minutes
+        description: "実績合計時間（分）"
+      - name: session_count
+        description: "実行セッション数"
+      - name: variance_minutes
+        description: "差異（分）"
+      - name: variance_percentage
+        description: "差異率（%）"
+      - name: estimation_accuracy
+        description: "見積もり精度カテゴリ"
+        tests:
+          - accepted_values:
+              values: ['not_started', 'accurate', 'overestimated', 'underestimated']
+      - name: started_on_time
+        description: "時間通りに開始したか"
+      - name: completed_on_time
+        description: "時間通りに完了したか"
+      - name: execution_status
+        description: "実行ステータス"
+        tests:
+          - accepted_values:
+              values: ['not_started', 'completed', 'cancelled', 'in_progress']
+
+  - name: mart_task_completion_analysis
+    description: "タスク完了状況分析 - 完了率・期限管理・未完了タスク追跡"
+    columns:
+      - name: task_id
+        description: "タスクID（主キー）"
+        tests:
+          - unique
+          - not_null
+      - name: task_name
+        description: "タスク名"
+      - name: status
+        description: "タスクステータス"
+      - name: scheduled_date
+        description: "予定開始日"
+      - name: scheduled_end_date
+        description: "予定終了日"
+      - name: completion_date
+        description: "完了日"
+      - name: days_to_complete
+        description: "完了までの日数"
+      - name: completed_on_schedule
+        description: "予定通りに完了したか"
+      - name: task_age_days
+        description: "タスク年齢（未完了タスクの経過日数）"
+      - name: is_overdue
+        description: "期限超過フラグ"
+      - name: overdue_days
+        description: "期限超過日数"
+      - name: completion_probability
+        description: "完了確率予測（%）"
+
+  - name: mart_task_productivity
+    description: "タスク生産性分析 - セッションメトリクス・タスクタイプ別生産性"
+    columns:
+      - name: task_id
+        description: "タスクID（主キー）"
+        tests:
+          - unique
+          - not_null
+      - name: task_name
+        description: "タスク名"
+      - name: task_type
+        description: "タスクタイプ"
+      - name: total_sessions
+        description: "総セッション数"
+      - name: total_minutes
+        description: "総作業時間（分）"
+      - name: avg_session_duration
+        description: "平均セッション時間（分）"
+      - name: avg_focus_level
+        description: "平均集中度"
+      - name: avg_mood_rating
+        description: "平均気分評価"
+      - name: avg_productivity_score
+        description: "平均生産性スコア"
+      - name: productivity_category
+        description: "生産性カテゴリ"
+        tests:
+          - accepted_values:
+              values: ['high', 'medium', 'low']
+      - name: focus_category
+        description: "集中度カテゴリ"
+        tests:
+          - accepted_values:
+              values: ['high_focus', 'medium_focus', 'low_focus']
+      - name: worked_days_count
+        description: "作業日数（ユニークな日付の数）"
+      - name: avg_sessions_per_day
+        description: "1日あたりの平均セッション数"
+      - name: avg_minutes_per_day
+        description: "1日あたりの平均作業時間（分）"
+
+  - name: mart_sleep_work_correlation
+    description: "睡眠と作業生産性の相関分析マート - 前日の睡眠が翌日の作業に与える影響を分析"
+    columns:
+      - name: correlation_id
+        description: "相関分析ID（主キー: date + project_id）"
+        tests:
+          - unique
+          - not_null
+      - name: date
+        description: "作業日（分析対象日）"
+        tests:
+          - not_null
+      - name: project_id
+        description: "プロジェクトID"
+      - name: day_of_week
+        description: "曜日"
+      - name: is_weekend
+        description: "週末フラグ"
+      - name: week_of_year
+        description: "年内の週番号"
+      - name: month
+        description: "月"
+      - name: quarter
+        description: "四半期"
+      - name: year
+        description: "年"
+      - name: prev_sleep_hours
+        description: "前日の睡眠時間（時間）"
+        tests:
+          - not_null
+      - name: prev_sleep_efficiency
+        description: "前日の睡眠効率（%）"
+      - name: prev_sleep_score
+        description: "前日の睡眠スコア（0-100）"
+      - name: prev_sleep_category
+        description: "前日の睡眠時間カテゴリ"
+        tests:
+          - accepted_values:
+              values: ['5<', '5-6', '6-7', '7-8', '8-9', '9+']
+      - name: prev_deep_sleep_minutes
+        description: "前日の深い睡眠時間（分）"
+      - name: prev_rem_sleep_minutes
+        description: "前日のREM睡眠時間（分）"
+      - name: prev_deep_sleep_percent
+        description: "前日の深い睡眠割合（%）"
+      - name: prev_rem_sleep_percent
+        description: "前日のREM睡眠割合（%）"
+      - name: work_hours
+        description: "当日の作業時間（時間）"
+        tests:
+          - not_null
+      - name: total_sessions
+        description: "当日の総セッション数"
+      - name: avg_session_duration
+        description: "当日の平均セッション時間（分）"
+      - name: avg_focus_score
+        description: "当日の平均集中度"
+      - name: avg_mood_level
+        description: "当日の平均気分レベル"
+      - name: avg_dopamine_level
+        description: "当日の平均ドーパミンレベル"
+      - name: avg_productivity_score
+        description: "当日の平均生産性スコア"
+      - name: min_focus_score
+        description: "当日の最低集中度"
+      - name: max_focus_score
+        description: "当日の最高集中度"
+      - name: current_sleep_hours
+        description: "当日の睡眠時間（参考用・翌日分析に使用）"
+      - name: current_sleep_score
+        description: "当日の睡眠スコア（参考用）"
+      - name: current_sleep_category
+        description: "当日の睡眠カテゴリ（参考用）"
+      - name: current_steps
+        description: "当日の歩数（参考用）"
+      - name: current_active_hours
+        description: "当日の活動時間（参考用）"
+      - name: current_activity_score
+        description: "当日の活動スコア（参考用）"
+      - name: current_health_score
+        description: "当日の総合健康スコア（参考用）"
+      - name: sleep_7d_avg
+        description: "睡眠時間の7日移動平均"
+      - name: work_7d_avg
+        description: "作業時間の7日移動平均"
+      - name: focus_7d_avg
+        description: "集中度の7日移動平均"
+      - name: sleep_score_7d_avg
+        description: "睡眠スコアの7日移動平均"
+      - name: sleep_category_order
+        description: "睡眠カテゴリの順序インデックス（1-6）"
+      - name: is_optimal_sleep
+        description: "最適睡眠フラグ（7-8時間 & 効率85%以上）"
+      - name: is_sleep_deprived
+        description: "睡眠不足フラグ（6時間未満）"
+      - name: is_high_productivity_day
+        description: "高生産性日フラグ（7日平均の1.2倍以上）"
+      - name: is_low_productivity_day
+        description: "低生産性日フラグ（7日平均の0.8倍以下）"
+      - name: calculated_at
+        description: "計算実行日時"

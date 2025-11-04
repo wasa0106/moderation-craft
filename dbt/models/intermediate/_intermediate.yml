@@ -1,8 +1,8 @@
 version: 2
 
 models:
-  - name: int_daily_health_summary
-    description: "日次健康データの統合サマリー"
+  - name: int_daily_health
+    description: "日次健康データの統合（fact_daily_healthで使用される中間集計）"
     columns:
       - name: id
         description: "ユーザーと日付の組み合わせによる一意識別子"
@@ -15,28 +15,16 @@ models:
           - not_null
       - name: date
         description: "日付"
-        tests:
-          - not_null
-      - name: sleep_score
-        description: "睡眠スコア（0-100）"
-        tests:
-          - not_null
-      - name: activity_score
-        description: "活動スコア（0-100）"
-        tests:
-          - not_null
-      - name: overall_health_score
-        description: "総合健康スコア（0-100）"
         tests:
           - not_null
       - name: has_complete_data
         description: "睡眠と活動の両データが揃っているか"
 
-  - name: int_productivity_metrics
-    description: "日次生産性メトリクス"
+  - name: int_work_sessions_enriched
+    description: "作業セッション中間層（プロジェクト・タスク情報でエンリッチメント済み）"
     columns:
-      - name: id
-        description: "ユーザーと日付の組み合わせによる一意識別子"
+      - name: session_id
+        description: "セッションID（主キー）"
         tests:
           - unique
           - not_null
@@ -44,24 +32,73 @@ models:
         description: "ユーザーID"
         tests:
           - not_null
-      - name: date
-        description: "日付"
+      - name: project_id
+        description: "プロジェクトID"
+      - name: project_name
+        description: "プロジェクト名（エンリッチメント）"
+      - name: project_color
+        description: "プロジェクトカラー（エンリッチメント）"
+      - name: project_description
+        description: "プロジェクト説明（エンリッチメント）"
+      - name: project_status
+        description: "プロジェクトステータス（エンリッチメント）"
+      - name: project_deadline
+        description: "プロジェクト締切（エンリッチメント）"
+      - name: small_task_id
+        description: "小タスクID"
+      - name: task_name
+        description: "タスク名（エンリッチメント）"
+      - name: task_description
+        description: "タスク説明（エンリッチメント）"
+      - name: task_status
+        description: "タスクステータス（エンリッチメント）"
+      - name: task_type
+        description: "タスクタイプ（エンリッチメント）"
+      - name: is_emergency
+        description: "緊急タスクフラグ（エンリッチメント）"
+      - name: is_reportable
+        description: "レポート対象フラグ（エンリッチメント）"
+      - name: task_estimated_minutes
+        description: "タスク見積もり時間（エンリッチメント）"
+      - name: big_task_id
+        description: "大タスクID"
+      - name: big_task_name
+        description: "大タスク名（エンリッチメント）"
+      - name: big_task_category
+        description: "大タスクカテゴリ（エンリッチメント）"
+      - name: big_task_status
+        description: "大タスクステータス（エンリッチメント）"
+      - name: big_task_estimated_hours
+        description: "大タスク見積もり時間（エンリッチメント）"
+      - name: big_task_actual_hours
+        description: "大タスク実績時間（エンリッチメント）"
+      - name: start_time
+        description: "セッション開始時刻（UTC）"
         tests:
           - not_null
-      - name: total_sessions
-        description: "総セッション数"
+      - name: end_time
+        description: "セッション終了時刻（UTC）"
         tests:
           - not_null
-      - name: total_work_hours
-        description: "総作業時間（時間）"
-      - name: pomodoro_compliance_rate
-        description: "ポモドーロ準拠率（%）"
-      - name: overall_productivity_score
-        description: "総合生産性スコア（0-100）"
-        tests:
-          - not_null
-      - name: data_quality
-        description: "データ品質（high/medium/low）"
-        tests:
-          - accepted_values:
-              values: ['high', 'medium', 'low']
+      - name: duration_seconds
+        description: "セッション時間（秒）"
+      - name: focus_level
+        description: "集中度レベル"
+      - name: mood_rating
+        description: "気分評価"
+      - name: dopamine_level
+        description: "ドーパミンレベル"
+      - name: notes
+        description: "セッションノート"
+      - name: created_at
+        description: "レコード作成タイムスタンプ"
+      - name: updated_at
+        description: "レコード更新タイムスタンプ"
+      - name: processed_at
+        description: "ステージング処理時刻（JST）"
+      - name: session_date
+        description: "セッション日付"
+      - name: session_hour
+        description: "セッション開始時（時）"
+      - name: is_weekend_session
+        description: "週末セッションフラグ"

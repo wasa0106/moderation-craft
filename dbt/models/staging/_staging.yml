@@ -98,10 +98,10 @@ models:
         description: "ステージング処理時刻（JST）"
 
   - name: stg_work_sessions
-    description: "作業セッションデータのステージング層"
+    description: "作業セッションデータのステージング層（DynamoDBエクスポートから抽出）"
     columns:
       - name: session_id
-        description: "セッションID"
+        description: "セッションID（主キー）"
         tests:
           - unique
           - not_null
@@ -109,16 +109,154 @@ models:
         description: "ユーザーID"
         tests:
           - not_null
-      - name: session_date
-        description: "セッション日"
+      - name: project_id
+        description: "プロジェクトID"
+      - name: small_task_id
+        description: "小タスクID"
+      - name: start_time
+        description: "セッション開始時刻（UTC）"
         tests:
           - not_null
-      - name: duration_minutes
-        description: "セッション時間（分）"
+      - name: end_time
+        description: "セッション終了時刻（UTC）"
         tests:
           - not_null
-      - name: time_slot
-        description: "時間帯カテゴリ"
+      - name: duration_seconds
+        description: "セッション時間（秒）"
         tests:
-          - accepted_values:
-              values: ['early_morning', 'morning', 'late_morning', 'afternoon', 'late_afternoon', 'evening', 'night']
+          - not_null
+      - name: focus_level
+        description: "集中度レベル"
+      - name: mood_rating
+        description: "気分評価"
+      - name: dopamine_level
+        description: "ドーパミンレベル"
+      - name: notes
+        description: "セッションノート"
+      - name: created_at
+        description: "レコード作成タイムスタンプ"
+      - name: updated_at
+        description: "レコード更新タイムスタンプ"
+      - name: processed_at
+        description: "ステージング処理時刻（JST）"
+
+  - name: stg_projects
+    description: "プロジェクトデータのステージング層（DynamoDBエクスポートから抽出）"
+    columns:
+      - name: project_id
+        description: "プロジェクトID（主キー）"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: project_name
+        description: "プロジェクト名"
+        tests:
+          - not_null
+      - name: description
+        description: "プロジェクトの目標・説明"
+      - name: color
+        description: "プロジェクトカラー（HSL形式）"
+      - name: status
+        description: "プロジェクトステータス（active/completed/cancelled）"
+      - name: deadline
+        description: "プロジェクト締切日"
+      - name: estimated_total_hours
+        description: "見積もり総時間"
+      - name: version
+        description: "バージョン番号"
+      - name: created_at
+        description: "レコード作成タイムスタンプ"
+      - name: updated_at
+        description: "レコード更新タイムスタンプ"
+      - name: processed_at
+        description: "ステージング処理時刻（JST）"
+
+  - name: stg_small_tasks
+    description: "小タスクデータのステージング層（DynamoDBエクスポートから抽出）"
+    columns:
+      - name: task_id
+        description: "タスクID（主キー）"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: project_id
+        description: "プロジェクトID"
+      - name: big_task_id
+        description: "大タスクID"
+      - name: task_name
+        description: "タスク名"
+        tests:
+          - not_null
+      - name: description
+        description: "タスクの目標・説明"
+      - name: status
+        description: "タスクステータス（pending/in_progress/completed/cancelled）"
+      - name: task_type
+        description: "タスクタイプ（project/routine/flow）"
+      - name: is_emergency
+        description: "緊急タスクフラグ"
+      - name: is_reportable
+        description: "レポート対象フラグ"
+      - name: estimated_minutes
+        description: "見積もり時間（分）"
+      - name: scheduled_start
+        description: "予定開始時刻"
+      - name: scheduled_end
+        description: "予定終了時刻"
+      - name: recurrence_enabled
+        description: "繰り返し有効フラグ"
+      - name: created_at
+        description: "レコード作成タイムスタンプ"
+      - name: updated_at
+        description: "レコード更新タイムスタンプ"
+      - name: processed_at
+        description: "ステージング処理時刻（JST）"
+
+  - name: stg_big_tasks
+    description: "大タスク（BigTask）データのステージング層（DynamoDBエクスポートから抽出）"
+    columns:
+      - name: big_task_id
+        description: "大タスクID（主キー）"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "ユーザーID"
+        tests:
+          - not_null
+      - name: project_id
+        description: "プロジェクトID"
+      - name: big_task_name
+        description: "大タスク名"
+        tests:
+          - not_null
+      - name: category
+        description: "カテゴリ（開発/設計/テスト/対策/運動/案件/その他）"
+      - name: status
+        description: "ステータス（active/completed/cancelled）"
+      - name: task_type
+        description: "タスクタイプ（flow/routine）"
+      - name: estimated_hours
+        description: "見積もり時間（時間）"
+      - name: actual_hours
+        description: "実績時間（時間）"
+      - name: start_date
+        description: "開始日"
+      - name: end_date
+        description: "終了日"
+      - name: version
+        description: "バージョン番号"
+      - name: created_at
+        description: "レコード作成タイムスタンプ"
+      - name: updated_at
+        description: "レコード更新タイムスタンプ"
+      - name: processed_at
+        description: "ステージング処理時刻（JST）"

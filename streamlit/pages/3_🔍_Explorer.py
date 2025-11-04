@@ -19,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🔍 データ探索")
+st.title("データ探索")
 st.markdown("SQLエディタでデータを自由に探索")
 
 # データベース接続
@@ -27,7 +27,7 @@ conn = get_connection()
 
 # サイドバー
 with st.sidebar:
-    st.header("🔍 探索ツール")
+    st.header("探索ツール")
     
     # テーブル一覧
     st.subheader("📋 利用可能なテーブル")
@@ -98,7 +98,7 @@ LIMIT 10
 tab1, tab2, tab3 = st.tabs(["SQLエディタ", "テーブル探索", "スキーマ情報"])
 
 with tab1:
-    st.markdown("### 📝 SQLクエリエディタ")
+    st.markdown("### SQLクエリエディタ")
     
     # SQLエディタ
     sql_query = st.text_area(
@@ -131,7 +131,7 @@ with tab1:
                     st.success(f"✅ 成功: {len(result_df)}行を取得しました")
                     
                     # 結果表示
-                    st.markdown("### 📊 クエリ結果")
+                    st.markdown("### クエリ結果")
                     
                     # データフレーム表示
                     st.dataframe(
@@ -196,7 +196,7 @@ with tab1:
                 st.error(f"❌ エラー: {str(e)}")
 
 with tab2:
-    st.markdown("### 📊 テーブル探索")
+    st.markdown("### テーブル探索")
     
     if 'selected_table' in st.session_state:
         table_name = st.session_state['selected_table']
@@ -255,7 +255,7 @@ with tab2:
         st.info("左のサイドバーからテーブルを選択してください")
 
 with tab3:
-    st.markdown("### 🗂️ スキーマ情報")
+    st.markdown("### スキーマ情報")
     
     # テーブル選択
     schema_table = st.selectbox(
