@@ -48,41 +48,45 @@ with st.sidebar:
     
     sample_queries = {
         "全データ取得": "SELECT * FROM {table} LIMIT 100",
-        "日次集計": """
-SELECT 
-    DATE_TRUNC('day', date) as day,
-    AVG(productivity_score) as avg_productivity,
-    AVG(health_score) as avg_health
-FROM mart_productivity_daily
-GROUP BY day
-ORDER BY day DESC
-        """,
-        "相関分析": """
-SELECT 
-    CORR(sleep_score, productivity_score) as sleep_correlation,
-    CORR(health_score, productivity_score) as health_correlation,
-    CORR(work_hours, productivity_score) as work_correlation
-FROM mart_productivity_daily
-        """,
-        "週間パフォーマンス": """
-SELECT 
-    EXTRACT(DOW FROM date) as day_of_week,
-    AVG(productivity_score) as avg_productivity,
-    COUNT(*) as data_points
-FROM mart_productivity_daily
-GROUP BY day_of_week
-ORDER BY day_of_week
-        """,
-        "トップ10生産的な日": """
-SELECT 
+        "睡眠と作業の相関": """
+SELECT
     date,
-    productivity_score,
-    health_score,
+    prev_sleep_hours,
     work_hours,
-    sleep_hours
-FROM mart_productivity_daily
-ORDER BY productivity_score DESC
-LIMIT 10
+    avg_focus_score,
+    is_optimal_sleep
+FROM main_gold.mart_sleep_work_correlation
+ORDER BY date DESC
+LIMIT 20
+        """,
+        "睡眠カテゴリ別生産性": """
+SELECT
+    prev_sleep_category,
+    AVG(work_hours) as avg_work_hours,
+    AVG(avg_focus_score) as avg_focus,
+    COUNT(*) as days_count
+FROM main_gold.mart_sleep_work_correlation
+GROUP BY prev_sleep_category
+ORDER BY prev_sleep_category
+        """,
+        "週間トレンド": """
+SELECT
+    day_of_week,
+    AVG(work_hours) as avg_work,
+    AVG(prev_sleep_hours) as avg_sleep,
+    COUNT(*) as data_points
+FROM main_gold.mart_sleep_work_correlation
+GROUP BY day_of_week
+ORDER BY
+    CASE day_of_week
+        WHEN 'Monday' THEN 1
+        WHEN 'Tuesday' THEN 2
+        WHEN 'Wednesday' THEN 3
+        WHEN 'Thursday' THEN 4
+        WHEN 'Friday' THEN 5
+        WHEN 'Saturday' THEN 6
+        WHEN 'Sunday' THEN 7
+    END
         """
     }
     
@@ -103,7 +107,7 @@ with tab1:
     # SQLエディタ
     sql_query = st.text_area(
         "SQLクエリを入力",
-        value=st.session_state.get('sql_query', 'SELECT * FROM mart_productivity_daily LIMIT 10'),
+        value=st.session_state.get('sql_query', 'SELECT * FROM main_gold.mart_sleep_work_correlation LIMIT 10'),
         height=200,
         key="sql_editor"
     )

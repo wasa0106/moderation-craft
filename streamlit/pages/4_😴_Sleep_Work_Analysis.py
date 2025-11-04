@@ -32,7 +32,7 @@ def get_available_projects():
     SELECT DISTINCT
         project_id,
         project_name
-    FROM main_dims.dim_project
+    FROM main_dimensions.dim_project
     WHERE project_id IS NOT NULL
     ORDER BY project_id
     """

@@ -33,7 +33,6 @@ model_descriptions = {
     # === Dimension Layer ===
     'main_dimensions.dim_date': '日付ディメンション - 日付マスター（2024-2027, 1461日分）（Dimension層）',
     'main_dimensions.dim_time': '時間ディメンション - 時刻マスター（00:00-23:59, 1440分）（Dimension層）',
-    'main_dimensions.dim_user': 'ユーザーディメンション - ユーザー属性（SCD Type 2対応）（Dimension層）',
 
     # === Fact Layer ===
     'main_facts.fact_work_sessions': '作業セッションファクト - プロジェクト・タスク・BigTask名付き（Fact層）',
@@ -56,14 +55,8 @@ model_descriptions = {
     'main_intermediate.int_daily_health_summary': '日次健康サマリー - 全データ統合（Intermediate層）',
     'main_intermediate.int_productivity_metrics': '生産性メトリクス（Intermediate層）',
 
-    # === Mart Layer ===
-    'main_gold.mart_wellness_correlation': '健康相関分析（Mart層）',
-    'main_gold.mart_productivity_daily': '日次生産性（Mart層）',
-
-    # === BI Layer - Task Analysis ===
-    'main_gold.mart_task_performance': 'タスクパフォーマンス分析 - 予定vs実績比較・見積もり精度（BI層）',
-    'main_gold.mart_task_completion_analysis': 'タスク完了状況分析 - 完了率・期限管理・未完了追跡（BI層）',
-    'main_gold.mart_task_productivity': 'タスク生産性分析 - セッションメトリクス・タイプ別生産性（BI層）'
+    # === Mart Layer (BI) ===
+    'main_gold.mart_sleep_work_correlation': '睡眠×作業相関分析 - 前日の睡眠が翌日の生産性に与える影響（BI層）'
 }
 
 # モデルのグループ化（データ層別）
@@ -71,7 +64,6 @@ model_groups = {
     'Dimension Models': [
         'main_dimensions.dim_date',
         'main_dimensions.dim_time',
-        'main_dimensions.dim_user',
     ],
     'Fact Models': [
         'main_facts.fact_work_sessions',
@@ -94,14 +86,8 @@ model_groups = {
         'main_intermediate.int_daily_health_summary',
         'main_intermediate.int_productivity_metrics',
     ],
-    'Mart Models': [
-        'main_gold.mart_productivity_daily',
-        'main_gold.mart_wellness_correlation',
-    ],
-    'BI - Task Analysis': [
-        'main_gold.mart_task_performance',
-        'main_gold.mart_task_completion_analysis',
-        'main_gold.mart_task_productivity',
+    'BI Marts': [
+        'main_gold.mart_sleep_work_correlation',
     ],
 }
 
